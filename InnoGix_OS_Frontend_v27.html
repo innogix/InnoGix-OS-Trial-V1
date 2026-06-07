@@ -794,6 +794,105 @@ tbody td.muted{color:var(--text3);}
 }
 .rgn-breadcrumb span { color: var(--blue); cursor: pointer; font-weight: 600; }
 .rgn-breadcrumb span:hover { text-decoration: underline; }
+
+/* ═══════════════════════════════════════
+   COURIER MANAGER HUB — STYLES
+═══════════════════════════════════════ */
+.courier-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .2s, box-shadow .2s;
+}
+.courier-card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212,160,23,.1);
+}
+.courier-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+.courier-card.pathao::before   { background: linear-gradient(90deg,#f02d65,#ff6b98); }
+.courier-card.steadfast::before{ background: linear-gradient(90deg,#0a84ff,#4daaff); }
+.courier-card.redx::before     { background: linear-gradient(90deg,#e83a2b,#ff7060); }
+.courier-card.sa::before       { background: linear-gradient(90deg,#22c55e,#4ade80); }
+.courier-card.sundarban::before{ background: linear-gradient(90deg,#f59e0b,#fcd34d); }
+.courier-card.janani::before   { background: linear-gradient(90deg,#8b5cf6,#c084fc); }
+
+.courier-card-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.courier-logo-badge {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.courier-card.pathao   .courier-logo-badge { background: rgba(240,45,101,.15); }
+.courier-card.steadfast .courier-logo-badge{ background: rgba(10,132,255,.15); }
+.courier-card.redx     .courier-logo-badge { background: rgba(232,58,43,.15); }
+.courier-card.sa       .courier-logo-badge { background: rgba(34,197,94,.15); }
+.courier-card.sundarban .courier-logo-badge{ background: rgba(245,158,11,.15); }
+.courier-card.janani   .courier-logo-badge { background: rgba(139,92,246,.15); }
+
+.courier-card-name {
+  font-size: 15px; font-weight: 800; color: var(--text);
+  letter-spacing: .3px;
+}
+.courier-card-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+.courier-stats-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px; margin-bottom: 12px;
+}
+.c-stat {
+  background: var(--bg3); border-radius: 8px; padding: 8px 10px;
+}
+.c-stat-label { font-size: 10px; color: var(--text3); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+.c-stat-val   { font-size: 16px; font-weight: 800; font-family: 'IBM Plex Mono',monospace; color: var(--text); }
+.c-stat-val.green { color: var(--green); }
+.c-stat-val.red   { color: var(--red); }
+.c-stat-val.gold  { color: var(--gold); }
+.c-stat-val.blue  { color: var(--blue); }
+
+.courier-progress {
+  height: 5px; background: var(--bg4); border-radius: 3px; overflow: hidden; margin-top: 10px;
+}
+.courier-progress-fill {
+  height: 100%; border-radius: 3px; transition: width .6s ease;
+}
+.courier-card.pathao    .courier-progress-fill { background: #f02d65; }
+.courier-card.steadfast .courier-progress-fill { background: #0a84ff; }
+.courier-card.redx      .courier-progress-fill { background: #e83a2b; }
+.courier-card.sa        .courier-progress-fill { background: #22c55e; }
+.courier-card.sundarban .courier-progress-fill { background: #f59e0b; }
+.courier-card.janani    .courier-progress-fill { background: #8b5cf6; }
+
+/* Tracking table special cells */
+.delivery-cost-cell  { color: var(--red) !important; font-weight: 700; font-family:'IBM Plex Mono',monospace; }
+.cod-cost-cell       { color: var(--red) !important; font-weight: 700; font-family:'IBM Plex Mono',monospace; }
+.net-payable-cell    { color: var(--green) !important; font-weight: 800; font-family:'IBM Plex Mono',monospace; }
+
+.courier-badge-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.cb-pathao    { background:rgba(240,45,101,.15);  color:#f02d65; }
+.cb-steadfast { background:rgba(10,132,255,.15);  color:#0a84ff; }
+.cb-redx      { background:rgba(232,58,43,.15);   color:#e83a2b; }
+.cb-sa        { background:rgba(34,197,94,.15);   color:#22c55e; }
+.cb-sundarban { background:rgba(245,158,11,.15);  color:#f59e0b; }
+.cb-janani    { background:rgba(139,92,246,.15);  color:#8b5cf6; }
+
+/* Sync animation */
+@keyframes spin { to { transform: rotate(360deg); } }
+.syncing { display: inline-block; animation: spin .7s linear infinite; }
 </style>
 </head>
 <body>
@@ -915,6 +1014,7 @@ tbody td.muted{color:var(--text3);}
   <div class="nav-item" onclick="showPage('partner',this)"><span class="nav-icon">🤝</span>Partners</div>
   <div class="nav-item" onclick="showPage('crm',this)"><span class="nav-icon">👥</span>Customers</div>
   <div class="nav-item" onclick="showPage('delivery-analytics',this)"><span class="nav-icon">🚚</span>Delivery Analytics</div>
+  <div class="nav-item" onclick="showPage('courier-hub',this)"><span class="nav-icon">📦</span>কুরিয়ার ম্যানেজার<span class="nav-badge gold" id="courier-badge">6</span></div>
   <div class="nav-item" onclick="showPage('calculator',this)"><span class="nav-icon">🧮</span>Order Calculator</div>
 
   <div class="sidebar-section">System</div>
@@ -1706,6 +1806,68 @@ tbody td.muted{color:var(--text3);}
         </div>
       </div>
     </div><!-- /#page-delivery-analytics -->
+
+    <!-- ══════════════════════════════════════════
+         PAGE: COURIER MANAGER HUB
+    ══════════════════════════════════════════ -->
+    <div class="page" id="page-courier-hub">
+      <div class="breadcrumb">InnoGix OS / <span>কুরিয়ার ম্যানেজার হাব</span></div>
+      <div class="section-head" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+        <div>
+          <h2>📦 কুরিয়ার ম্যানেজার হাব</h2>
+          <p>৬টি কুরিয়ার কোম্পানির লাইভ অ্যানালিটিক্স, ট্র্যাকিং ও COD হিসাব</p>
+        </div>
+        <button class="btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="syncCourierData()">🔄 কুরিয়ার ডাটা সিঙ্ক করুন</button>
+      </div>
+
+      <!-- ── 6 Courier Analytics Cards ── -->
+      <div id="courier-cards-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-bottom:24px;"></div>
+
+      <!-- ── Live Tracking Table ── -->
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <span class="table-title">📍 লাইভ ট্র্যাকিং টেবিল</span>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <select class="filter-select" id="ch-courier-filter" onchange="renderCourierTable()" style="width:auto;padding:6px 12px;font-size:12px;">
+              <option value="">সব কুরিয়ার</option>
+              <option>Pathao</option><option>Steadfast</option><option>Redx</option>
+              <option>SA Paribahan</option><option>Sundarban</option><option>Janani</option>
+            </select>
+            <select class="filter-select" id="ch-status-filter" onchange="renderCourierTable()" style="width:auto;padding:6px 12px;font-size:12px;">
+              <option value="">সব স্ট্যাটাস</option>
+              <option>Pending</option><option>Processing</option><option>In Transit</option>
+              <option>Delivered</option><option>Returned</option><option>Cancelled</option>
+            </select>
+            <span id="ch-table-count" style="font-size:12px;color:var(--text3);">লোড হচ্ছে...</span>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="courier-tracking-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>তারিখ</th>
+                <th>কাস্টমার</th>
+                <th>অর্ডার ID</th>
+                <th>কুরিয়ার</th>
+                <th>ট্র্যাকিং নম্বর</th>
+                <th>বর্তমান অবস্থান</th>
+                <th>ডেলিভারি চার্জ</th>
+                <th>COD চার্জ</th>
+                <th>নেট পাওনা</th>
+                <th>লাইভ স্ট্যাটাস</th>
+              </tr>
+            </thead>
+            <tbody id="courier-tracking-tbody">
+              <tr><td colspan="11" style="text-align:center;color:var(--text3);padding:40px;">ডেটা সিঙ্ক করতে উপরের বাটনে ক্লিক করুন 🔄</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-footer">
+          <span id="ch-showing">Showing 0 records</span>
+        </div>
+      </div>
+    </div><!-- /#page-courier-hub -->
 
     <!-- ══════════════════════════════
          PAGE: ARCHITECTURE GUIDE
@@ -3245,6 +3407,7 @@ const pageTitles = {
   inventory:['Inventory','— Stock Management'], expense:['Expenses','— Cost Tracking'],
   partner:['Partners','— Accounting'], crm:['Customers','— CRM'], calculator:['Order Calculator','— Price Calculator'],
   'delivery-analytics':['Delivery Analytics','— ডেলিভারি বিশ্লেষণ'],
+  'courier-hub':['কুরিয়ার ম্যানেজার হাব','— Live Tracking & COD'],
   'activity-log':['অ্যাক্টিভিটি লগ','— Audit Trail'],
   architecture:['Architecture','— System Guide'], formulas:['Formula Guide','— Reference'],
   setup:['Setup Roadmap','— Implementation Plan'],
@@ -3257,6 +3420,7 @@ function showPage(id, el) {
   document.getElementById('page-title').textContent = pageTitles[id][0];
   document.getElementById('page-sub').textContent = pageTitles[id][1];
   if(id==='delivery-analytics') renderDeliveryAnalytics();
+  if(id==='courier-hub') renderCourierHub();
   if(id==='activity-log') renderActivityLog();
   if(window.innerWidth<=900) closeSidebarMobile();
   // ─ Activity log এ পেজ ভিজিট লগ করো (activity-log পেজ বাদে)
@@ -6658,6 +6822,214 @@ if ('serviceWorker' in navigator) {
     // navigator.serviceWorker.register('./sw.js').catch(() => {});
   });
 }
+
+/* ═══════════════════════════════════════════════════════════
+   COURIER MANAGER HUB — Complete JavaScript Module
+   Version: InnoGix OS v28
+═══════════════════════════════════════════════════════════ */
+
+const COURIER_CONFIG = {
+  Pathao:      { cls:'pathao',    icon:'🏍️', color:'#f02d65', baseDelivery: 60 },
+  Steadfast:   { cls:'steadfast', icon:'🚛', color:'#0a84ff', baseDelivery: 70 },
+  Redx:        { cls:'redx',      icon:'🔴', color:'#e83a2b', baseDelivery: 65 },
+  'SA Paribahan':{ cls:'sa',      icon:'🟢', color:'#22c55e', baseDelivery: 80 },
+  Sundarban:   { cls:'sundarban', icon:'🌿', color:'#f59e0b', baseDelivery: 75 },
+  Janani:      { cls:'janani',    icon:'💜', color:'#8b5cf6', baseDelivery: 70 },
+};
+
+// ── বর্তমান অবস্থানের লিস্ট (ট্র্যাকিং সিমুলেশন)
+const LOCATION_STEPS = ['Warehouse', 'Sorting Hub', 'In Transit', 'District Hub', 'Last Mile', 'Out for Delivery', 'Delivered'];
+
+// ── Sales ডাটা থেকে কুরিয়ার ডাটা বিল্ড করো
+function buildCourierData() {
+  const orders = (typeof salesData !== 'undefined' ? salesData : []);
+  const result = {};
+  Object.keys(COURIER_CONFIG).forEach(name => {
+    result[name] = { total:0, delivered:0, inTransit:0, returned:0, pending:0, totalDeliveryFee:0, totalCOD:0, totalNet:0, orders:[] };
+  });
+  orders.forEach((o, idx) => {
+    const cName = o.courier || o.Courier || '';
+    if (!cName || !result[cName]) return;
+    const stat   = o.status || o.Status || 'Pending';
+    const total  = parseFloat(o.total || o.Total || 0);
+    const delivFee = parseFloat(o.delivery || o.Delivery || o['Delivery Charge'] || COURIER_CONFIG[cName]?.baseDelivery || 0);
+    const codPct = parseFloat(o.codPct || o.CODPct || o['COD%'] || 0);
+    const codAmt = (total * codPct) / 100;
+    const netPay = total - delivFee - codAmt;
+
+    const r = result[cName];
+    r.total++;
+    r.totalDeliveryFee += delivFee;
+    r.totalCOD         += codAmt;
+    r.totalNet         += netPay;
+    if (stat === 'Delivered')  r.delivered++;
+    else if (stat === 'In Transit' || stat === 'Processing') r.inTransit++;
+    else if (stat === 'Returned' || stat === 'Cancelled')    r.returned++;
+    else r.pending++;
+
+    // ট্র্যাকিং লোকেশন — স্ট্যাটাস দিয়ে অনুমান
+    const locMap = { Pending:'Warehouse', Processing:'Sorting Hub', 'In Transit':'District Hub', Delivered:'Delivered', Returned:'Sorting Hub', Cancelled:'Warehouse' };
+    r.orders.push({
+      date:      o.date || o.Date || '—',
+      customer:  o.customer || o.Customer || '—',
+      orderId:   o.orderId || o.OrderID || `#${String(idx+1).padStart(5,'0')}`,
+      tracking:  o.tracking || o.Tracking || `TRK-${cName.slice(0,2).toUpperCase()}${String(Math.floor(Math.random()*900000)+100000)}`,
+      location:  locMap[stat] || 'In Transit',
+      status:    stat,
+      delivFee,
+      codAmt,
+      netPay,
+    });
+  });
+  return result;
+}
+
+// ── ৬টি কুরিয়ার অ্যানালিটিক্স কার্ড রেন্ডার
+function renderCourierCards(data) {
+  const grid = document.getElementById('courier-cards-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  Object.entries(COURIER_CONFIG).forEach(([name, cfg]) => {
+    const d = data[name];
+    const rate = d.total > 0 ? Math.round((d.delivered / d.total) * 100) : 0;
+    grid.innerHTML += `
+    <div class="courier-card ${cfg.cls}">
+      <div class="courier-card-head">
+        <div class="courier-logo-badge">${cfg.icon}</div>
+        <div>
+          <div class="courier-card-name">${name}</div>
+          <div class="courier-card-sub">সর্বমোট ${d.total} অর্ডার · সাফল্যের হার ${rate}%</div>
+        </div>
+      </div>
+      <div class="courier-stats-row">
+        <div class="c-stat">
+          <div class="c-stat-label">মোট অর্ডার</div>
+          <div class="c-stat-val blue">${d.total}</div>
+        </div>
+        <div class="c-stat">
+          <div class="c-stat-label">ডেলিভার্ড</div>
+          <div class="c-stat-val green">${d.delivered}</div>
+        </div>
+        <div class="c-stat">
+          <div class="c-stat-label">ট্রানজিটে</div>
+          <div class="c-stat-val gold">${d.inTransit}</div>
+        </div>
+        <div class="c-stat">
+          <div class="c-stat-label">রিটার্ন</div>
+          <div class="c-stat-val red">${d.returned}</div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+        <span style="font-size:11px;color:var(--text3);">ডেলিভারি ফি: <span style="color:var(--red);font-weight:700;">৳${fmt(d.totalDeliveryFee)}</span></span>
+        <span style="font-size:11px;color:var(--text3);">নেট: <span style="color:var(--green);font-weight:700;">৳${fmt(d.totalNet)}</span></span>
+      </div>
+      <div class="courier-progress">
+        <div class="courier-progress-fill" style="width:${rate}%"></div>
+      </div>
+    </div>`;
+  });
+}
+
+// ── ট্র্যাকিং টেবিল রেন্ডার
+function renderCourierTable(data) {
+  if (!data) data = window._lastCourierData || buildCourierData();
+  window._lastCourierData = data;
+
+  const courierF = document.getElementById('ch-courier-filter')?.value || '';
+  const statusF  = document.getElementById('ch-status-filter')?.value  || '';
+  const tbody    = document.getElementById('courier-tracking-tbody');
+  const showing  = document.getElementById('ch-showing');
+  const counter  = document.getElementById('ch-table-count');
+  if (!tbody) return;
+
+  let rows = [];
+  Object.entries(data).forEach(([cName, d]) => {
+    d.orders.forEach(o => rows.push({...o, courier: cName}));
+  });
+
+  // ফিল্টার
+  if (courierF) rows = rows.filter(r => r.courier === courierF);
+  if (statusF)  rows = rows.filter(r => r.status  === statusF);
+  rows.sort((a,b) => (b.date > a.date ? 1 : -1));
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:var(--text3);padding:40px;">কোনো ডেটা পাওয়া যায়নি</td></tr>`;
+    if(showing) showing.textContent = 'Showing 0 records';
+    if(counter) counter.textContent = '০ রেকর্ড';
+    return;
+  }
+
+  const statusColor = { Delivered:'var(--green)', 'In Transit':'var(--blue)', Processing:'var(--gold)', Pending:'var(--text3)', Returned:'var(--red)', Cancelled:'var(--red)' };
+  const cfg = COURIER_CONFIG;
+
+  tbody.innerHTML = rows.slice(0, 200).map((r, i) => {
+    const clsKey = cfg[r.courier]?.cls || '';
+    return `<tr>
+      <td style="color:var(--text3);font-size:11px;">${i+1}</td>
+      <td style="font-size:11px;color:var(--text3);">${r.date}</td>
+      <td style="font-weight:600;">${r.customer}</td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue);">${r.orderId}</td>
+      <td><span class="courier-badge-pill cb-${clsKey}">${cfg[r.courier]?.icon||''} ${r.courier}</span></td>
+      <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${r.tracking}</td>
+      <td style="font-size:12px;">${r.location}</td>
+      <td class="delivery-cost-cell">৳${fmt(r.delivFee)}</td>
+      <td class="cod-cost-cell">৳${fmt(r.codAmt)}</td>
+      <td class="net-payable-cell">৳${fmt(r.netPay)}</td>
+      <td><span style="font-size:11px;font-weight:700;color:${statusColor[r.status]||'var(--text3)'};">${r.status}</span></td>
+    </tr>`;
+  }).join('');
+
+  if(showing) showing.textContent = `Showing ${Math.min(rows.length,200)} of ${rows.length} records`;
+  if(counter) counter.textContent = `${rows.length} রেকর্ড`;
+}
+
+// ── মেইন রেন্ডার ফাংশন (পেজ ওপেনে কল হয়)
+function renderCourierHub() {
+  const data = buildCourierData();
+  window._lastCourierData = data;
+  renderCourierCards(data);
+  renderCourierTable(data);
+}
+
+// ── সিঙ্ক বাটন
+function syncCourierData() {
+  const btn = document.querySelector('#page-courier-hub .btn');
+  if (btn) {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<span class="syncing">🔄</span> সিঙ্ক হচ্ছে...';
+    btn.disabled = true;
+    setTimeout(() => {
+      renderCourierHub();
+      btn.innerHTML = '✅ সিঙ্ক সম্পন্ন!';
+      btn.style.borderColor = 'var(--green)';
+      btn.style.color = 'var(--green)';
+      setTimeout(() => { btn.innerHTML = orig; btn.disabled = false; btn.style.borderColor=''; btn.style.color=''; }, 2000);
+    }, 900);
+  }
+}
+
+// ── helper
+function fmt(n) {
+  if (!n && n!==0) return '০';
+  return Math.round(n).toLocaleString('en-BD');
+}
+
+// ── Order ফর্ম - COD চার্জ real-time calc (calcDue override)
+// বিদ্যমান calcDue ফাংশনকে extend করি যাতে courier-hub ও আপডেট হয়
+const _origCalcDue = window.calcDue;
+window.calcDue = function() {
+  if (typeof _origCalcDue === 'function') _origCalcDue();
+  // COD display আপডেট
+  const total   = parseFloat(document.getElementById('total-price')?.value) || 0;
+  const deliv   = parseFloat(document.getElementById('order-delivery')?.value) || 0;
+  const codPct  = parseFloat(document.getElementById('order-cod-pct')?.value) || 0;
+  const codAmt  = (total * codPct) / 100;
+  const netPay  = total - deliv - codAmt;
+  const dispEl  = document.getElementById('cod-charge-display');
+  const netEl   = document.getElementById('cod-net-display');
+  if (dispEl) dispEl.textContent = `৳ ${fmt(codAmt)}`;
+  if (netEl)  netEl.textContent  = `৳ ${fmt(netPay)}`;
+};
 </script>
 </body>
 </html>

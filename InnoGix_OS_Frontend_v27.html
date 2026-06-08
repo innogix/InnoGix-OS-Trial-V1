@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InnoGix Business OS v31 — Amanah Security</title>
+<title>InnoGix Business OS v32 — Amanah Security</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -3506,7 +3506,7 @@ tbody td.muted{color:var(--text3);}
 // ✅ Partner balance REF error ছাড়া calculate
 // ═══════════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzN5xxIp5wsdjSMEdlyf6qoVH-esBWnqQUZ6gHZPOynInencKBaYmwUVM-zw6XhQFGr/exec"; // ← এখানে আপনার Google Apps Script URL বসান
+const API_URL = "https://script.google.com/macros/s/AKfycbzzWkKpZiOppJjAsm0llIkcfWf_1UoR1jM4ND0lp97tabPEt12v_0Ip-rCydC7n6CfF3A/exec"; // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -4270,14 +4270,18 @@ function updateCompanyFundPreview() {
     el('preview-total').textContent = total.toFixed(1) + '%';
     el('preview-total').style.color = total > 100 ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--text)';
   }
-  // Net profit preview
+  // Net profit preview (COD ও delivery বাদ দিয়ে)
   const totalPriceEl = document.getElementById('total-price');
   const deliveryEl   = document.getElementById('order-delivery');
+  const codPctEl2    = document.getElementById('order-cod-pct');
   if(totalPriceEl && el('preview-net')) {
-    const totalSale = parseFloat(totalPriceEl.value||0);
-    const delivery  = parseFloat(deliveryEl?.value||0);
-    const netProfit = totalSale - delivery;
-    el('preview-net').textContent = netProfit > 0 ? '৳' + Math.round(netProfit).toLocaleString() : '—';
+    const totalSale  = parseFloat(totalPriceEl.value||0);
+    const delivery   = parseFloat(deliveryEl?.value||0);
+    const codPct2    = parseFloat(codPctEl2?.value||0);
+    const codAmt2    = (totalSale * codPct2) / 100;
+    const netProfit  = totalSale - delivery - codAmt2;
+    const codNote    = codAmt2 > 0 ? ` (COD: ৳${Math.round(codAmt2).toLocaleString()} বাদে)` : '';
+    el('preview-net').textContent = netProfit > 0 ? '৳' + Math.round(netProfit).toLocaleString() + codNote : '—';
   }
 }
 
@@ -4758,12 +4762,47 @@ function renderCRMRows(rows){
         ${statusBadges || `<span class="status ${typeClass}" style="font-size:10px;">${typeLabel}</span>`}
       </td>
       <td class="mono">${c.last||'—'}</td>
-      <td><button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openViewCustomer(${JSON.stringify(c)})'>👁 View</button></td>
+      <td>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openViewCustomer(${JSON.stringify(c)})'>👁 View</button>
+          <button class="btn" style="padding:4px 8px;font-size:11px;" onclick='crmPrintLastOrder(${JSON.stringify({phone:c.phone,name:c.name})})' title="সর্বশেষ অর্ডার প্রিন্ট">🖨️</button>
+          <button class="btn" style="padding:4px 8px;font-size:11px;" onclick='crmEditLastOrder(${JSON.stringify({phone:c.phone,name:c.name})})' title="সর্বশেষ অর্ডার এডিট">✏️</button>
+        </div>
+      </td>
     </tr>`;
   }).join('');
 }
 
-// ─── CHART ───────────────────────────────────────────────────
+// ─── CRM TABLE: EDIT & PRINT HELPERS ────────────────────────────────
+/**
+ * CRM টেবিল থেকে কোনো কাস্টমারের সর্বশেষ অর্ডার এডিট করো
+ */
+function crmEditLastOrder(ref) {
+  const allOrders = liveSalesData || [];
+  const orders = allOrders.filter(o =>
+    (String(o.phone||'') === String(ref.phone||'')) ||
+    (String(o.customer||'').toLowerCase() === String(ref.name||'').toLowerCase())
+  );
+  if (!orders.length) { showToast('এই কাস্টমারের কোনো অর্ডার পাওয়া যায়নি', 'error'); return; }
+  // সর্বশেষ অর্ডার = array-এর প্রথম item (reversed already in loadLiveSales)
+  const lastOrder = orders[0];
+  openEditOrder(lastOrder);
+}
+
+/**
+ * CRM টেবিল থেকে কোনো কাস্টমারের সর্বশেষ অর্ডারের ক্যাশ মেমো প্রিন্ট করো
+ */
+function crmPrintLastOrder(ref) {
+  const allOrders = liveSalesData || [];
+  const orders = allOrders.filter(o =>
+    (String(o.phone||'') === String(ref.phone||'')) ||
+    (String(o.customer||'').toLowerCase() === String(ref.name||'').toLowerCase())
+  );
+  if (!orders.length) { showToast('এই কাস্টমারের কোনো অর্ডার পাওয়া যায়নি', 'error'); return; }
+  const lastOrder = orders[0];
+  openInvoice(lastOrder);
+}
+// ─────────────────────────────────────────────────────────────────────
 // ─── CHART STATE ─────────────────────────────────────────────
 let chartState = { months: 6, year: 0, data: null }; // persists between redraws
 
@@ -5628,6 +5667,15 @@ async function submitOrder(){
     payment: m.querySelector('#order-payment').value,
     codPct: (()=>{ const el=document.getElementById('order-cod-pct'); return el?el.value:'0'; })(),
     codCharge: (()=>{ const el=document.getElementById('cod-charge-display'); if(!el) return '0'; return el.textContent.replace('৳','').replace(/,/g,'').trim()||'0'; })(),
+    netPayable: (()=>{
+      // Net Payable = Total - Delivery Charge - COD Charge (এটা ডাটাবেজে সেভ হবে)
+      const tp  = parseFloat(document.getElementById('total-price')?.value||0);
+      const del = parseFloat(m.querySelector('#order-delivery')?.value||0);
+      const codPctEl = document.getElementById('order-cod-pct');
+      const codPct   = codPctEl ? parseFloat(codPctEl.value)||0 : 0;
+      const codAmt   = (tp * codPct) / 100;
+      return Math.max(0, tp - del - codAmt).toFixed(2);
+    })(),
     status: m.querySelector('#order-status').value,
     courier: m.querySelector('#order-courier').value,
     tracking: m.querySelector('#order-tracking').value,
@@ -5647,7 +5695,9 @@ async function submitOrder(){
     if (!currentEditOrderId) {
       const totalSale = parseFloat(payload.price||0) * parseFloat(payload.qty||1);
       const delivery  = parseFloat(payload.delivery||0);
-      const netProfit = Math.max(0, totalSale - delivery);
+      const codChargeSplit = parseFloat(payload.codCharge||0);
+      // Net Profit = Total Sale - Delivery Charge - COD Charge
+      const netProfit = Math.max(0, totalSale - delivery - codChargeSplit);
       if (netProfit > 0) {
         // ── AUTO-LINK: Inventory থেকে product-specific split নাও ──
         const productName = payload.product || '';
@@ -5661,7 +5711,8 @@ async function submitOrder(){
           ? prodSplit.rabbi  : payload.splitRabbi;
         applyProfitSplit(netProfit, autoIsmail, autoAshik, autoRabbi);
         const compPct = Math.max(0, 100 - autoIsmail - autoAshik - autoRabbi);
-        showToast(`💰 প্রফিট বণ্টন: I:${autoIsmail}% | A:${autoAshik}% | R:${autoRabbi}% | C:${compPct.toFixed(0)}% — ৳${Math.round(netProfit).toLocaleString()}`, 'success');
+        const codNote = codChargeSplit > 0 ? ` (COD: ৳${Math.round(codChargeSplit).toLocaleString()} কাটা হয়েছে)` : '';
+        showToast(`💰 প্রফিট বণ্টন: I:${autoIsmail}% | A:${autoAshik}% | R:${autoRabbi}% | C:${compPct.toFixed(0)}% — নেট প্রফিট ৳${Math.round(netProfit).toLocaleString()}${codNote}`, 'success');
       }
     }
     refreshAfterOrder(); // FIX v24: debounced — একসাথে সব API call না করে staggered
@@ -8099,7 +8150,9 @@ function buildCourierData() {
     const total  = parseFloat(o.total || o.Total || 0);
     const delivFee = parseFloat(o.delivery || o.Delivery || o['Delivery Charge'] || COURIER_CONFIG[cName]?.baseDelivery || 0);
     const codPct = parseFloat(o.codPct || o.CODPct || o['COD%'] || 0);
-    const codAmt = (total * codPct) / 100;
+    // codCharge সরাসরি সেভ থাকলে সেটা ব্যবহার করো, না হলে total*codPct/100 হিসাব করো
+    const savedCodAmt = parseFloat(o.codCharge || o.CODCharge || o['COD Charge'] || 0);
+    const codAmt = savedCodAmt > 0 ? savedCodAmt : (total * codPct) / 100;
     const netPay = total - delivFee - codAmt;
 
     const r = result[cName];
@@ -8218,8 +8271,8 @@ function renderCourierTable(data) {
       <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${r.tracking}</td>
       <td style="font-size:12px;">${r.location}</td>
       <td class="delivery-cost-cell">৳${fmt(r.delivFee)}</td>
-      <td class="cod-cost-cell">৳${fmt(r.codAmt)}</td>
-      <td class="net-payable-cell">৳${fmt(r.netPay)}</td>
+      <td class="cod-cost-cell" style="color:${r.codAmt>0?'var(--red)':'var(--text3)'};" title="COD চার্জ: ৳${fmt(r.codAmt)}">৳${fmt(r.codAmt)}</td>
+      <td class="net-payable-cell" style="color:var(--green);font-weight:700;">৳${fmt(r.netPay)}</td>
       <td><span style="font-size:11px;font-weight:700;color:${statusColor[r.status]||'var(--text3)'};">${r.status}</span></td>
     </tr>`;
   }).join('');

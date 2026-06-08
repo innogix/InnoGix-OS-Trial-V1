@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>InnoGix Business OS — Amanah Security</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 /* ═══════════════════════════════════════
    DESIGN SYSTEM
@@ -567,12 +568,166 @@ tbody td.muted{color:var(--text3);}
   .table-actions{width:100%;}
 }
 @media print{
-  .sidebar,.topbar,.modal-overlay,.toast-container,.table-actions,.filter-bar,.btn,.pagination{display:none!important;}
-  .main{margin-left:0!important;}
-  .content{padding:10px!important;}
-  body{background:#fff!important;color:#000!important;}
-  table{font-size:10px!important;}
-  thead th{background:#eee!important;color:#000!important;}
+  body > *:not(#modal-invoice){ display:none!important; }
+  #modal-invoice{
+    position:static!important;background:none!important;
+    display:block!important;overflow:visible!important;
+  }
+  #modal-invoice .modal{
+    box-shadow:none!important;border:none!important;
+    max-width:100%!important;width:100%!important;
+  }
+  #modal-invoice .modal-header{ display:none!important; }
+  #invoice-print-area{
+    background:#fff!important;color:#000!important;
+    padding:20px!important;
+  }
+  #invoice-print-area *{ color:inherit; }
+  #invoice-print-area [style*="color:var(--gold)"]{ color:#8B6914!important; }
+  #invoice-print-area [style*="color:var(--green)"]{ color:#1a7a2e!important; }
+  #invoice-print-area [style*="color:var(--text3)"]{ color:#555!important; }
+  #invoice-print-area table thead tr{ background:#D4A017!important; }
+}
+@keyframes flashAlert{
+  from{ opacity:1; box-shadow:0 0 0 0 rgba(248,81,73,0); }
+  to  { opacity:.85; box-shadow:0 0 0 4px rgba(248,81,73,.25); }
+}
+
+/* ═══════════════════════════════════════
+   NOTIFICATION CENTER
+═══════════════════════════════════════ */
+.notif-wrapper{position:relative;}
+.notif-count{
+  position:absolute;top:-5px;right:-5px;
+  background:var(--red);color:#fff;
+  font-size:9px;font-weight:800;
+  width:16px;height:16px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  border:2px solid var(--bg2);
+  animation:pulse 2s infinite;
+  z-index:5;
+}
+.notif-dropdown{
+  position:absolute;top:calc(100% + 10px);right:0;
+  width:340px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  box-shadow:0 16px 48px rgba(0,0,0,.45);
+  z-index:999;
+  opacity:0;transform:translateY(-8px) scale(.97);
+  pointer-events:none;
+  transition:opacity .2s ease, transform .2s ease;
+  overflow:hidden;
+}
+.notif-dropdown.open{
+  opacity:1;transform:translateY(0) scale(1);
+  pointer-events:all;
+}
+.notif-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--bg3);
+}
+.notif-head-title{font-size:13px;font-weight:700;color:var(--text);}
+.notif-mark-all{font-size:11px;color:var(--blue);cursor:pointer;font-weight:600;}
+.notif-mark-all:hover{text-decoration:underline;}
+.notif-list{display:flex;flex-direction:column;max-height:340px;overflow-y:auto;}
+.notif-list::-webkit-scrollbar{width:4px;}
+.notif-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+.notif-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border2);
+  cursor:pointer;
+  transition:background .15s;
+  position:relative;
+}
+.notif-item:last-child{border-bottom:none;}
+.notif-item:hover{background:var(--bg3);}
+.notif-item.unread{background:rgba(56,139,253,.05);}
+.notif-item.unread::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;
+  width:3px;background:var(--blue);border-radius:0 2px 2px 0;
+}
+.notif-icon{
+  width:34px;height:34px;border-radius:10px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+}
+.notif-icon.login{background:rgba(56,139,253,.15);}
+.notif-icon.stock{background:rgba(248,81,73,.15);}
+.notif-icon.delivery{background:rgba(63,185,80,.15);}
+.notif-icon.order{background:rgba(212,160,23,.15);}
+.notif-icon.alert{background:rgba(227,179,65,.15);}
+.notif-body{flex:1;min-width:0;}
+.notif-msg{font-size:12px;color:var(--text);line-height:1.4;margin-bottom:3px;}
+.notif-msg strong{color:var(--text);font-weight:700;}
+.notif-time{font-size:10px;color:var(--text3);}
+.notif-footer{
+  padding:10px 16px;
+  background:var(--bg3);
+  border-top:1px solid var(--border);
+  text-align:center;
+  font-size:11px;color:var(--blue);
+  cursor:pointer;font-weight:600;
+}
+.notif-footer:hover{background:var(--bg4);}
+
+/* ═══════════════════════════════════════
+   THEME TOGGLE BUTTON
+═══════════════════════════════════════ */
+.theme-toggle-btn{
+  width:60px;height:30px;
+  border-radius:15px;border:1px solid var(--border);
+  background:var(--bg3);
+  cursor:pointer;position:relative;
+  transition:all .3s;flex-shrink:0;
+  overflow:hidden;
+}
+.theme-toggle-btn::before{
+  content:'';
+  position:absolute;top:3px;left:3px;
+  width:22px;height:22px;border-radius:50%;
+  background:var(--gold);
+  transition:transform .3s ease, background .3s;
+  box-shadow:0 2px 6px rgba(0,0,0,.3);
+}
+.light .theme-toggle-btn::before{
+  transform:translateX(30px);
+  background:var(--gold);
+}
+.theme-icon-sun, .theme-icon-moon{
+  position:absolute;top:50%;font-size:12px;
+  transform:translateY(-50%);
+  transition:opacity .2s;
+}
+.theme-icon-sun{right:7px;opacity:0;}
+.theme-icon-moon{left:7px;opacity:1;}
+.light .theme-icon-sun{opacity:1;}
+.light .theme-icon-moon{opacity:0;}
+
+/* ═══════════════════════════════════════
+   EXPORT BUTTONS
+═══════════════════════════════════════ */
+.btn.export-excel{
+  background:rgba(34,197,94,.15);
+  border-color:rgba(34,197,94,.4);
+  color:#22c55e;
+}
+.btn.export-excel:hover{background:rgba(34,197,94,.25);}
+.btn.export-pdf{
+  background:rgba(248,81,73,.12);
+  border-color:rgba(248,81,73,.35);
+  color:var(--red);
+}
+.btn.export-pdf:hover{background:rgba(248,81,73,.22);}
+
+/* Chart.js canvas wrapper */
+.chartjs-wrap{
+  position:relative;
+  height:220px;
+  width:100%;
 }
 /* ═══════════════════════════════════════
    FIX 4 — PIN LOCK SYSTEM
@@ -955,6 +1110,78 @@ tbody td.muted{color:var(--text3);}
 <!-- Lock Button (shown when logged in) -->
 <div class="lock-icon-btn" id="lock-btn" title="Lock Screen" onclick="lockApp()">🔒</div>
 
+<!-- ═══ MODULE 2: Invoice / Cash Memo Modal ═══ -->
+<div class="modal-overlay" id="modal-invoice" style="z-index:10000;">
+  <div class="modal" style="max-width:520px;width:96%;">
+    <div class="modal-header">
+      <span class="modal-title">🖨️ ক্যাশ মেমো / Invoice</span>
+      <div style="display:flex;gap:8px;">
+        <button onclick="window.print()" style="padding:6px 14px;background:linear-gradient(135deg,var(--gold),#8B6914);border:none;border-radius:7px;color:#000;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">🖨️ প্রিন্ট</button>
+        <button class="modal-close" onclick="closeModal('invoice')">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="padding:0;">
+      <div id="invoice-print-area" style="padding:28px 32px;background:var(--bg2);">
+        <!-- Header -->
+        <div style="text-align:center;border-bottom:2px solid var(--gold);padding-bottom:16px;margin-bottom:16px;">
+          <div style="font-size:24px;font-weight:900;font-family:'Playfair Display',serif;color:var(--gold);letter-spacing:1px;" id="inv-brand-name">Amanah Security</div>
+          <div style="font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:3px;" id="inv-brand-tagline">Premium Security Solutions</div>
+          <div style="margin-top:8px;font-size:20px;" id="inv-brand-icon">🔐</div>
+        </div>
+        <!-- Invoice Meta -->
+        <div style="display:flex;justify-content:space-between;margin-bottom:14px;font-size:12px;">
+          <div>
+            <div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">Invoice No</div>
+            <div style="font-family:'IBM Plex Mono',monospace;color:var(--gold);font-weight:700;" id="inv-id">—</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;">তারিখ</div>
+            <div style="font-family:'IBM Plex Mono',monospace;" id="inv-date">—</div>
+          </div>
+        </div>
+        <!-- Customer Info -->
+        <div style="background:var(--bg3);border-radius:8px;padding:12px 14px;margin-bottom:14px;border-left:3px solid var(--gold);">
+          <div style="font-size:10px;color:var(--gold);font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">👤 গ্রাহকের তথ্য</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+            <div><span style="color:var(--text3);">নাম: </span><strong id="inv-customer">—</strong></div>
+            <div><span style="color:var(--text3);">ফোন: </span><strong id="inv-phone">—</strong></div>
+            <div style="grid-column:1/-1;"><span style="color:var(--text3);">ঠিকানা: </span><span id="inv-address">—</span></div>
+          </div>
+        </div>
+        <!-- Product Table -->
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:14px;">
+          <thead>
+            <tr style="background:var(--gold);color:#000;">
+              <th style="padding:7px 10px;text-align:left;border-radius:6px 0 0 0;">পণ্য</th>
+              <th style="padding:7px 8px;text-align:center;">পরিমাণ</th>
+              <th style="padding:7px 8px;text-align:right;">একক মূল্য</th>
+              <th style="padding:7px 10px;text-align:right;border-radius:0 6px 0 0;">মোট</th>
+            </tr>
+          </thead>
+          <tbody id="inv-items">
+            <tr><td colspan="4" style="padding:10px;text-align:center;color:var(--text3);">—</td></tr>
+          </tbody>
+        </table>
+        <!-- Totals -->
+        <div style="background:var(--bg3);border-radius:8px;padding:12px 14px;font-size:12px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="color:var(--text3);">সাবটোটাল:</span><span id="inv-subtotal" style="font-family:'IBM Plex Mono',monospace;">৳ 0</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;"><span style="color:var(--text3);">ডেলিভারি চার্জ:</span><span id="inv-delivery" style="font-family:'IBM Plex Mono',monospace;">৳ 0</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:5px;color:var(--green);"><span>পরিশোধিত:</span><span id="inv-paid" style="font-family:'IBM Plex Mono',monospace;font-weight:700;">৳ 0</span></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:8px;margin-top:5px;font-size:14px;font-weight:700;">
+            <span style="color:var(--text);">বাকি পরিমাণ:</span>
+            <span id="inv-due" style="font-family:'IBM Plex Mono',monospace;color:var(--gold);">৳ 0</span>
+          </div>
+        </div>
+        <!-- Footer -->
+        <div style="text-align:center;margin-top:16px;padding-top:12px;border-top:1px dashed var(--border);font-size:11px;color:var(--text3);">
+          <div style="color:var(--gold);font-weight:700;margin-bottom:3px;">ধন্যবাদ আমাদের সাথে কেনাকাটা করার জন্য! 🙏</div>
+          <div>InnoGix Business OS — Powered by Amanah Security</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Change PIN Modal -->
 <div class="modal-overlay" id="modal-change-pin">
   <div class="modal" style="max-width:400px;">
@@ -1025,6 +1252,25 @@ tbody td.muted{color:var(--text3);}
   <div class="nav-item" onclick="openModal('change-pin')"><span class="nav-icon">🔑</span>PIN পরিবর্তন</div>
 
   <div class="sidebar-footer">
+    <!-- 🔒 লক ওএস বাটন -->
+    <button onclick="lockApp()" style="
+      width:100%;
+      display:flex;align-items:center;justify-content:center;gap:8px;
+      padding:10px 16px;
+      margin-bottom:12px;
+      background:linear-gradient(135deg,var(--gold),#8B6914);
+      border:none;border-radius:10px;
+      color:#000;font-size:13px;font-weight:700;
+      cursor:pointer;letter-spacing:.5px;
+      box-shadow:0 0 16px rgba(212,160,23,.35);
+      transition:all .2s;
+      font-family:'IBM Plex Sans',sans-serif;
+    "
+    onmouseover="this.style.boxShadow='0 0 24px rgba(212,160,23,.6)';this.style.transform='translateY(-1px)'"
+    onmouseout="this.style.boxShadow='0 0 16px rgba(212,160,23,.35)';this.style.transform='translateY(0)'"
+    title="সেশন শেষ করুন এবং লক স্ক্রিনে ফিরুন (Ctrl+L)">
+      🔒 লক ওএস
+    </button>
     <div class="partner-chips-sidebar">
       <div class="p-chip"><div class="p-dot" style="background:var(--ismail)"></div><span style="color:var(--text);font-size:12px;">Md Ismail Hosen</span></div>
       <div class="p-chip"><div class="p-dot" style="background:var(--ashik)"></div><span style="color:var(--text);font-size:12px;">Ashikur Rahman</span></div>
@@ -1056,8 +1302,41 @@ tbody td.muted{color:var(--text3);}
         <span>🔍</span>
         <input type="text" placeholder="Search orders, customers..." oninput="globalSearch(this.value)">
       </div>
-      <div class="icon-btn" onclick="toggleTheme()" title="Toggle Theme">🌓</div>
-      <div class="icon-btn" id="notif-bell" title="Notifications" onclick="toggleNotifications()">🔔</div>
+      <!-- Theme Toggle Switch -->
+      <div class="theme-toggle-btn" onclick="toggleTheme()" title="Dark / Light Mode">
+        <span class="theme-icon-moon">🌙</span>
+        <span class="theme-icon-sun">☀️</span>
+      </div>
+      <!-- Notification Bell -->
+      <div class="notif-wrapper">
+        <div class="icon-btn" id="notif-bell" title="Notifications" onclick="toggleNotifDropdown(event)">🔔</div>
+        <div class="notif-count" id="notif-count">5</div>
+        <!-- Dropdown -->
+        <div class="notif-dropdown" id="notif-dropdown">
+          <div class="notif-head">
+            <span class="notif-head-title">🔔 নোটিফিকেশন</span>
+            <span class="notif-mark-all" onclick="markAllRead()">সব পড়া হয়েছে</span>
+          </div>
+          <div class="notif-list" id="notif-list">
+            <!-- JS দিয়ে রেন্ডার হবে -->
+          </div>
+          <div class="notif-footer" onclick="toggleNotifDropdown(event)">সব নোটিফিকেশন দেখুন →</div>
+        </div>
+      </div>
+      <!-- 🔒 Topbar লক বাটন -->
+      <div onclick="lockApp()" title="লক ওএস (Ctrl+L)" style="
+        display:flex;align-items:center;gap:6px;
+        padding:6px 12px;border-radius:8px;
+        background:linear-gradient(135deg,var(--gold),#8B6914);
+        color:#000;font-size:12px;font-weight:700;
+        cursor:pointer;letter-spacing:.3px;
+        box-shadow:0 0 10px rgba(212,160,23,.3);
+        transition:all .2s;user-select:none;
+      "
+      onmouseover="this.style.boxShadow='0 0 18px rgba(212,160,23,.6)'"
+      onmouseout="this.style.boxShadow='0 0 10px rgba(212,160,23,.3)'">
+        🔒 লক
+      </div>
     </div>
   </header>
 
@@ -1188,7 +1467,9 @@ tbody td.muted{color:var(--text3);}
               </div>
             </div>
           </div>
-          <div class="chart-area" id="rev-chart" style="height:180px;"></div>
+          <div class="chartjs-wrap">
+            <canvas id="rev-chart-canvas"></canvas>
+          </div>
           <div class="chart-legend" style="display:flex;justify-content:space-between;align-items:center;">
             <div style="display:flex;gap:16px;">
               <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Revenue</div>
@@ -1204,10 +1485,55 @@ tbody td.muted{color:var(--text3);}
         </div>
       </div>
 
-      <!-- Alerts -->
-      <div class="alert-box danger">⚠️ <strong>3 products</strong> are below minimum stock level — check Inventory for details.</div>
+      <!-- ⚠️ Dynamic Low Stock Alert (Module 3) -->
+      <div class="alert-box danger" id="dash-low-stock-alert" style="display:none;animation:flashAlert 1.5s ease-in-out infinite alternate;">
+        ⚠️ <strong>Low Stock Alert!</strong> <span id="dash-low-stock-text"></span>
+        <span onclick="showPage('inventory',document.querySelector('.nav-item[onclick*=inventory]'))"
+          style="margin-left:8px;cursor:pointer;color:var(--gold);text-decoration:underline;font-size:12px;">ইনভেন্টরি দেখুন →</span>
+      </div>
       <div class="alert-box warn" id="pending-alert">📋 <strong id="pending-alert-count">—</strong> orders are pending processing. Last update: <span id="pending-alert-time">checking...</span></div>
       <div class="alert-box success">✅ System is running correctly. All formulas are active.</div>
+
+      <!-- ═══ MODULE 1: Profit Split Balance Cards ═══ -->
+      <div style="margin-top:24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text);">💰 প্রফিট স্প্লিট ব্যালেন্স</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:2px;">অর্ডার ভিত্তিক পার্টনার ও কোম্পানি ফান্ড বণ্টন</div>
+          </div>
+          <button onclick="resetProfitBalances()" style="padding:5px 12px;font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" title="সব ব্যালেন্স রিসেট করুন">🔄 রিসেট</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;" id="profit-split-cards">
+          <!-- Ismail -->
+          <div class="kpi-card blue" style="border-color:rgba(56,139,253,.3);">
+            <div class="kpi-icon" style="font-size:22px;">👤</div>
+            <div class="kpi-label" style="color:var(--ismail);">Ismail — প্রফিট</div>
+            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-ismail">0</span></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-ismail-orders">0 অর্ডার থেকে</div>
+          </div>
+          <!-- Ashik -->
+          <div class="kpi-card green" style="border-color:rgba(63,185,80,.3);">
+            <div class="kpi-icon" style="font-size:22px;">👤</div>
+            <div class="kpi-label" style="color:var(--ashik);">Ashik — প্রফিট</div>
+            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-ashik">0</span></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-ashik-orders">0 অর্ডার থেকে</div>
+          </div>
+          <!-- Rabbi -->
+          <div class="kpi-card purple" style="border-color:rgba(188,140,255,.3);">
+            <div class="kpi-icon" style="font-size:22px;">👤</div>
+            <div class="kpi-label" style="color:var(--purple);">Rabbi — প্রফিট</div>
+            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-rabbi">0</span></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-rabbi-orders">0 অর্ডার থেকে</div>
+          </div>
+          <!-- Company Fund -->
+          <div class="kpi-card gold" style="border-color:rgba(212,160,23,.4);">
+            <div class="kpi-icon" style="font-size:22px;">🏢</div>
+            <div class="kpi-label" style="color:var(--gold);">Company Fund</div>
+            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-company">0</span></div>
+            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-company-orders">0 অর্ডার থেকে</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ══════════════════════════════
@@ -1227,7 +1553,8 @@ tbody td.muted{color:var(--text3);}
           <div class="table-actions">
             <button class="btn primary" onclick="openModal('add-order')">+ New Order</button>
             <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="openModal('import-csv')">📥 Import CSV</button>
-            <button class="btn">⬇ Export</button>
+            <button class="btn export-excel" onclick="exportTableToCSV('sales-table','sales-orders')">📥 Export Excel</button>
+            <button class="btn export-pdf" onclick="exportTableToPDF('sales-table','InnoGix Sales Report')">📄 Download PDF</button>
             <button class="btn">🖨 Print</button>
           </div>
         </div>
@@ -1320,7 +1647,8 @@ tbody td.muted{color:var(--text3);}
             <button class="btn primary" onclick="openModal('add-product')">+ Add Product</button>
             <button class="btn" onclick="openModal('stock-in')">📦 Stock In</button>
             <button class="btn" onclick="openModal('import-inventory-csv')" style="background:rgba(88,166,255,0.1);border-color:rgba(88,166,255,0.3);color:#58a6ff;">📥 CSV Import</button>
-            <button class="btn">⬇ Export</button>
+            <button class="btn export-excel" onclick="exportTableToCSV('inv-body','inventory-data',true)">📥 Export Excel</button>
+            <button class="btn export-pdf" onclick="exportTableToPDF('inv-body','InnoGix Inventory Report',true)">📄 Download PDF</button>
           </div>
         </div>
         <div class="table-scroll">
@@ -2318,7 +2646,7 @@ tbody td.muted{color:var(--text3);}
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Customer Name *</label><input class="form-input" id="order-customer" placeholder="Full name" type="text"></div>
-        <div class="form-group"><label class="form-label">Phone Number *</label><input class="form-input" id="order-phone" placeholder="01XXXXXXXXX" type="text"></div>
+        <div class="form-group"><label class="form-label">Phone Number *</label><input class="form-input" id="order-phone" placeholder="01XXXXXXXXX" type="tel" inputmode="numeric" maxlength="11" pattern="0[0-9]{10}" autocomplete="tel" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,11)"></div>
         <div class="form-group"><label class="form-label">Division</label><select class="form-select" id="order-division" onchange="updateDistricts(this)"><option value="">Select Division</option><option>Dhaka</option><option>Chittagong</option><option>Rajshahi</option><option>Khulna</option><option>Sylhet</option><option>Barisal</option><option>Rangpur</option><option>Mymensingh</option></select></div>
         <div class="form-group"><label class="form-label">District</label><select class="form-select" id="district-select" onchange="updateThanas(this)"><option value="">Select District</option></select></div>
         <div class="form-group"><label class="form-label">Thana</label><select class="form-select" id="thana-select"><option value="">Select Thana</option></select></div>
@@ -2354,6 +2682,44 @@ tbody td.muted{color:var(--text3);}
         <div class="form-group"><label class="form-label">Courier</label><select class="form-select" id="order-courier"><option value="">Select Courier</option><option>Pathao</option><option>Steadfast</option><option>Redx</option><option>SA Paribahan</option><option>Sundarban</option><option>Janani</option></select></div>
         <div class="form-group"><label class="form-label">Tracking ID</label><input class="form-input" id="order-tracking" placeholder="Courier tracking number" type="text"></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="order-notes" placeholder="Any special instructions..."></textarea></div>
+
+        <!-- ═══ MODULE 1: Project + Profit Split ═══ -->
+        <div class="form-group full" style="background:var(--bg3);border:1px solid rgba(212,160,23,.25);border-radius:10px;padding:14px;margin-top:4px;">
+          <div style="font-size:12px;font-weight:700;color:var(--gold);margin-bottom:12px;letter-spacing:.5px;">💰 প্রফিট বণ্টন সেটআপ</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;align-items:end;">
+            <!-- Project Name -->
+            <div>
+              <label class="form-label">📁 Project</label>
+              <select class="form-select" id="order-project" onchange="updateProfitDefaults()">
+                <option value="Amanah Security">Amanah Security</option>
+                <option value="Custom" id="project-custom-opt">+ নতুন যোগ করুন</option>
+              </select>
+            </div>
+            <!-- Ismail % -->
+            <div>
+              <label class="form-label" style="color:var(--ismail);">Ismail %</label>
+              <input class="form-input" type="number" id="split-ismail" min="0" max="100" placeholder="0" value="0" oninput="updateCompanyFundPreview()">
+            </div>
+            <!-- Ashik % -->
+            <div>
+              <label class="form-label" style="color:var(--ashik);">Ashik %</label>
+              <input class="form-input" type="number" id="split-ashik" min="0" max="100" placeholder="0" value="0" oninput="updateCompanyFundPreview()">
+            </div>
+            <!-- Rabbi % -->
+            <div>
+              <label class="form-label" style="color:var(--purple);">Rabbi %</label>
+              <input class="form-input" type="number" id="split-rabbi" min="0" max="100" placeholder="0" value="0" oninput="updateCompanyFundPreview()">
+            </div>
+          </div>
+          <!-- Preview row -->
+          <div style="margin-top:10px;padding:8px 12px;background:var(--bg4);border-radius:8px;display:flex;gap:16px;flex-wrap:wrap;font-size:11px;" id="profit-preview-row">
+            <span>🏢 Company Fund: <strong style="color:var(--gold);" id="preview-company">100%</strong></span>
+            <span style="color:var(--text3);">|</span>
+            <span>Net Profit প্রিভিউ: <strong style="color:var(--green);" id="preview-net">—</strong></span>
+            <span style="color:var(--text3);">|</span>
+            <span>মোট বণ্টন: <strong id="preview-total" style="color:var(--text);">0%</strong></span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -2925,7 +3291,7 @@ tbody td.muted{color:var(--text3);}
 // ✅ Partner balance REF error ছাড়া calculate
 // ═══════════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwIUEXV8vvpCe62J7INx6vZXLWg4lOLNvvRSCeTsnTi2XxTr-aZRXRpyhoo4dH1zv5L/exec"; // ← এখানে আপনার Google Apps Script URL বসান
+const API_URL = "https://script.google.com/macros/s/AKfycbwwRTe-VAEo7nqJTJopWw9xC3kwJcsTMyD_bUHNq4DFOLuqj80RktTe5UrXtGPQoBkJ/exec"; // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -3139,15 +3505,63 @@ let pinBuffer = '', isLocked = true, fromLock = false;
 let selectedPartner = null;   // currently selected on lock screen
 let currentPartner = null;    // logged-in partner
 
-// ── LocalStorage helpers ──────────────────────────────────────
+// ── ভুল PIN লকআউট সিস্টেম ──────────────────────────────────
+let failedAttempts = 0;
+const MAX_ATTEMPTS = 3;
+const LOCKOUT_DURATION = 30; // seconds
+let lockoutTimer = null;
+
+function isInLockout() {
+  const lockoutUntil = parseInt(sessionStorage.getItem('innogix_lockout_until') || 0);
+  return Date.now() < lockoutUntil;
+}
+function startLockout() {
+  const until = Date.now() + LOCKOUT_DURATION * 1000;
+  sessionStorage.setItem('innogix_lockout_until', until);
+  failedAttempts = 0;
+  runLockoutCountdown();
+}
+function runLockoutCountdown() {
+  const errEl = document.getElementById('pin-error');
+  // keypad disable করো
+  document.querySelectorAll('.pin-key').forEach(k => k.disabled = true);
+  lockoutTimer = setInterval(() => {
+    const lockoutUntil = parseInt(sessionStorage.getItem('innogix_lockout_until') || 0);
+    const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000);
+    if (remaining <= 0) {
+      clearInterval(lockoutTimer);
+      sessionStorage.removeItem('innogix_lockout_until');
+      document.querySelectorAll('.pin-key').forEach(k => k.disabled = false);
+      if (errEl) errEl.textContent = '';
+      pinBuffer = ''; updatePinDots();
+    } else {
+      if (errEl) errEl.innerHTML = `🔒 অনেকবার ভুল চেষ্টা! <b>${remaining}s</b> অপেক্ষা করুন`;
+    }
+  }, 500);
+}
+
+// ── SessionStorage helpers (ট্যাব/রিফ্রেশে সেশন রিসেট হবে) ──
 function lsGet(key) {
-  try { return localStorage.getItem(key); } catch(e) { return null; }
+  // activity log এর মতো persistent data localStorage থেকে পড়ো
+  if (key === 'innogix_activity_log') {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+  }
+  try { return sessionStorage.getItem(key); } catch(e) { return null; }
 }
 function lsSet(key, val) {
-  try { localStorage.setItem(key, val); } catch(e) {}
+  // activity log localStorage-এ সেভ করো (persistent)
+  if (key === 'innogix_activity_log') {
+    try { localStorage.setItem(key, val); } catch(e) {}
+    return;
+  }
+  try { sessionStorage.setItem(key, val); } catch(e) {}
 }
 function lsRemove(key) {
-  try { localStorage.removeItem(key); } catch(e) {}
+  if (key === 'innogix_activity_log') {
+    try { localStorage.removeItem(key); } catch(e) {}
+    return;
+  }
+  try { sessionStorage.removeItem(key); } catch(e) {}
 }
 
 // ── Activity Log ──────────────────────────────────────────────
@@ -3252,6 +3666,7 @@ function pinPress(d) {
     document.getElementById('pin-error').textContent = '⚠️ আগে পার্টনার নির্বাচন করুন';
     return;
   }
+  if (isInLockout()) return;
   if (pinBuffer.length >= 4) return;
   pinBuffer += d;
   updatePinDots();
@@ -3274,19 +3689,36 @@ function pinSubmit() {
     return;
   }
   if (!pinBuffer.length) return;
+
+  // লকআউট চলছে কিনা চেক করো
+  if (isInLockout()) {
+    runLockoutCountdown();
+    return;
+  }
+
   const correctPin = PARTNER_PINS[selectedPartner];
   if (pinBuffer === correctPin) {
+    failedAttempts = 0;
+    sessionStorage.removeItem('innogix_lockout_until');
     unlockApp(selectedPartner);
   } else {
+    failedAttempts++;
     for (let i=0; i<4; i++) {
       document.getElementById('d'+i).classList.add('error');
       document.getElementById('d'+i).classList.remove('filled');
     }
-    document.getElementById('pin-error').textContent = '❌ ভুল PIN — আবার চেষ্টা করুন';
-    setTimeout(() => {
-      pinBuffer = ''; updatePinDots();
-      document.getElementById('pin-error').textContent = '';
-    }, 1200);
+
+    const remaining = MAX_ATTEMPTS - failedAttempts;
+    if (failedAttempts >= MAX_ATTEMPTS) {
+      startLockout();
+    } else {
+      document.getElementById('pin-error').textContent =
+        `❌ ভুল PIN — আর ${remaining} বার সুযোগ বাকি`;
+      setTimeout(() => {
+        pinBuffer = ''; updatePinDots();
+        document.getElementById('pin-error').textContent = '';
+      }, 1200);
+    }
   }
 }
 
@@ -3305,6 +3737,9 @@ function unlockApp(partnerKey) {
 
   // Topbar badge আপডেট
   updatePartnerBadge(partnerKey);
+
+  // MODULE 1: Profit balance cards render
+  setTimeout(renderProfitCards, 200);
 
   // লগ এন্ট্রি
   logAction(`লগইন করেছেন — ${PARTNER_FULL_NAMES[partnerKey]}`);
@@ -3325,16 +3760,21 @@ function lockApp() {
   if (currentPartner) logAction(`লগআউট করেছেন — ${PARTNER_FULL_NAMES[currentPartner]}`);
 
   pinBuffer = ''; updatePinDots();
+  document.getElementById('pin-error').textContent = '';
   document.getElementById('lock-screen').classList.remove('hidden');
   const lb = document.getElementById('lock-btn');
   if(lb) lb.style.display='none';
   isLocked = true;
   selectedPartner = null;
   currentPartner = null;
+  failedAttempts = 0;
 
-  // Session মুছে ফেলো
-  lsRemove('innogix_session_partner');
-  lsRemove('innogix_session_time');
+  // সেশন সম্পূর্ণ মুছে ফেলো (sessionStorage)
+  try {
+    sessionStorage.removeItem('innogix_session_partner');
+    sessionStorage.removeItem('innogix_session_time');
+    // লকআউট ইচ্ছাকৃত লগআউটে মুছো না (PIN ভুলে রাখা থাকুক)
+  } catch(e) {}
 
   // Topbar badge লুকাও
   const badge = document.getElementById('current-partner-badge');
@@ -3344,24 +3784,23 @@ function lockApp() {
   document.querySelectorAll('.partner-login-chip').forEach(c => {
     c.classList.remove('selected');
     c.style.boxShadow = '';
+    c.style.borderColor = '';
   });
+
+  showToast('🔒 ওএস লক হয়েছে — নিরাপদ!', 'info');
 }
 
 // ── Session restore on page reload ───────────────────────────
+// sessionStorage ব্যবহার করায় ট্যাব বন্ধ / রিফ্রেশ করলে
+// সেশন স্বয়ংক্রিয়ভাবে মুছে যায় → লক স্ক্রিন সবসময় আসবে।
 (function restoreSession() {
-  const partner = lsGet('innogix_session_partner');
-  const sessionTime = parseInt(lsGet('innogix_session_time') || 0);
-  const SESSION_TIMEOUT = 8 * 60 * 60 * 1000; // ৮ ঘণ্টা
-  if (partner && PARTNER_PINS[partner] && (Date.now() - sessionTime) < SESSION_TIMEOUT) {
-    // সেশন বৈধ — সরাসরি unlock করো
-    currentPartner = partner;
-    isLocked = false;
-    document.getElementById('lock-screen').classList.add('hidden');
-    const lb = document.getElementById('lock-btn');
-    if (lb) { lb.style.display='flex'; lb.style.visibility='visible'; lb.style.opacity='1'; }
-    // badge পরে DOM ready হলে আপডেট হবে
-    setTimeout(() => updatePartnerBadge(partner), 100);
+  // লকআউট চলছে কিনা চেক করো (same-tab refresh এর জন্য)
+  if (isInLockout()) {
+    setTimeout(runLockoutCountdown, 300);
   }
+  // NOTE: sessionStorage-এ session_partner কখনো থাকবে না
+  // কারণ ট্যাব বন্ধ/রিফ্রেশে sessionStorage clear হয়ে যায়।
+  // তাই এখানে কোনো auto-unlock নেই — লক স্ক্রিন সবসময় দেখাবে।
 })();
 
 // ── Wrap action functions to auto-log ────────────────────────
@@ -3400,6 +3839,195 @@ function changePin() {
   if (isLocked) unlockApp(selectedPartner);
 }
 // ─────────────────────────────────────────────────────────────
+
+
+/* ════════════════════════════════════════════════════════════
+   MODULE 1 — MULTI-PROJECT PROFIT SPLIT SYSTEM
+════════════════════════════════════════════════════════════ */
+
+// Project-wise default split percentages (multi-project ready)
+const PROJECT_SPLITS = {
+  'Amanah Security': { Ismail: 10, Ashik: 45, Rabbi: 5 },
+  // ভবিষ্যতে নতুন project যোগ করতে এখানে এন্ট্রি দিন:
+  // 'Project Beta': { Ismail: 20, Ashik: 30, Rabbi: 10 },
+};
+
+// In-memory profit balance (persistent via localStorage)
+const PS_KEY = 'innogix_profit_split';
+
+function getProfitBalances() {
+  try {
+    const raw = localStorage.getItem(PS_KEY);
+    return raw ? JSON.parse(raw) : { Ismail:0, Ashik:0, Rabbi:0, Company:0, orders:0 };
+  } catch(e) {
+    return { Ismail:0, Ashik:0, Rabbi:0, Company:0, orders:0 };
+  }
+}
+
+function saveProfitBalances(bal) {
+  try { localStorage.setItem(PS_KEY, JSON.stringify(bal)); } catch(e) {}
+}
+
+function renderProfitCards() {
+  const bal = getProfitBalances();
+  const fmt = n => Number(n||0).toLocaleString('en-IN');
+  const el = id => document.getElementById(id);
+  if(el('ps-ismail'))  el('ps-ismail').textContent  = fmt(Math.round(bal.Ismail||0));
+  if(el('ps-ashik'))   el('ps-ashik').textContent   = fmt(Math.round(bal.Ashik||0));
+  if(el('ps-rabbi'))   el('ps-rabbi').textContent   = fmt(Math.round(bal.Rabbi||0));
+  if(el('ps-company')) el('ps-company').textContent = fmt(Math.round(bal.Company||0));
+  const cnt = bal.orders || 0;
+  ['ismail','ashik','rabbi','company'].forEach(k => {
+    const el2 = document.getElementById('ps-'+k+'-orders');
+    if(el2) el2.textContent = `${cnt} অর্ডার থেকে`;
+  });
+}
+
+function applyProfitSplit(netProfit, ismailPct, ashikPct, rabbiPct) {
+  const total = (ismailPct||0) + (ashikPct||0) + (rabbiPct||0);
+  const companyPct = Math.max(0, 100 - total);
+  const bal = getProfitBalances();
+  bal.Ismail  = (bal.Ismail  || 0) + netProfit * (ismailPct  / 100);
+  bal.Ashik   = (bal.Ashik   || 0) + netProfit * (ashikPct   / 100);
+  bal.Rabbi   = (bal.Rabbi   || 0) + netProfit * (rabbiPct   / 100);
+  bal.Company = (bal.Company || 0) + netProfit * (companyPct / 100);
+  bal.orders  = (bal.orders  || 0) + 1;
+  saveProfitBalances(bal);
+  renderProfitCards();
+}
+
+function resetProfitBalances() {
+  if (!confirm('⚠️ সব প্রফিট ব্যালেন্স রিসেট করবেন?')) return;
+  saveProfitBalances({ Ismail:0, Ashik:0, Rabbi:0, Company:0, orders:0 });
+  renderProfitCards();
+  showToast('✅ প্রফিট ব্যালেন্স রিসেট হয়েছে', 'success');
+}
+
+function updateProfitDefaults() {
+  const proj = document.getElementById('order-project')?.value || 'Amanah Security';
+  const def = PROJECT_SPLITS[proj] || { Ismail:0, Ashik:0, Rabbi:0 };
+  const si = document.getElementById('split-ismail');
+  const sa = document.getElementById('split-ashik');
+  const sr = document.getElementById('split-rabbi');
+  if(si) si.value = def.Ismail;
+  if(sa) sa.value = def.Ashik;
+  if(sr) sr.value = def.Rabbi;
+  updateCompanyFundPreview();
+}
+
+function updateCompanyFundPreview() {
+  const i  = parseFloat(document.getElementById('split-ismail')?.value||0);
+  const a  = parseFloat(document.getElementById('split-ashik')?.value||0);
+  const r  = parseFloat(document.getElementById('split-rabbi')?.value||0);
+  const total = i + a + r;
+  const comp  = Math.max(0, 100 - total);
+  const el = id => document.getElementById(id);
+  if(el('preview-company')) el('preview-company').textContent = comp.toFixed(1) + '%';
+  if(el('preview-total'))   {
+    el('preview-total').textContent = total.toFixed(1) + '%';
+    el('preview-total').style.color = total > 100 ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--text)';
+  }
+  // Net profit preview
+  const totalPriceEl = document.getElementById('total-price');
+  const deliveryEl   = document.getElementById('order-delivery');
+  if(totalPriceEl && el('preview-net')) {
+    const totalSale = parseFloat(totalPriceEl.value||0);
+    const delivery  = parseFloat(deliveryEl?.value||0);
+    const netProfit = totalSale - delivery;
+    el('preview-net').textContent = netProfit > 0 ? '৳' + Math.round(netProfit).toLocaleString() : '—';
+  }
+}
+
+// Project dropdown-এ "নতুন যোগ করুন" সিলেক্ট হলে prompt
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'order-project' && e.target.value === 'Custom') {
+    const name = prompt('নতুন Project-এর নাম লিখুন:');
+    if (name && name.trim()) {
+      const opt = document.createElement('option');
+      opt.value = name.trim(); opt.textContent = name.trim();
+      e.target.insertBefore(opt, document.getElementById('project-custom-opt'));
+      e.target.value = name.trim();
+      PROJECT_SPLITS[name.trim()] = { Ismail:0, Ashik:0, Rabbi:0 };
+      updateProfitDefaults();
+    } else {
+      e.target.value = 'Amanah Security';
+    }
+  }
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   MODULE 2 — INVOICE / CASH MEMO GENERATOR
+════════════════════════════════════════════════════════════ */
+
+const PROJECT_BRAND = {
+  'Amanah Security': { name:'Amanah Security', tagline:'Premium Security Solutions', icon:'🔐' },
+  // নতুন project-এর brand info এখানে যোগ করুন
+};
+
+function openInvoice(r) {
+  const el = id => document.getElementById(id);
+  // Brand info
+  const proj  = r.project || 'Amanah Security';
+  const brand = PROJECT_BRAND[proj] || { name: proj, tagline:'', icon:'🏢' };
+  el('inv-brand-name').textContent    = brand.name;
+  el('inv-brand-tagline').textContent = brand.tagline;
+  el('inv-brand-icon').textContent    = brand.icon;
+  // Meta
+  el('inv-id').textContent   = r.id || ('INV-' + Date.now().toString().slice(-6));
+  el('inv-date').textContent = r.date || new Date().toLocaleDateString('bn-BD');
+  // Customer
+  el('inv-customer').textContent = r.customer || '—';
+  el('inv-phone').textContent    = r.phone    || '—';
+  const addr = [r.thana, r.dist, r.div, r.address].filter(Boolean).join(', ');
+  el('inv-address').textContent  = addr || '—';
+  // Items
+  const qty   = parseFloat(r.qty||1);
+  const price = parseFloat(r.price||0);
+  const total = parseFloat(r.total || qty*price || 0);
+  el('inv-items').innerHTML = `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:8px 10px;">${r.product||'—'}</td>
+      <td style="padding:8px;text-align:center;">${qty}</td>
+      <td style="padding:8px;text-align:right;font-family:'IBM Plex Mono',monospace;">৳${price.toLocaleString()}</td>
+      <td style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:700;">৳${total.toLocaleString()}</td>
+    </tr>`;
+  // Totals
+  const delivery = parseFloat(r.delivery||0);
+  const paid     = parseFloat(r.paid||0);
+  const due      = parseFloat(r.due||0);
+  el('inv-subtotal').textContent = '৳ ' + total.toLocaleString();
+  el('inv-delivery').textContent = '৳ ' + delivery.toLocaleString();
+  el('inv-paid').textContent     = '৳ ' + paid.toLocaleString();
+  el('inv-due').textContent      = '৳ ' + due.toLocaleString();
+  el('inv-due').style.color      = due > 0 ? 'var(--red)' : 'var(--green)';
+
+  openModal('invoice');
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   MODULE 3 — LOW STOCK ALERT (Dashboard)
+   renderInventoryData() ইতিমধ্যে inv-low-alert আপডেট করে।
+   এখানে dashboard-এর dash-low-stock-alert আপডেট করা হয়।
+════════════════════════════════════════════════════════════ */
+
+function updateDashLowStockAlert(rows) {
+  const alertEl = document.getElementById('dash-low-stock-alert');
+  const textEl  = document.getElementById('dash-low-stock-text');
+  if (!alertEl || !textEl) return;
+  const lowProds = (rows || []).filter(p => parseInt(p.current||0) <= 5);
+  if (lowProds.length > 0) {
+    const names = lowProds.map(p => p.name).join(', ');
+    textEl.innerHTML = `<strong>${lowProds.length}টি পণ্য</strong> সংকটজনকভাবে কম — ${names}`;
+    alertEl.style.display = '';
+  } else {
+    alertEl.style.display = 'none';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+
 
 // ─── NAVIGATION ──────────────────────────────────────────────
 const pageTitles = {
@@ -3441,7 +4069,61 @@ function closeSidebarMobile(){
 
 // ─── THEME ───────────────────────────────────────────────────
 let dark=true;
-function toggleTheme(){ dark=!dark; document.body.classList.toggle('light',!dark); showToast('Theme: '+(dark?'Dark':'Light'),'info'); }
+function toggleTheme(){
+  dark=!dark;
+  document.body.classList.toggle('light',!dark);
+  showToast('Theme: '+(dark?'🌙 Dark':'☀️ Light'),'info');
+  // Chart.js chart আবার draw করো নতুন থিম রঙে
+  if(window._revChart) _rebuildChartJs(window._lastChartData);
+}
+
+// ─── NOTIFICATION CENTER ─────────────────────────────────────
+const _notifications = [
+  { id:1, type:'login',    icon:'👤', msg:'<strong>Ashikur Rahman</strong> InnoGix OS-এ লগইন করেছেন', time:'এইমাত্র', unread:true },
+  { id:2, type:'stock',    icon:'⚠️', msg:'<strong>Amanah Smart Lock</strong> স্টক সংকটজনক — মাত্র ৩টি বাকি!', time:'৫ মিনিট আগে', unread:true },
+  { id:3, type:'delivery', icon:'✅', msg:'অর্ডার <strong>#ORD-4821</strong> সফলভাবে ডেলিভারি সম্পন্ন হয়েছে', time:'১৮ মিনিট আগে', unread:true },
+  { id:4, type:'order',    icon:'🛒', msg:'নতুন অর্ডার <strong>#ORD-4822</strong> এসেছে — Md. Karim, Dhaka', time:'৩৫ মিনিট আগে', unread:true },
+  { id:5, type:'alert',    icon:'📦', msg:'Steadfast কুরিয়ার <strong>৭টি পার্সেল</strong> pickup করেছে আজকে', time:'১ ঘণ্টা আগে', unread:true },
+];
+function _renderNotifList(){
+  const list = document.getElementById('notif-list');
+  if(!list) return;
+  const typeClass = { login:'login', stock:'stock', delivery:'delivery', order:'order', alert:'alert' };
+  list.innerHTML = _notifications.map(n=>`
+    <div class="notif-item ${n.unread?'unread':''}" onclick="markNotifRead(${n.id})">
+      <div class="notif-icon ${typeClass[n.type]||'order'}">${n.icon}</div>
+      <div class="notif-body">
+        <div class="notif-msg">${n.msg}</div>
+        <div class="notif-time">🕐 ${n.time}</div>
+      </div>
+    </div>`).join('');
+  const cnt = _notifications.filter(n=>n.unread).length;
+  const badge = document.getElementById('notif-count');
+  if(badge){ badge.textContent=cnt; badge.style.display=cnt>0?'flex':'none'; }
+}
+function toggleNotifDropdown(e){
+  e.stopPropagation();
+  const dd = document.getElementById('notif-dropdown');
+  dd.classList.toggle('open');
+}
+function markNotifRead(id){
+  const n = _notifications.find(n=>n.id===id);
+  if(n) n.unread=false;
+  _renderNotifList();
+}
+function markAllRead(){
+  _notifications.forEach(n=>n.unread=false);
+  _renderNotifList();
+  showToast('সব নোটিফিকেশন পড়া হয়েছে ✅','success');
+}
+// Notification dropdown বাইরে ক্লিক করলে বন্ধ হবে
+document.addEventListener('click', e=>{
+  const dd=document.getElementById('notif-dropdown');
+  const bell=document.getElementById('notif-bell');
+  if(dd && !dd.contains(e.target) && !bell.contains(e.target)){
+    dd.classList.remove('open');
+  }
+});
 
 // ─── MODALS ──────────────────────────────────────────────────
 function closeModal(id){ document.getElementById('modal-'+id).classList.remove('open'); }
@@ -3493,6 +4175,7 @@ function renderSalesRows(rows){
       <td><span class="status ${(()=>{const ds=(r.delStatus||'Not Sent').trim();if(ds==='Delivered')return 'delivered';if(ds==='Returned')return 'returned';if(ds==='Out for Delivery'||ds==='In Transit')return 'intransit';if(ds==='Sent')return 'processing';if(ds==='Failed Delivery')return 'cancelled';return 'pending';})()}">${r.delStatus||'Not Sent'}</span></td>
       <td class="muted" style="font-size:11px;max-width:120px;white-space:normal;">${r.notes||'—'}</td>
       <td style="display:flex;gap:4px;">
+        <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--gold);color:#000;border-color:var(--gold);font-weight:700;" onclick='openInvoice(${JSON.stringify(r)})' title="Invoice/ক্যাশ মেমো প্রিন্ট">🖨️</button>
         <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openEditOrder(${JSON.stringify(r)})'>✏️ Edit</button>
         <button class="btn" style="padding:4px 10px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick='deleteOrder(${JSON.stringify({id:r.id,customer:r.customer})})'>🗑️</button>
       </td>
@@ -3526,6 +4209,8 @@ function renderInventoryData(rows){
   const lowCount = rows.filter(p=>p.current<=p.alert).length;
   const invBadge = document.getElementById('inv-badge');
   if(invBadge){ invBadge.textContent=lowCount>0?lowCount:''; }
+  // MODULE 3: Dashboard low stock alert
+  updateDashLowStockAlert(rows);
   // Update dynamic low-stock alert bar
   const lowAlert = document.getElementById('inv-low-alert');
   const lowAlertText = document.getElementById('inv-low-alert-text');
@@ -3562,7 +4247,7 @@ function renderInventoryData(rows){
       <td class="mono">৳${Number(p.sell).toLocaleString()}</td>
       <td><span style="color:${margin>30?'var(--green)':margin>15?'var(--orange)':'var(--red)'};">${margin.toFixed(1)}%</span></td>
       <td class="mono">${p.opening}</td><td class="mono">${p.in}</td><td class="mono">${p.sold}</td>
-      <td class="mono" style="font-weight:700;color:${p.current<=p.alert?'var(--red)':'var(--text)'};">${p.current}</td>
+      <td class="mono" style="font-weight:700;color:${p.current<=p.alert?'var(--red)':'var(--text)'};">${p.current}${p.current<=5?` <span style="display:inline-block;background:var(--red2);border:1px solid rgba(248,81,73,.4);color:var(--red);font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin-left:4px;animation:flashAlert 1.2s ease-in-out infinite alternate;">⚠️ Low</span>`:''}</td>
       <td class="mono">${p.alert}</td>
       <td><span class="status ${statusClass}" title="${statusLabel}">${shortLabel}</span></td>
       <td>${p.supplier||'—'}</td>
@@ -3781,12 +4466,16 @@ function _populateYearDropdown(currentYear) {
 }
 
 
-// ─── MAIN DRAW FUNCTION ───────────────────────────────────────
+// ─── CHART.JS — MAIN DRAW FUNCTION ──────────────────────────
 // drawChart(liveData) — renders both charts from live backend data.
 // Falls back to demo data at boot (before API loads).
-function drawChart(liveData) {
+window._revChart = null; // Chart.js instance reference
+window._lastChartData = null; // last data for theme re-render
 
-  // ── 1. Revenue vs Profit bar chart ───────────────────────────
+function drawChart(liveData) {
+  window._lastChartData = liveData;
+
+  // ── 1. Revenue vs Profit — Chart.js Bar Chart ────────────
   const hasMonthly = liveData && liveData.monthlyChart &&
                      Array.isArray(liveData.monthlyChart.labels) &&
                      liveData.monthlyChart.labels.length > 0;
@@ -3810,53 +4499,7 @@ function drawChart(liveData) {
     else sub.textContent = 'Last ' + months.length + ' months performance';
   }
 
-  const maxVal = Math.max(...revenue, ...profit.map(Math.abs), 1);
-  const minVal = Math.min(...profit, 0); // negative profit support
-  const chart  = document.getElementById('rev-chart');
-  if (!chart) return;
-
-  // Format helper: ৳1,23,000 style with exact amount always visible
-  const fmtBar = n => {
-    if (n === 0) return '';
-    const abs = Math.abs(n);
-    const sign = n < 0 ? '-' : '';
-    if (abs >= 100000) return sign + '৳' + (abs/100000).toFixed(1) + 'L';
-    if (abs >= 1000)   return sign + '৳' + (abs/1000).toFixed(0) + 'k';
-    return sign + '৳' + abs;
-  };
-
-  // Bar height — supports negative profit (shown in red below baseline)
-  const pct = (v) => Math.max(Math.abs(v) / maxVal * 100, Math.abs(v) > 0 ? 2 : 0.5);
-
-  chart.innerHTML = months.map((m, i) => {
-    const rv = revenue[i] || 0;
-    const pf = profit[i]  || 0;
-    const rvLabel = fmtBar(rv);
-    const pfLabel = fmtBar(pf);
-    const rvH = pct(rv);
-    const pfH = pct(pf);
-    const pfColor = pf >= 0 ? 'var(--gold)' : 'var(--red)';
-    const pfBorderRadius = pf >= 0 ? '3px 3px 0 0' : '0 0 3px 3px';
-    const pfTitle = pf >= 0 ? 'Profit' : 'Loss';
-    return `
-    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:0;height:100%;justify-content:flex-end;min-width:0;">
-      <div style="width:100%;display:flex;gap:2px;align-items:flex-end;height:160px;position:relative;">
-        <!-- Revenue bar -->
-        <div class="bar" title="Revenue: ৳${rv.toLocaleString('en-BD')}"
-          style="background:var(--green);opacity:.85;height:${rvH}%;flex:1;position:relative;border-radius:3px 3px 0 0;">
-          ${rvH >= 14 ? `<span style="position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:8px;color:var(--green);font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${rvLabel}</span>` : ''}
-        </div>
-        <!-- Profit/Loss bar -->
-        <div class="bar" title="${pfTitle}: ${fmtBar(pf)}"
-          style="background:${pfColor};height:${pfH}%;flex:1;position:relative;border-radius:${pfBorderRadius};">
-          ${pfH >= 14 ? `<span style="position:absolute;${pf>=0?'top:-17px':'bottom:-17px'};left:0;right:0;text-align:center;font-size:8px;color:${pfColor};font-family:'IBM Plex Mono',monospace;white-space:nowrap;">${pfLabel}</span>` : ''}
-        </div>
-      </div>
-      <span style="font-size:9px;color:var(--text3);margin-top:3px;white-space:nowrap;">${m}</span>
-    </div>`;
-  }).join('');
-
-  // Total summary line below legend
+  // Total summary line
   const totalRev = revenue.reduce((a,b)=>a+b,0);
   const totalPrf = profit.reduce((a,b)=>a+b,0);
   const totalsEl = document.getElementById('rev-chart-totals');
@@ -3867,7 +4510,9 @@ function drawChart(liveData) {
       `<span style="color:var(--gold);">Profit: ৳${totalPrf.toLocaleString('en-BD')}</span>`;
   }
 
-  // ── 2. Expense Breakdown chart ────────────────────────────────
+  _rebuildChartJs(liveData);
+
+  // ── 2. Expense Breakdown chart ────────────────────────────
   const donut = document.getElementById('donut-chart');
   if (!donut) return;
 
@@ -3922,6 +4567,110 @@ function drawChart(liveData) {
     </div>`).join('')}
     ${hasExp ? `<div style="text-align:right;font-size:9px;color:var(--text3);margin-top:2px;">${cats.length} categories active</div>` : ''}
   </div>`;
+}
+
+function _rebuildChartJs(liveData) {
+  const canvas = document.getElementById('rev-chart-canvas');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  const hasMonthly = liveData && liveData.monthlyChart &&
+                     Array.isArray(liveData.monthlyChart.labels) &&
+                     liveData.monthlyChart.labels.length > 0;
+
+  const months  = hasMonthly ? liveData.monthlyChart.labels  : ['Jan','Feb','Mar','Apr','May','Jun'];
+  const revenue = hasMonthly ? liveData.monthlyChart.revenue : [185000,210000,195000,245000,230000,284500];
+  const profit  = hasMonthly ? liveData.monthlyChart.profit  : [42000, 55000, 48000, 68000, 61000, 72300];
+
+  // থিম বুঝে রঙ ঠিক করো
+  const isDark = !document.body.classList.contains('light');
+  const textColor   = isDark ? '#8B949E' : '#656D76';
+  const gridColor   = isDark ? 'rgba(48,54,61,0.6)' : 'rgba(208,215,222,0.5)';
+  const tooltipBg   = isDark ? '#1C2330' : '#ffffff';
+  const tooltipText = isDark ? '#E6EDF3' : '#1F2328';
+
+  // পুরনো chart ধ্বংস করো
+  if (window._revChart) { window._revChart.destroy(); window._revChart = null; }
+
+  window._revChart = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: 'Revenue ৳',
+          data: revenue,
+          backgroundColor: 'rgba(63,185,80,0.75)',
+          borderColor: 'rgba(63,185,80,1)',
+          borderWidth: 1.5,
+          borderRadius: 5,
+          borderSkipped: false,
+          hoverBackgroundColor: 'rgba(63,185,80,0.95)',
+        },
+        {
+          label: 'Profit ৳',
+          data: profit,
+          backgroundColor: profit.map(v => v >= 0 ? 'rgba(212,160,23,0.75)' : 'rgba(248,81,73,0.75)'),
+          borderColor:     profit.map(v => v >= 0 ? 'rgba(212,160,23,1)'    : 'rgba(248,81,73,1)'),
+          borderWidth: 1.5,
+          borderRadius: 5,
+          borderSkipped: false,
+          hoverBackgroundColor: profit.map(v => v >= 0 ? 'rgba(212,160,23,0.95)' : 'rgba(248,81,73,0.95)'),
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 700, easing: 'easeInOutQuart' },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: tooltipBg,
+          titleColor: tooltipText,
+          bodyColor: textColor,
+          borderColor: isDark ? '#30363D' : '#D0D7DE',
+          borderWidth: 1,
+          padding: 12,
+          cornerRadius: 10,
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              const abs = Math.abs(v);
+              const sign = v < 0 ? '-' : '';
+              let fmt;
+              if(abs >= 100000) fmt = sign + '৳' + (abs/100000).toFixed(2) + ' লাখ';
+              else if(abs >= 1000) fmt = sign + '৳' + (abs/1000).toFixed(1) + 'k';
+              else fmt = sign + '৳' + abs.toLocaleString();
+              return ' ' + ctx.dataset.label.replace(' ৳','') + ': ' + fmt;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor, drawBorder: false },
+          ticks: { color: textColor, font: { family: "'IBM Plex Sans', sans-serif", size: 11 } },
+          border: { color: gridColor }
+        },
+        y: {
+          grid: { color: gridColor, drawBorder: false },
+          ticks: {
+            color: textColor,
+            font: { family: "'IBM Plex Mono', monospace", size: 10 },
+            callback: v => {
+              const abs = Math.abs(v);
+              if(abs >= 100000) return '৳' + (abs/100000).toFixed(0) + 'L';
+              if(abs >= 1000)   return '৳' + (abs/1000).toFixed(0) + 'k';
+              return '৳' + v;
+            }
+          },
+          border: { color: gridColor }
+        }
+      }
+    }
+  });
 }
 
 // ─── LIVE DATA FROM GOOGLE SHEETS ────────────────────────────
@@ -4132,7 +4881,7 @@ async function loadLiveSales(){
     return {
       id:String(r[0]||String(i+1).padStart(3,'0')), date:dateStr, time:timeStr,
       rawDate:rawDT, rawDateISO:String(rawDT||''),
-      customer:String(r[3]||''), phone:String(r[4]||''),
+      customer:String(r[3]||''), phone:_fixPhone(r[4]),
       div:String(r[5]||''), dist:String(r[6]||''),
       thana:String(r[7]||''), address:String(r[8]||''),
       product:String(r[9]||''), qty:Number(r[10])||0,
@@ -4302,7 +5051,7 @@ async function loadLiveCRM(){
         salesSource = sd.data.map((r,i)=>({
           id: r[0]||i+1,
           customer: String(r[3]||'').trim(),
-          phone:    String(r[4]||'').trim(),
+          phone:    _fixPhone(r[4]),
           div:      String(r[5]||'').trim(),
           dist:     String(r[6]||'').trim(),
           product:  String(r[9]||'').trim(),
@@ -4325,11 +5074,11 @@ async function loadLiveCRM(){
   if(salesSource && salesSource.length > 0){
     const crmMap = {};
     salesSource.forEach(r => {
-      const rawPhone = String(r.phone||'').trim().replace(/[^0-9+]/g,'');
+      const rawPhone = _fixPhone(r.phone);
       const rawName  = String(r.customer||'').trim().toUpperCase();
-      // FIX v24: Smarter key — phone normalize করো (leading 0 / +88 দিয়ে same নম্বর)
+      // FIX v28: phone normalize করো (leading 0 / +88 দিয়ে same নম্বর একই key হবে)
       // 01711... এবং +8801711... এবং 8801711... একই key হবে
-      let phoneKey = rawPhone;
+      let phoneKey = rawPhone.replace(/[^0-9+]/g,'');
       if(phoneKey.startsWith('+88')) phoneKey = phoneKey.slice(3);
       if(phoneKey.startsWith('88') && phoneKey.length === 13) phoneKey = phoneKey.slice(2);
       // key: phone থাকলে phone, না থাকলে name
@@ -4476,7 +5225,7 @@ async function submitOrder(){
   const m=document.getElementById('modal-add-order');
   // ── FIX 1: Validate required fields before saving ──
   const customerVal = (m.querySelector('#order-customer')?.value||'').trim();
-  const phoneVal    = (m.querySelector('#order-phone')?.value||'').trim();
+  const phoneVal    = _fixPhone(m.querySelector('#order-phone')?.value||'');
   const productVal  = (m.querySelector('#order-product')?.value||'').trim();
   const qtyVal      = parseFloat(m.querySelector('#order-qty')?.value||0);
   const priceVal    = parseFloat(document.getElementById('unit-price')?.value||0);
@@ -4499,7 +5248,7 @@ async function submitOrder(){
       return day+'-'+mon+'-'+yr+' '+hr;
     })(),
     customer: m.querySelector('#order-customer').value,
-    phone: m.querySelector('#order-phone').value,
+    phone: _fixPhone(m.querySelector('#order-phone').value),
     division: m.querySelector('#order-division').value,
     district: document.getElementById('district-select').value,
     thana: document.getElementById('thana-select').value,
@@ -4516,6 +5265,10 @@ async function submitOrder(){
     courier: m.querySelector('#order-courier').value,
     tracking: m.querySelector('#order-tracking').value,
     notes: m.querySelector('#order-notes').value,
+    project: (document.getElementById('order-project')?.value || 'Amanah Security'),
+    splitIsmail: parseFloat(document.getElementById('split-ismail')?.value||0),
+    splitAshik:  parseFloat(document.getElementById('split-ashik')?.value||0),
+    splitRabbi:  parseFloat(document.getElementById('split-rabbi')?.value||0),
   };
   closeModal('add-order');
   resetOrderModal();
@@ -4523,6 +5276,16 @@ async function submitOrder(){
   if(ok){
     showToast(currentEditOrderId?'✅ Order updated!':'✅ Order saved!','success');
     logAction(currentEditOrderId ? `Order #${currentEditOrderId} আপডেট করেছেন` : `নতুন Order এন্ট্রি করেছেন — ${payload.customer} (${payload.product})`);
+    // MODULE 1: Profit Split — নতুন অর্ডারে প্রফিট বণ্টন করো
+    if (!currentEditOrderId) {
+      const totalSale = parseFloat(payload.price||0) * parseFloat(payload.qty||1);
+      const delivery  = parseFloat(payload.delivery||0);
+      const netProfit = Math.max(0, totalSale - delivery);
+      if (netProfit > 0) {
+        applyProfitSplit(netProfit, payload.splitIsmail, payload.splitAshik, payload.splitRabbi);
+        showToast(`💰 প্রফিট বণ্টন হয়েছে — ৳${Math.round(netProfit).toLocaleString()}`, 'success');
+      }
+    }
     refreshAfterOrder(); // FIX v24: debounced — একসাথে সব API call না করে staggered
   } else {
     showToast('Google Sheets connect হয়নি — API URL চেক করুন', 'error');
@@ -4585,7 +5348,7 @@ function openEditOrder(r){
   m.querySelector('.btn.primary').textContent='✅ Update Order';
   // Pre-fill all fields
   m.querySelector('#order-customer').value=r.customer||'';
-  m.querySelector('#order-phone').value=r.phone||'';
+  m.querySelector('#order-phone').value=_fixPhone(r.phone);
   const divSel=m.querySelector('#order-division');
   divSel.value=r.div||'';
   updateDistricts(divSel);
@@ -4873,9 +5636,11 @@ function openModal(id){
       });
     }
   }
+  // MODULE 1: Profit split defaults when opening order modal
+  if (id === 'add-order') {
+    setTimeout(updateProfitDefaults, 50);
+  }
 }
-
-let liveSalesData = [];
 let liveInventoryData = [];
 
 async function submitStockIn(){
@@ -5226,45 +5991,111 @@ function printPage(){ window.print(); }
 
 // ─── NOTIFICATIONS / BELL ────────────────────────────────────
 let notifPanelOpen = false;
-function toggleNotifications(){
-  let panel = document.getElementById('notif-panel');
-  if(!panel){
-    panel = document.createElement('div');
-    panel.id = 'notif-panel';
-    panel.style.cssText = 'position:fixed;top:68px;right:16px;width:320px;max-height:400px;overflow-y:auto;background:var(--bg2);border:1px solid var(--border);border-radius:12px;z-index:999;box-shadow:0 8px 32px rgba(0,0,0,.4);padding:0;';
-    document.body.appendChild(panel);
-  }
-  notifPanelOpen = !notifPanelOpen;
-  if(notifPanelOpen){
-    // Build notifications from current data
-    const pendingOrders = liveSalesData.filter(r=>String(r.status||'').toLowerCase()==='pending');
-    const lowStock = liveInventoryData.filter(p=>p.current<=p.alert);
-    const dueOrders = liveSalesData.filter(r=>Number(r.due||0)>0);
-    let html = '<div style="padding:12px 16px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center;">🔔 Notifications<span onclick="toggleNotifications()" style="cursor:pointer;color:var(--text3);font-size:16px;">✕</span></div>';
-    html += '<div style="display:flex;flex-direction:column;gap:0;">';
-    if(pendingOrders.length>0) html += `<div style="padding:10px 16px;border-bottom:1px solid var(--border2);font-size:12px;"><span style="color:var(--orange);">📋</span> <strong>${pendingOrders.length} টি Pending</strong> অর্ডার আছে প্রসেস করার জন্য।</div>`;
-    if(lowStock.length>0) html += `<div style="padding:10px 16px;border-bottom:1px solid var(--border2);font-size:12px;"><span style="color:var(--red);">⚠️</span> <strong>${lowStock.length} টি পণ্যের</strong> স্টক কম: ${lowStock.map(p=>p.name).join(', ')}</div>`;
-    if(dueOrders.length>0){
-      const totalDue = dueOrders.reduce((s,r)=>s+Number(r.due||0),0);
-      html += `<div style="padding:10px 16px;border-bottom:1px solid var(--border2);font-size:12px;"><span style="color:var(--red);">💰</span> মোট <strong>৳${totalDue.toLocaleString()} বকেয়া</strong> আছে ${dueOrders.length} টি অর্ডারে।</div>`;
+// পুরনো notif panel ফাংশন (নতুন dropdown দিয়ে প্রতিস্থাপিত)
+function toggleNotifications(){ toggleNotifDropdown({stopPropagation:()=>{}}); }
+function closeNotifOnOutside(e){} // deprecated — handled by new dropdown
+
+// ═══════════════════════════════════════
+//  DATA EXPORT FUNCTIONS
+// ═══════════════════════════════════════
+
+/**
+ * exportTableToCSV — টেবিল থেকে CSV বানিয়ে Excel-এ খোলার জন্য ডাউনলোড করো
+ * @param {string} tableId  — table element-এর id অথবা tbody id
+ * @param {string} filename — ফাইলের নাম (extension ছাড়া)
+ * @param {boolean} isTbody — true হলে শুধু tbody; false/undefined হলে পুরো table
+ */
+function exportTableToCSV(tableId, filename, isTbody) {
+  try {
+    let rows = [];
+    if (isTbody) {
+      // tbody থেকে ডাটা নিই — thead আলাদা খুঁজব
+      const tbody = document.getElementById(tableId);
+      if (!tbody) { showToast('টেবিল পাওয়া যায়নি', 'error'); return; }
+      const table = tbody.closest('table');
+      if (table) {
+        const theadCells = table.querySelectorAll('thead th');
+        if (theadCells.length) rows.push(Array.from(theadCells).map(th => '"' + (th.textContent||'').replace(/"/g,'""').trim() + '"'));
+      }
+      tbody.querySelectorAll('tr').forEach(tr => {
+        rows.push(Array.from(tr.querySelectorAll('td')).map(td => '"' + (td.innerText||td.textContent||'').replace(/"/g,'""').replace(/\n/g,' ').trim() + '"'));
+      });
+    } else {
+      const table = document.getElementById(tableId);
+      if (!table) { showToast('টেবিল পাওয়া যায়নি', 'error'); return; }
+      table.querySelectorAll('tr').forEach(tr => {
+        const cells = tr.querySelectorAll('th, td');
+        rows.push(Array.from(cells).map(c => '"' + (c.innerText||c.textContent||'').replace(/"/g,'""').replace(/\n/g,' ').trim() + '"'));
+      });
     }
-    if(pendingOrders.length===0 && lowStock.length===0 && dueOrders.length===0){
-      html += '<div style="padding:20px 16px;text-align:center;color:var(--text3);font-size:12px;">✅ সব ঠিকঠাক! কোনো নতুন notification নেই।</div>';
-    }
-    html += '</div>';
-    panel.innerHTML = html;
-    panel.style.display = 'block';
-    // Close on outside click
-    setTimeout(()=>document.addEventListener('click', closeNotifOnOutside, {once:true}), 50);
-  } else {
-    panel.style.display = 'none';
+    // BOM যোগ করো — Excel বাংলা ঠিকমতো দেখাবে
+    const bom = '\uFEFF';
+    const csv = bom + rows.map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    const date = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = `${filename}_${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast('📥 CSV ডাউনলোড হয়েছে — Excel-এ খুলুন', 'success');
+  } catch(e) {
+    showToast('Export ব্যর্থ: ' + e.message, 'error');
   }
 }
-function closeNotifOnOutside(e){
-  const panel = document.getElementById('notif-panel');
-  const bell = document.getElementById('notif-bell');
-  if(panel && !panel.contains(e.target) && (!bell||!bell.contains(e.target))){
-    panel.style.display='none'; notifPanelOpen=false;
+
+/**
+ * exportTableToPDF — প্রিন্ট-ডায়ালগ ব্যবহার করে PDF সেভ করার সুবিধা দেয়
+ * @param {string} tableId  — table / tbody-এর id
+ * @param {string} title    — রিপোর্টের শিরোনাম
+ * @param {boolean} isTbody — true হলে tbody
+ */
+function exportTableToPDF(tableId, title, isTbody) {
+  try {
+    let tableHTML = '';
+    if (isTbody) {
+      const tbody = document.getElementById(tableId);
+      if (!tbody) { showToast('টেবিল পাওয়া যায়নি', 'error'); return; }
+      const table = tbody.closest('table');
+      tableHTML = table ? table.outerHTML : `<table>${tbody.outerHTML}</table>`;
+    } else {
+      const table = document.getElementById(tableId);
+      if (!table) { showToast('টেবিল পাওয়া যায়নি', 'error'); return; }
+      tableHTML = table.outerHTML;
+    }
+    const date = new Date().toLocaleDateString('bn-BD', { timeZone: 'Asia/Dhaka' });
+    const win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(`<!DOCTYPE html>
+<html lang="bn"><head><meta charset="UTF-8">
+<title>${title}</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono&display=swap" rel="stylesheet">
+<style>
+  body { font-family:'IBM Plex Sans',sans-serif; margin:0; padding:24px; color:#1F2328; font-size:12px; }
+  .pdf-header { display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #D4A017; padding-bottom:12px; margin-bottom:20px; }
+  .pdf-header h1 { font-size:18px; font-weight:800; color:#1F2328; margin:0; }
+  .pdf-header span { font-size:11px; color:#656D76; }
+  table { width:100%; border-collapse:collapse; font-size:11px; }
+  thead th { background:#D4A017; color:#000; padding:8px 10px; text-align:left; font-weight:700; }
+  tbody tr:nth-child(even) { background:#F6F8FA; }
+  tbody td { padding:7px 10px; border-bottom:1px solid #D0D7DE; vertical-align:top; }
+  .pdf-footer { margin-top:20px; font-size:10px; color:#8C959F; text-align:center; border-top:1px solid #D0D7DE; padding-top:12px; }
+  @media print { @page { margin:15mm; } }
+</style></head><body>
+<div class="pdf-header">
+  <h1>🔐 InnoGix Business OS — ${title}</h1>
+  <span>Generated: ${date}</span>
+</div>
+${tableHTML}
+<div class="pdf-footer">InnoGix Business OS · Amanah Security · এই রিপোর্টটি স্বয়ংক্রিয়ভাবে তৈরি করা হয়েছে</div>
+<script>window.onload=()=>{window.print();}<\/script>
+</body></html>`);
+    win.document.close();
+    showToast('📄 PDF উইন্ডো খুলেছে — Print → Save as PDF বেছে নিন', 'info');
+  } catch(e) {
+    showToast('PDF export ব্যর্থ: ' + e.message, 'error');
   }
 }
 
@@ -5333,7 +6164,11 @@ window.onload = async function(){
 
     startClock();
     _populateYearDropdown(new Date().getFullYear());
-    showToast('InnoGix Business OS v24 loaded ✅','success');
+    // Notification Center initialize করো
+    _renderNotifList();
+    // Demo chart দেখাও (API load হওয়ার আগে)
+    drawChart({});
+    showToast('InnoGix Business OS v29 loaded ✅','success');
 
     // Google Sheets connection
     if(API_URL&&API_URL.includes('script.google.com')){
@@ -7014,6 +7849,29 @@ function fmt(n) {
   return Math.round(n).toLocaleString('en-BD');
 }
 
+/**
+ * _fixPhone — Google Sheets থেকে আসা phone number সবসময় String হিসেবে রাখো।
+ * Sheets কখনো phone-কে Number হিসেবে store করলে leading '0' মুছে যায়।
+ * এই ফাংশন সেটা ঠিক করে:
+ *   17XXXXXXXX (10 digit)  → "017XXXXXXXX"
+ *   8801XXXXXXXX (12 digit) → "01XXXXXXXX"  [তারপর 0-prefix]
+ *   +8801XXXXXXXX           → "01XXXXXXXX"
+ *   01XXXXXXXXX (11 digit)  → অপরিবর্তিত
+ */
+function _fixPhone(raw) {
+  let s = String(raw == null ? '' : raw).trim();
+  // leading/trailing whitespace ও non-printable সরাও
+  s = s.replace(/\s+/g, '');
+  if (!s || s === '0' || s === 'null' || s === 'undefined') return '';
+  // +88 prefix সরাও
+  if (s.startsWith('+88')) s = s.slice(3);
+  // 88 prefix (12 digit) সরাও
+  if (s.startsWith('88') && s.length === 12) s = s.slice(2);
+  // leading 0 ছাড়া 10-digit BD number → 0 যোগ করো
+  if (/^[1-9]\d{9}$/.test(s)) s = '0' + s;
+  return s;
+}
+
 // ── Order ফর্ম - COD চার্জ real-time calc (calcDue override)
 // বিদ্যমান calcDue ফাংশনকে extend করি যাতে courier-hub ও আপডেট হয়
 const _origCalcDue = window.calcDue;
@@ -7029,6 +7887,456 @@ window.calcDue = function() {
   const netEl   = document.getElementById('cod-net-display');
   if (dispEl) dispEl.textContent = `৳ ${fmt(codAmt)}`;
   if (netEl)  netEl.textContent  = `৳ ${fmt(netPay)}`;
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LIVE COURIER API INTEGRATION MODULE — InnoGix OS v28
+   কুরিয়ার: Steadfast & Pathao
+   ─────────────────────────────────────────────────────────────────────
+   ⚠️  নিচের দুটো ভ্যারিয়েবলে আপনার আসল API Key বসান।
+       এগুলো সার্ভার-সাইডে রাখা সবচেয়ে নিরাপদ; ডেমো হিসেবে
+       এখানে ক্লায়েন্ট-সাইডে placeholder রাখা হলো।
+═══════════════════════════════════════════════════════════════════════ */
+
+const STEADFAST_API_KEY    = "YOUR_STEADFAST_API_KEY_HERE";
+const STEADFAST_API_SECRET = "YOUR_STEADFAST_API_SECRET_HERE";   // Steadfast দুটো header পাঠায়
+const PATHAO_CLIENT_ID     = "YOUR_PATHAO_CLIENT_ID_HERE";
+const PATHAO_CLIENT_SECRET = "YOUR_PATHAO_CLIENT_SECRET_HERE";
+
+// ── Pathao access token (session-এ ক্যাশ রাখা হবে)
+let _pathaoToken     = null;
+let _pathaoTokenExp  = 0;   // epoch ms
+
+/* ───────────────────────────────────────────────────────────────────
+   SECTION 1 — STEADFAST
+   Official base URL : https://portal.steadfast.com.bd/public/api/v1
+   Auth header       : Api-Key  +  Secret-Key
+   Create order EP   : POST /create_order
+   Bulk create EP    : POST /create_bulk_order
+   Track EP          : GET  /track_by_invoice/{invoice}
+─────────────────────────────────────────────────────────────────── */
+
+const STEADFAST_BASE = "https://portal.steadfast.com.bd/public/api/v1";
+
+/**
+ * Steadfast-এ একটি অর্ডার বুক করো।
+ * @param {object} order  — InnoGix OS-এর payload object
+ * @returns {object|null} — { tracking_code, status } অথবা null (ব্যর্থ হলে)
+ */
+async function bookWithSteadfast(order) {
+  // ── Steadfast-এর অফিশিয়াল payload structure
+  const sfPayload = {
+    invoice:          order.orderId || `INV-${Date.now()}`,
+    recipient_name:   order.customer,
+    recipient_phone:  order.phone,
+    recipient_address: [order.address, order.thana, order.district, order.division]
+                        .filter(Boolean).join(", "),
+    cod_amount:       parseFloat(order.paid || order.price || 0),   // COD amount = গ্রাহকের কাছ থেকে আদায়যোগ্য
+    note:             order.notes || "",
+    item_description: order.product || "",
+  };
+
+  try {
+    const res = await fetch(`${STEADFAST_BASE}/create_order`, {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Api-Key":       STEADFAST_API_KEY,
+        "Secret-Key":    STEADFAST_API_SECRET,
+      },
+      body: JSON.stringify(sfPayload),
+    });
+
+    const json = await res.json();
+
+    // Steadfast success response: { status: 200, consignment: { tracking_code, status } }
+    if (res.ok && json.status === 200 && json.consignment) {
+      return {
+        tracking_code: json.consignment.tracking_code,
+        status:        json.consignment.status || "In Review",
+        consignment_id: json.consignment.consignment_id,
+      };
+    }
+
+    // ব্যর্থ হলে error message দেখাও
+    const errMsg = json.errors
+      ? Object.values(json.errors).flat().join(" | ")
+      : (json.message || "Steadfast API ত্রুটি");
+    showToast(`❌ Steadfast: ${errMsg}`, "error");
+    return null;
+
+  } catch (err) {
+    showToast(`❌ Steadfast কানেক্ট হয়নি: ${err.message}`, "error");
+    return null;
+  }
+}
+
+/**
+ * Steadfast invoice দিয়ে ট্র্যাকিং স্ট্যাটাস নাও।
+ * @param {string} invoice
+ */
+async function trackWithSteadfast(invoice) {
+  try {
+    const res = await fetch(`${STEADFAST_BASE}/track_by_invoice/${encodeURIComponent(invoice)}`, {
+      headers: {
+        "Api-Key":    STEADFAST_API_KEY,
+        "Secret-Key": STEADFAST_API_SECRET,
+      },
+    });
+    const json = await res.json();
+    // response: { status: 200, tracking_info: { delivery_status, ... } }
+    if (res.ok && json.tracking_info) return json.tracking_info;
+    return null;
+  } catch { return null; }
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   SECTION 2 — PATHAO
+   Official base URL  : https://merchant.pathao.com/aladdin/api/v1
+   Auth flow          : POST /issue-token  →  Bearer token
+   Create order EP    : POST /orders
+   Track EP           : GET  /orders/{consignment_id}/info
+─────────────────────────────────────────────────────────────────── */
+
+const PATHAO_BASE = "https://merchant.pathao.com/aladdin/api/v1";
+
+/**
+ * Pathao-এর OAuth token নাও (ক্যাশ করা থাকলে পুনরায় ব্যবহার করো)।
+ * @returns {string|null}
+ */
+async function getPathaoToken() {
+  if (_pathaoToken && Date.now() < _pathaoTokenExp) return _pathaoToken;
+
+  try {
+    const res = await fetch(`${PATHAO_BASE}/issue-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Accept": "application/json" },
+      body: JSON.stringify({
+        client_id:     PATHAO_CLIENT_ID,
+        client_secret: PATHAO_CLIENT_SECRET,
+        username:      "", // Pathao merchant dashboard থেকে পাবেন
+        password:      "", // Pathao merchant dashboard থেকে পাবেন
+        grant_type:    "password",
+      }),
+    });
+    const json = await res.json();
+    if (res.ok && json.access_token) {
+      _pathaoToken    = json.access_token;
+      // expires_in সাধারণত seconds-এ আসে; ৫ মিনিট মার্জিন রাখো
+      _pathaoTokenExp = Date.now() + ((json.expires_in || 3600) - 300) * 1000;
+      return _pathaoToken;
+    }
+    showToast(`❌ Pathao Token ব্যর্থ: ${json.message || "শংসাপত্র ভুল"}`, "error");
+    return null;
+  } catch (err) {
+    showToast(`❌ Pathao Auth কানেক্ট হয়নি: ${err.message}`, "error");
+    return null;
+  }
+}
+
+/**
+ * Pathao-এ একটি অর্ডার বুক করো।
+ * @param {object} order  — InnoGix OS-এর payload object
+ * @returns {object|null} — { consignment_id, order_status } অথবা null
+ */
+async function bookWithPathao(order) {
+  const token = await getPathaoToken();
+  if (!token) return null;
+
+  // ── Pathao-এর অফিশিয়াল payload structure
+  const pathaoPayload = {
+    store_id:              0,           // Pathao merchant panel থেকে Store ID বসান
+    merchant_order_id:     order.orderId || `INV-${Date.now()}`,
+    sender_name:           "InnoGix Business",   // আপনার ব্যবসার নাম
+    sender_phone:          "01XXXXXXXXX",         // আপনার নম্বর
+    recipient_name:        order.customer,
+    recipient_phone:       order.phone,
+    recipient_address:     [order.address, order.thana, order.district]
+                            .filter(Boolean).join(", "),
+    recipient_city:        _pathaoMapCity(order.district),   // Pathao city ID
+    recipient_zone:        0,           // Pathao zone ID (district অনুযায়ী)
+    recipient_area:        0,           // Pathao area ID (thana অনুযায়ী)
+    delivery_type:         48,          // 48 = Regular, 12 = Express (ঘণ্টায়)
+    item_type:             2,           // 1 = Document, 2 = Parcel
+    special_instruction:   order.notes || "",
+    item_quantity:         parseInt(order.qty || 1),
+    item_weight:           0.5,         // kg — প্রয়োজনে dynamic করুন
+    amount_to_collect:     parseFloat(order.paid || order.price || 0),
+    item_description:      order.product || "",
+  };
+
+  try {
+    const res = await fetch(`${PATHAO_BASE}/orders`, {
+      method: "POST",
+      headers: {
+        "Content-Type":  "application/json",
+        "Accept":        "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify(pathaoPayload),
+    });
+
+    const json = await res.json();
+
+    // Pathao success: { type: "success", data: { consignment_id, order_status, ... } }
+    if (res.ok && json.type === "success" && json.data) {
+      return {
+        tracking_code:  json.data.consignment_id,
+        status:         json.data.order_status || "Pending",
+        consignment_id: json.data.consignment_id,
+      };
+    }
+
+    const errMsg = json.message || (json.errors ? JSON.stringify(json.errors) : "Pathao API ত্রুটি");
+    showToast(`❌ Pathao: ${errMsg}`, "error");
+    return null;
+
+  } catch (err) {
+    showToast(`❌ Pathao কানেক্ট হয়নি: ${err.message}`, "error");
+    return null;
+  }
+}
+
+/**
+ * Pathao consignment_id দিয়ে ট্র্যাকিং স্ট্যাটাস নাও।
+ * @param {string} consignmentId
+ */
+async function trackWithPathao(consignmentId) {
+  const token = await getPathaoToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${PATHAO_BASE}/orders/${encodeURIComponent(consignmentId)}/info`, {
+      headers: { "Accept": "application/json", "Authorization": `Bearer ${token}` },
+    });
+    const json = await res.json();
+    if (res.ok && json.data) return json.data;
+    return null;
+  } catch { return null; }
+}
+
+/**
+ * Pathao city ID mapper — district name → Pathao city ID।
+ * Pathao-এর /cities endpoint থেকে পূর্ণ তালিকা পাবেন।
+ * এখানে বাংলাদেশের প্রধান শহরগুলোর ID রাখা হলো।
+ */
+function _pathaoMapCity(district) {
+  const map = {
+    "Dhaka": 1, "Chittagong": 2, "Sylhet": 3, "Rajshahi": 4,
+    "Khulna": 5, "Barisal": 6, "Rangpur": 7, "Mymensingh": 8,
+    "Gazipur": 9, "Narayanganj": 10, "Comilla": 11, "Narsingdi": 12,
+  };
+  return map[district] || 1; // default Dhaka
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   SECTION 3 — CONDITIONAL BOOKING ROUTER
+   submitOrder() এর পরে স্বয়ংক্রিয়ভাবে কল হবে।
+   লজিক:
+     → Steadfast  : Steadfast API → tracking_code সেভ
+     → Pathao     : Pathao API   → consignment_id সেভ
+     → অন্য কুরিয়ার: শুধু local entry, কোনো API call নেই
+─────────────────────────────────────────────────────────────────── */
+
+/**
+ * মূল router ফাংশন।
+ * submitOrder() এর ok=true এর পরেই এটি ডাকো।
+ * @param {object} order — submitOrder-এর payload object
+ */
+async function dispatchCourierBooking(order) {
+  const courierName = (order.courier || "").trim();
+  if (!courierName) return;
+
+  let result = null;
+
+  if (courierName === "Steadfast") {
+    showToast("⏳ Steadfast-এ বুকিং পাঠানো হচ্ছে...", "info");
+    result = await bookWithSteadfast(order);
+
+    if (result) {
+      showToast(`✅ Steadfast বুকিং সম্পন্ন! Tracking: ${result.tracking_code}`, "success");
+      _updateOSTracking(order.orderId, result.tracking_code, result.status, "Steadfast");
+    }
+
+  } else if (courierName === "Pathao") {
+    showToast("⏳ Pathao-এ বুকিং পাঠানো হচ্ছে...", "info");
+    result = await bookWithPathao(order);
+
+    if (result) {
+      showToast(`✅ Pathao বুকিং সম্পন্ন! Consignment: ${result.tracking_code}`, "success");
+      _updateOSTracking(order.orderId, result.tracking_code, result.status, "Pathao");
+    }
+
+  } else {
+    // অন্য কুরিয়ার — local entry, কোনো API call নেই
+    logAction(`Local courier entry: ${courierName} — Order ${order.orderId}`);
+  }
+}
+
+/**
+ * কুরিয়ারের সার্ভার থেকে আসা tracking_code ও status
+ * OS-এর কুরিয়ার ম্যানেজার টেবিলে এবং Google Sheet-এ আপডেট করো।
+ */
+function _updateOSTracking(orderId, trackingCode, liveStatus, courierName) {
+  // ── ১. salesData array আপডেট (in-memory)
+  if (typeof salesData !== "undefined") {
+    const idx = salesData.findIndex(
+      o => (o.orderId || o.OrderID || "") === String(orderId)
+    );
+    if (idx > -1) {
+      salesData[idx].tracking = trackingCode;
+      salesData[idx].status   = _mapCourierStatus(liveStatus, courierName);
+    }
+  }
+
+  // ── ২. কুরিয়ার ম্যানেজার টেবিল live রিফ্রেশ (পেজ খোলা থাকলে)
+  if (document.getElementById("page-courier-hub")?.classList.contains("active")) {
+    renderCourierHub();
+  }
+
+  // ── ৩. Google Sheet-এ tracking update পাঠাও
+  postToAPI({
+    action:    "updateTracking",
+    orderId:   String(orderId),
+    tracking:  trackingCode,
+    status:    _mapCourierStatus(liveStatus, courierName),
+    courier:   courierName,
+  }).catch(() => {}); // silent — main order already saved
+}
+
+/**
+ * কুরিয়ার কোম্পানির নিজস্ব status শব্দকে InnoGix OS-এর
+ * স্ট্যান্ডার্ড status-এ convert করো।
+ */
+function _mapCourierStatus(rawStatus, courierName) {
+  const sf = {
+    "In Review":   "Processing",
+    "Pending":     "Pending",
+    "Delivered_By_Courier": "Delivered",
+    "Partial_Delivered": "Delivered",
+    "Cancelled":   "Cancelled",
+    "Hold":        "Processing",
+    "In Transit":  "In Transit",
+    "Returned":    "Returned",
+  };
+  const pa = {
+    "Pending":   "Pending",
+    "Pickup_Requested": "Processing",
+    "Picked_Up": "In Transit",
+    "In_Transit": "In Transit",
+    "Delivered": "Delivered",
+    "Return_Requested": "Returned",
+    "Returned":  "Returned",
+    "Cancelled": "Cancelled",
+  };
+  const map = courierName === "Steadfast" ? sf : pa;
+  return map[rawStatus] || rawStatus || "Processing";
+}
+
+
+/* ───────────────────────────────────────────────────────────────────
+   SECTION 4 — submitOrder() HOOK
+   বিদ্যমান submitOrder ফাংশনটিকে wrap করে
+   dispatchCourierBooking() কে স্বয়ংক্রিয়ভাবে call করা হচ্ছে।
+─────────────────────────────────────────────────────────────────── */
+
+(function _hookSubmitOrder() {
+  const _original = window.submitOrder;
+  if (typeof _original !== "function") return;
+
+  window.submitOrder = async function () {
+    // ── অর্ডার সাবমিটের আগেই payload ধরে রাখো
+    const m = document.getElementById("modal-add-order");
+    if (!m) { await _original(); return; }
+
+    const orderSnapshot = {
+      orderId:   `#${String(Date.now()).slice(-6)}`,  // temp; Google Sheet থেকে override হবে
+      customer:  m.querySelector("#order-customer")?.value || "",
+      phone:     m.querySelector("#order-phone")?.value || "",
+      division:  m.querySelector("#order-division")?.value || "",
+      district:  document.getElementById("district-select")?.value || "",
+      thana:     document.getElementById("thana-select")?.value || "",
+      address:   m.querySelector("#order-address")?.value || "",
+      product:   m.querySelector("#order-product")?.value || "",
+      qty:       m.querySelector("#order-qty")?.value || "1",
+      price:     document.getElementById("unit-price")?.value || "0",
+      paid:      document.getElementById("order-paid")?.value || "0",
+      delivery:  m.querySelector("#order-delivery")?.value || "0",
+      codPct:    document.getElementById("order-cod-pct")?.value || "0",
+      notes:     m.querySelector("#order-notes")?.value || "",
+      courier:   m.querySelector("#order-courier")?.value || "",
+      status:    m.querySelector("#order-status")?.value || "Pending",
+    };
+
+    // ── মূল OS submitOrder চালাও (Google Sheet save)
+    await _original();
+
+    // ── OS save সফল হলে courier API-তে dispatch করো
+    // (ছোট delay দিয়ে UI toast collision এড়াও)
+    if (orderSnapshot.courier) {
+      setTimeout(() => dispatchCourierBooking(orderSnapshot), 800);
+    }
+  };
+})();
+
+
+/* ───────────────────────────────────────────────────────────────────
+   SECTION 5 — BULK TRACKING REFRESH
+   কুরিয়ার ম্যানেজার পেজের Sync বাটন চাপলে
+   Steadfast ও Pathao-এর সব pending অর্ডারের স্ট্যাটাস live update হবে।
+─────────────────────────────────────────────────────────────────── */
+
+async function liveRefreshAllTracking() {
+  if (typeof salesData === "undefined" || !salesData.length) return;
+
+  const pending = salesData.filter(o => {
+    const s = o.status || "";
+    return s !== "Delivered" && s !== "Cancelled" && s !== "Returned";
+  });
+
+  if (!pending.length) {
+    showToast("✅ সব অর্ডার ইতিমধ্যে চূড়ান্ত অবস্থায় আছে", "info");
+    return;
+  }
+
+  showToast(`⏳ ${pending.length}টি অর্ডারের লাইভ স্ট্যাটাস চেক হচ্ছে...`, "info");
+
+  let updated = 0;
+  for (const o of pending) {
+    const courier  = o.courier || o.Courier || "";
+    const tracking = o.tracking || o.Tracking || "";
+    if (!tracking || tracking === "—") continue;
+
+    let info = null;
+    if (courier === "Steadfast") {
+      info = await trackWithSteadfast(o.orderId || tracking);
+      if (info) {
+        const newStatus = _mapCourierStatus(info.delivery_status, "Steadfast");
+        _updateOSTracking(o.orderId, info.tracking_code || tracking, newStatus, "Steadfast");
+        updated++;
+      }
+    } else if (courier === "Pathao") {
+      info = await trackWithPathao(tracking);
+      if (info) {
+        const newStatus = _mapCourierStatus(info.order_status, "Pathao");
+        _updateOSTracking(o.orderId, info.consignment_id || tracking, newStatus, "Pathao");
+        updated++;
+      }
+    }
+    // Rate limit এড়াতে প্রতিটির মধ্যে ছোট বিরতি
+    await new Promise(r => setTimeout(r, 200));
+  }
+
+  showToast(`✅ ${updated}টি অর্ডারের স্ট্যাটাস আপডেট হয়েছে`, "success");
+  renderCourierHub();
+}
+
+// ── syncCourierData বাটনে live refresh ও যুক্ত করো
+const _origSync = window.syncCourierData;
+window.syncCourierData = async function () {
+  if (typeof _origSync === "function") _origSync();
+  await liveRefreshAllTracking();
 };
 </script>
 </body>

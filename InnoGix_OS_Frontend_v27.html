@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InnoGix Business OS — Amanah Security</title>
+<title>InnoGix Business OS v31 — Amanah Security</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -729,6 +729,108 @@ tbody td.muted{color:var(--text3);}
   height:220px;
   width:100%;
 }
+
+/* ═══════════════════════════════════════
+   PRODUCT PROFIT SPLIT STYLES (v31)
+═══════════════════════════════════════ */
+.profit-split-section{
+  grid-column:1/-1;
+  background:linear-gradient(135deg,rgba(212,160,23,.08),rgba(212,160,23,.03));
+  border:1px solid rgba(212,160,23,.25);
+  border-radius:12px;
+  padding:18px;
+  margin-top:4px;
+}
+.profit-split-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;flex-wrap:wrap;gap:8px;
+}
+.profit-split-title{
+  font-size:12px;font-weight:700;color:var(--gold);
+  letter-spacing:1px;text-transform:uppercase;
+  display:flex;align-items:center;gap:6px;
+}
+.equal-split-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:20px;
+  background:linear-gradient(135deg,var(--gold),#8B6914);
+  border:none;color:#000;font-size:12px;font-weight:700;
+  cursor:pointer;font-family:'IBM Plex Sans',sans-serif;
+  box-shadow:0 2px 8px rgba(212,160,23,.3);
+  transition:all .2s;white-space:nowrap;
+}
+.equal-split-btn:hover{box-shadow:0 4px 14px rgba(212,160,23,.5);transform:translateY(-1px);}
+.equal-split-btn:active{transform:translateY(0);}
+.split-partners-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:12px;
+  margin-bottom:14px;
+}
+.split-partner-box{
+  background:var(--bg3);border:1px solid var(--border);
+  border-radius:10px;padding:12px;
+  display:flex;flex-direction:column;gap:8px;
+  transition:border-color .2s;
+}
+.split-partner-box:hover{border-color:var(--gold);}
+.split-partner-box.ismail-box{border-color:rgba(56,139,253,.3);}
+.split-partner-box.ashik-box{border-color:rgba(63,185,80,.3);}
+.split-partner-box.rabbi-box{border-color:rgba(188,140,255,.3);}
+.split-partner-label{
+  font-size:10px;font-weight:700;letter-spacing:.8px;
+  text-transform:uppercase;display:flex;align-items:center;gap:6px;
+}
+.split-partner-label .p-dot{flex-shrink:0;}
+.split-input-wrap{position:relative;}
+.split-input-wrap input{
+  width:100%;background:var(--bg2);border:1px solid var(--border);
+  border-radius:8px;padding:8px 30px 8px 10px;
+  color:var(--text);font-size:15px;font-weight:700;
+  font-family:'IBM Plex Mono',monospace;
+  outline:none;transition:border .2s;
+}
+.split-input-wrap input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(212,160,23,.1);}
+.split-pct-sign{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  font-size:13px;font-weight:700;color:var(--text3);
+  pointer-events:none;
+}
+.company-fund-preview{
+  background:var(--bg4);border:1px solid var(--border);
+  border-radius:10px;padding:12px 16px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:10px;
+}
+.company-fund-info{
+  display:flex;align-items:center;gap:10px;
+}
+.company-fund-icon{
+  width:34px;height:34px;border-radius:8px;
+  background:rgba(212,160,23,.15);
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.company-fund-text small{font-size:10px;color:var(--text3);display:block;text-transform:uppercase;letter-spacing:.8px;margin-bottom:2px;}
+.company-fund-pct{font-size:20px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:var(--gold);}
+.split-total-info{
+  display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;
+}
+.split-total-info span{font-family:'IBM Plex Mono',monospace;}
+
+/* Profit split badge in inventory table */
+.profit-split-badge{
+  display:flex;align-items:center;gap:4px;
+  flex-wrap:wrap;margin-top:3px;
+}
+.psb-chip{
+  display:inline-flex;align-items:center;gap:3px;
+  padding:1px 6px;border-radius:4px;
+  font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;
+  letter-spacing:.3px;
+}
+.psb-chip.ismail{background:rgba(56,139,253,.15);color:var(--blue);}
+.psb-chip.ashik{background:rgba(63,185,80,.15);color:var(--green);}
+.psb-chip.rabbi{background:rgba(188,140,255,.15);color:var(--purple);}
+.psb-chip.company{background:rgba(212,160,23,.15);color:var(--gold);}
 /* ═══════════════════════════════════════
    FIX 4 — PIN LOCK SYSTEM
 ═══════════════════════════════════════ */
@@ -2651,7 +2753,7 @@ tbody td.muted{color:var(--text3);}
         <div class="form-group"><label class="form-label">District</label><select class="form-select" id="district-select" onchange="updateThanas(this)"><option value="">Select District</option></select></div>
         <div class="form-group"><label class="form-label">Thana</label><select class="form-select" id="thana-select"><option value="">Select Thana</option></select></div>
         <div class="form-group"><label class="form-label">Full Address</label><input class="form-input" id="order-address" placeholder="House, Road, Area..." type="text"></div>
-        <div class="form-group"><label class="form-label">Product *</label><select class="form-select" id="order-product"><option value="">Select Product</option><option>Amanah Door Lock Pro</option><option>Amanah CCTV Kit</option><option>Amanah Alarm System</option><option>Amanah Smart Lock</option><option>Amanah Motion Sensor</option><option>Amanah Video Doorbell</option></select></div>
+        <div class="form-group"><label class="form-label">Product *</label><select class="form-select" id="order-product" onchange="onOrderProductChange(this.value)"><option value="">Select Product</option><option>Amanah Door Lock Pro</option><option>Amanah CCTV Kit</option><option>Amanah Alarm System</option><option>Amanah Smart Lock</option><option>Amanah Motion Sensor</option><option>Amanah Video Doorbell</option></select></div>
         <div class="form-group"><label class="form-label">Quantity *</label><input class="form-input" id="order-qty" type="number" placeholder="1" min="1" oninput="calcTotal()"></div>
         <div class="form-group"><label class="form-label">Unit Price (৳) *</label><input class="form-input" type="number" placeholder="0" id="unit-price" oninput="calcTotal()"></div>
         <div class="form-group"><label class="form-label">Total (৳)</label><input class="form-input" type="number" id="total-price" readonly></div>
@@ -2718,6 +2820,9 @@ tbody td.muted{color:var(--text3);}
             <span>Net Profit প্রিভিউ: <strong style="color:var(--green);" id="preview-net">—</strong></span>
             <span style="color:var(--text3);">|</span>
             <span>মোট বণ্টন: <strong id="preview-total" style="color:var(--text);">0%</strong></span>
+          </div>
+          <div id="order-auto-split-banner" style="display:none;margin-top:8px;padding:8px 12px;background:rgba(63,185,80,.1);border:1px solid rgba(63,185,80,.3);border-radius:8px;font-size:11px;color:var(--green);">
+            ✅ <strong>Auto-Linked:</strong> এই পণ্যের ইনভেন্টরি সেটিংস থেকে প্রফিট শতাংশ স্বয়ংক্রিয়ভাবে লোড হয়েছে — <span id="order-auto-split-info"></span>
           </div>
         </div>
       </div>
@@ -2796,6 +2901,61 @@ tbody td.muted{color:var(--text3);}
         <div class="form-group"><label class="form-label">Supplier Name</label><input class="form-input" id="prod-supplier" placeholder="Supplier name" type="text"></div>
         <div class="form-group"><label class="form-label">Supplier Phone</label><input class="form-input" id="prod-supplier-phone" placeholder="017XXXXXXXX" type="text"></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="prod-notes" placeholder="Optional notes..."></textarea></div>
+
+        <!-- ══ PROFIT SPLIT SECTION ══ -->
+        <div class="profit-split-section">
+          <div class="profit-split-header">
+            <div class="profit-split-title">💰 প্রফিট বণ্টন সেটিংস</div>
+            <button class="equal-split-btn" type="button" onclick="applyEqualSplitProduct('add')">⚖️ সমান ভাগে ভাগ করুন</button>
+          </div>
+          <div class="split-partners-grid">
+            <div class="split-partner-box ismail-box">
+              <div class="split-partner-label">
+                <span class="p-dot" style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;"></span>
+                <span style="color:var(--blue);">Ismail</span>
+              </div>
+              <div class="split-input-wrap">
+                <input type="number" id="prod-split-ismail" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('add')">
+                <span class="split-pct-sign">%</span>
+              </div>
+            </div>
+            <div class="split-partner-box ashik-box">
+              <div class="split-partner-label">
+                <span class="p-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></span>
+                <span style="color:var(--green);">Ashik</span>
+              </div>
+              <div class="split-input-wrap">
+                <input type="number" id="prod-split-ashik" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('add')">
+                <span class="split-pct-sign">%</span>
+              </div>
+            </div>
+            <div class="split-partner-box rabbi-box">
+              <div class="split-partner-label">
+                <span class="p-dot" style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0;"></span>
+                <span style="color:var(--purple);">Rabbi</span>
+              </div>
+              <div class="split-input-wrap">
+                <input type="number" id="prod-split-rabbi" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('add')">
+                <span class="split-pct-sign">%</span>
+              </div>
+            </div>
+          </div>
+          <div class="company-fund-preview">
+            <div class="company-fund-info">
+              <div class="company-fund-icon">🏢</div>
+              <div class="company-fund-text">
+                <small>Company Fund</small>
+                <div class="company-fund-pct" id="prod-split-company-preview">100.0%</div>
+              </div>
+            </div>
+            <div class="split-total-info" id="prod-split-total-wrap">
+              মোট: <span id="prod-split-total-preview" style="color:var(--text);">0.0%</span>
+              <span style="color:var(--text3);">+ Company Fund</span>
+            </div>
+          </div>
+        </div>
+        <!-- ══ END PROFIT SPLIT ══ -->
+
       </div>
     </div>
     <div class="modal-footer">
@@ -2860,6 +3020,61 @@ tbody td.muted{color:var(--text3);}
         <div class="form-group"><label class="form-label">Alert Level</label><input class="form-input" id="eprod-alert" type="number"></div>
         <div class="form-group"><label class="form-label">Supplier</label><input class="form-input" id="eprod-supplier" type="text"></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="eprod-notes"></textarea></div>
+
+        <!-- ══ PROFIT SPLIT SECTION (Edit) ══ -->
+        <div class="profit-split-section">
+          <div class="profit-split-header">
+            <div class="profit-split-title">💰 প্রফিট বণ্টন সেটিংস</div>
+            <button class="equal-split-btn" type="button" onclick="applyEqualSplitProduct('edit')">⚖️ সমান ভাগে ভাগ করুন</button>
+          </div>
+          <div class="split-partners-grid">
+            <div class="split-partner-box ismail-box">
+              <div class="split-partner-label">
+                <span class="p-dot" style="width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;"></span>
+                <span style="color:var(--blue);">Ismail</span>
+              </div>
+              <div class="split-input-wrap">
+                <input type="number" id="eprod-split-ismail" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('edit')">
+                <span class="split-pct-sign">%</span>
+              </div>
+            </div>
+            <div class="split-partner-box ashik-box">
+              <div class="split-partner-label">
+                <span class="p-dot" style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></span>
+                <span style="color:var(--green);">Ashik</span>
+              </div>
+              <div class="split-input-wrap">
+                <input type="number" id="eprod-split-ashik" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('edit')">
+                <span class="split-pct-sign">%</span>
+              </div>
+            </div>
+            <div class="split-partner-box rabbi-box">
+              <div class="split-partner-label">
+                <span class="p-dot" style="width:8px;height:8px;border-radius:50%;background:var(--purple);flex-shrink:0;"></span>
+                <span style="color:var(--purple);">Rabbi</span>
+              </div>
+              <div class="split-input-wrap">
+                <input type="number" id="eprod-split-rabbi" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('edit')">
+                <span class="split-pct-sign">%</span>
+              </div>
+            </div>
+          </div>
+          <div class="company-fund-preview">
+            <div class="company-fund-info">
+              <div class="company-fund-icon">🏢</div>
+              <div class="company-fund-text">
+                <small>Company Fund</small>
+                <div class="company-fund-pct" id="eprod-split-company-preview">100.0%</div>
+              </div>
+            </div>
+            <div class="split-total-info" id="eprod-split-total-wrap">
+              মোট: <span id="eprod-split-total-preview" style="color:var(--text);">0.0%</span>
+              <span style="color:var(--text3);">+ Company Fund</span>
+            </div>
+          </div>
+        </div>
+        <!-- ══ END PROFIT SPLIT ══ -->
+
       </div>
     </div>
     <div class="modal-footer">
@@ -3291,7 +3506,7 @@ tbody td.muted{color:var(--text3);}
 // ✅ Partner balance REF error ছাড়া calculate
 // ═══════════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwwRTe-VAEo7nqJTJopWw9xC3kwJcsTMyD_bUHNq4DFOLuqj80RktTe5UrXtGPQoBkJ/exec"; // ← এখানে আপনার Google Apps Script URL বসান
+const API_URL = "https://script.google.com/macros/s/AKfycbzN5xxIp5wsdjSMEdlyf6qoVH-esBWnqQUZ6gHZPOynInencKBaYmwUVM-zw6XhQFGr/exec"; // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -3855,6 +4070,134 @@ const PROJECT_SPLITS = {
 // In-memory profit balance (persistent via localStorage)
 const PS_KEY = 'innogix_profit_split';
 
+// ── PRODUCT-BASED SPLIT DATABASE (v31 NEW) ─────────────────
+const PROD_SPLIT_KEY = 'innogix_product_splits_v31';
+
+function _getProductSplitDB() {
+  try {
+    const raw = localStorage.getItem(PROD_SPLIT_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch(e) { return {}; }
+}
+
+function _saveProductSplitDB(db) {
+  try { localStorage.setItem(PROD_SPLIT_KEY, JSON.stringify(db)); } catch(e) {}
+}
+
+/**
+ * পণ্যের profit split সেভ করো
+ * @param {string} productName
+ * @param {number} ismail
+ * @param {number} ashik
+ * @param {number} rabbi
+ */
+function _saveProductSplit(productName, ismail, ashik, rabbi) {
+  if (!productName) return;
+  const db = _getProductSplitDB();
+  db[productName] = { ismail: ismail||0, ashik: ashik||0, rabbi: rabbi||0 };
+  _saveProductSplitDB(db);
+}
+
+/**
+ * পণ্যের profit split পড়ো
+ * @param {string} productName
+ * @returns {{ismail:number, ashik:number, rabbi:number}}
+ */
+function _getProductSplit(productName) {
+  if (!productName) return { ismail:0, ashik:0, rabbi:0 };
+  const db = _getProductSplitDB();
+  return db[productName] || { ismail:0, ashik:0, rabbi:0 };
+}
+
+// ── PRODUCT SPLIT PREVIEW UPDATER ──────────────────────────
+/**
+ * Add বা Edit modal-এর Company Fund preview আপডেট করো
+ * @param {'add'|'edit'} mode
+ */
+function updateProductSplitPreview(mode) {
+  const prefix = mode === 'edit' ? 'eprod' : 'prod';
+  const i = parseFloat(document.getElementById(prefix+'-split-ismail')?.value||0);
+  const a = parseFloat(document.getElementById(prefix+'-split-ashik')?.value||0);
+  const r = parseFloat(document.getElementById(prefix+'-split-rabbi')?.value||0);
+  const total = i + a + r;
+  const comp  = Math.max(0, 100 - total);
+  const compEl  = document.getElementById(prefix+'-split-company-preview');
+  const totalEl = document.getElementById(prefix+'-split-total-preview');
+  if(compEl)  compEl.textContent  = comp.toFixed(1)+'%';
+  if(totalEl) {
+    totalEl.textContent = total.toFixed(1)+'%';
+    totalEl.style.color = total > 100 ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--text)';
+  }
+}
+
+// ── EQUAL SPLIT BUTTON HANDLER ─────────────────────────────
+/**
+ * ⚖️ সমান ভাগে ৩৩.৩৩% করো
+ * @param {'add'|'edit'} mode
+ */
+function applyEqualSplitProduct(mode) {
+  const prefix = mode === 'edit' ? 'eprod' : 'prod';
+  const pct = 33.33;
+  const si = document.getElementById(prefix+'-split-ismail');
+  const sa = document.getElementById(prefix+'-split-ashik');
+  const sr = document.getElementById(prefix+'-split-rabbi');
+  if(si) si.value = pct;
+  if(sa) sa.value = pct;
+  if(sr) sr.value = pct;
+  updateProductSplitPreview(mode);
+  showToast('⚖️ সমান ভাগে বণ্টন হয়েছে — ৩৩.৩৩% প্রতিজন', 'success');
+}
+
+// ── ORDER MODAL: PRODUCT SELECT → AUTO LOAD SPLIT ──────────
+/**
+ * Sales order modal-এ product select করলে
+ * inventory split DB থেকে স্বয়ংক্রিয়ভাবে % লোড করো
+ * @param {string} productName
+ */
+function onOrderProductChange(productName) {
+  const split = _getProductSplit(productName);
+  const hasSplit = split.ismail > 0 || split.ashik > 0 || split.rabbi > 0;
+  const si = document.getElementById('split-ismail');
+  const sa = document.getElementById('split-ashik');
+  const sr = document.getElementById('split-rabbi');
+  const banner = document.getElementById('order-auto-split-banner');
+  const bannerInfo = document.getElementById('order-auto-split-info');
+
+  if (hasSplit && si && sa && sr) {
+    si.value = split.ismail;
+    sa.value = split.ashik;
+    sr.value = split.rabbi;
+    updateCompanyFundPreview();
+    const comp = Math.max(0, 100 - split.ismail - split.ashik - split.rabbi);
+    if(banner) banner.style.display = 'block';
+    if(bannerInfo) bannerInfo.textContent = `I:${split.ismail}% | A:${split.ashik}% | R:${split.rabbi}% | C:${comp.toFixed(0)}%`;
+    showToast(`🔗 "${productName}"-এর প্রফিট শতাংশ লোড হয়েছে`, 'info');
+  } else {
+    // Default project split
+    updateProfitDefaults();
+    if(banner) banner.style.display = 'none';
+  }
+  // Update order-product dropdown with inventory products
+  populateOrderProductDropdown();
+}
+
+/**
+ * Inventory থেকে product names order dropdown-এ populate করো
+ */
+function populateOrderProductDropdown() {
+  const sel = document.getElementById('order-product');
+  if (!sel) return;
+  const db = _getProductSplitDB();
+  const existingOpts = Array.from(sel.options).map(o => o.value);
+  Object.keys(db).forEach(name => {
+    if (name && !existingOpts.includes(name)) {
+      const opt = document.createElement('option');
+      opt.value = name; opt.textContent = name;
+      sel.appendChild(opt);
+    }
+  });
+}
+
 function getProfitBalances() {
   try {
     const raw = localStorage.getItem(PS_KEY);
@@ -4240,9 +4583,21 @@ function renderInventoryData(rows){
       ? p.stockStatus
       : (p.current <= 0 ? '🔴 Out of Stock' : p.current <= p.alert ? '🟡 Low Stock' : '🟢 In Stock');
     const shortLabel  = p.current <= 0 ? 'Out of Stock' : p.current <= p.alert ? 'Low Stock' : 'In Stock';
+    // Profit split badge
+    const split = _getProductSplit(p.name);
+    const si = p.splitIsmail != null ? parseFloat(p.splitIsmail) : split.ismail;
+    const sa = p.splitAshik  != null ? parseFloat(p.splitAshik)  : split.ashik;
+    const sr = p.splitRabbi  != null ? parseFloat(p.splitRabbi)  : split.rabbi;
+    const sc = Math.max(0, 100 - si - sa - sr);
+    const splitBadge = `<div class="profit-split-badge">
+      <span class="psb-chip ismail">I:${si}%</span>
+      <span class="psb-chip ashik">A:${sa}%</span>
+      <span class="psb-chip rabbi">R:${sr}%</span>
+      <span class="psb-chip company">C:${sc.toFixed(0)}%</span>
+    </div>`;
     return `<tr>
       <td class="mono">${p.id}</td>
-      <td><strong>${p.name}</strong></td><td>${p.cat}</td>
+      <td><strong>${p.name}</strong>${splitBadge}</td><td>${p.cat}</td>
       <td class="mono">৳${Number(p.cost).toLocaleString()}</td>
       <td class="mono">৳${Number(p.sell).toLocaleString()}</td>
       <td><span style="color:${margin>30?'var(--green)':margin>15?'var(--orange)':'var(--red)'};">${margin.toFixed(1)}%</span></td>
@@ -4951,8 +5306,20 @@ async function loadLiveInventory(){
     stockStatus:   String(r[11]||''),
     supplier:      String(r[12]||''),
     supplierPhone: String(r[13]||''),
+    // v31: Split data from backend columns (if available)
+    splitIsmail: parseFloat(r[14])||null,
+    splitAshik:  parseFloat(r[15])||null,
+    splitRabbi:  parseFloat(r[16])||null,
   })).filter(r=>r.name && r.name.trim());
+  // v31: Sync split data from backend to local DB
+  rows.forEach(p => {
+    if (p.splitIsmail != null || p.splitAshik != null || p.splitRabbi != null) {
+      _saveProductSplit(p.name, p.splitIsmail||0, p.splitAshik||0, p.splitRabbi||0);
+    }
+  });
   liveInventoryData = rows;
+  // v31: Update order product dropdown with inventory products
+  populateOrderProductDropdown();
   renderInventoryData(rows); showToast('Inventory loaded ✅','success');
 }
 // Format ISO / serial date to Bangladesh readable: DD-MMM-YYYY HH:MM AM/PM
@@ -5282,8 +5649,19 @@ async function submitOrder(){
       const delivery  = parseFloat(payload.delivery||0);
       const netProfit = Math.max(0, totalSale - delivery);
       if (netProfit > 0) {
-        applyProfitSplit(netProfit, payload.splitIsmail, payload.splitAshik, payload.splitRabbi);
-        showToast(`💰 প্রফিট বণ্টন হয়েছে — ৳${Math.round(netProfit).toLocaleString()}`, 'success');
+        // ── AUTO-LINK: Inventory থেকে product-specific split নাও ──
+        const productName = payload.product || '';
+        const prodSplit = _getProductSplit(productName);
+        // যদি inventory-তে কোনো split সেট না থাকে, order modal-এর split ব্যবহার করো
+        const autoIsmail = prodSplit.ismail > 0 || prodSplit.ashik > 0 || prodSplit.rabbi > 0
+          ? prodSplit.ismail : payload.splitIsmail;
+        const autoAshik  = prodSplit.ismail > 0 || prodSplit.ashik > 0 || prodSplit.rabbi > 0
+          ? prodSplit.ashik  : payload.splitAshik;
+        const autoRabbi  = prodSplit.ismail > 0 || prodSplit.ashik > 0 || prodSplit.rabbi > 0
+          ? prodSplit.rabbi  : payload.splitRabbi;
+        applyProfitSplit(netProfit, autoIsmail, autoAshik, autoRabbi);
+        const compPct = Math.max(0, 100 - autoIsmail - autoAshik - autoRabbi);
+        showToast(`💰 প্রফিট বণ্টন: I:${autoIsmail}% | A:${autoAshik}% | R:${autoRabbi}% | C:${compPct.toFixed(0)}% — ৳${Math.round(netProfit).toLocaleString()}`, 'success');
       }
     }
     refreshAfterOrder(); // FIX v24: debounced — একসাথে সব API call না করে staggered
@@ -5393,6 +5771,11 @@ function resetOrderModal(){
 let currentEditProductId = null;
 
 async function submitProduct(){
+  const splitI = parseFloat(document.getElementById('prod-split-ismail')?.value||0);
+  const splitA = parseFloat(document.getElementById('prod-split-ashik')?.value||0);
+  const splitR = parseFloat(document.getElementById('prod-split-rabbi')?.value||0);
+  const totalSplit = splitI + splitA + splitR;
+  if(totalSplit > 100){ showToast('⚠️ প্রফিট শতাংশের মোট ১০০% এর বেশি হতে পারবে না','error'); return; }
   const payload={
     action:'addProduct',
     id: document.getElementById('prod-id').value,
@@ -5406,8 +5789,13 @@ async function submitProduct(){
     supplier: document.getElementById('prod-supplier').value,
     supplierPhone: document.getElementById('prod-supplier-phone').value,
     notes: document.getElementById('prod-notes').value,
+    splitIsmail: splitI,
+    splitAshik:  splitA,
+    splitRabbi:  splitR,
   };
   if(!payload.name||!payload.sell){ showToast('Name ও Sell Price দিন','error'); return; }
+  // Save split to local product database
+  _saveProductSplit(payload.name, splitI, splitA, splitR);
   closeModal('add-product');
   const ok=await postToAPI(payload);
   if(ok){
@@ -5430,13 +5818,28 @@ function openEditProduct(p){
   document.getElementById('eprod-alert').value=p.alert||5;
   document.getElementById('eprod-supplier').value=p.supplier||'';
   document.getElementById('eprod-notes').value=p.notes||'';
+  // Load saved profit split from local DB (or from product data if available)
+  const saved = _getProductSplit(p.name);
+  const si = p.splitIsmail != null ? parseFloat(p.splitIsmail) : saved.ismail;
+  const sa = p.splitAshik  != null ? parseFloat(p.splitAshik)  : saved.ashik;
+  const sr = p.splitRabbi  != null ? parseFloat(p.splitRabbi)  : saved.rabbi;
+  document.getElementById('eprod-split-ismail').value = si;
+  document.getElementById('eprod-split-ashik').value  = sa;
+  document.getElementById('eprod-split-rabbi').value  = sr;
+  updateProductSplitPreview('edit');
   openModal('edit-product');
 }
 
 async function updateProduct(){
+  const splitI = parseFloat(document.getElementById('eprod-split-ismail')?.value||0);
+  const splitA = parseFloat(document.getElementById('eprod-split-ashik')?.value||0);
+  const splitR = parseFloat(document.getElementById('eprod-split-rabbi')?.value||0);
+  const totalSplit = splitI + splitA + splitR;
+  if(totalSplit > 100){ showToast('⚠️ প্রফিট শতাংশের মোট ১০০% এর বেশি হতে পারবে না','error'); return; }
+  const productName = document.getElementById('eprod-name').value;
   const payload={
     action:'updateProduct', productId:currentEditProductId,
-    name: document.getElementById('eprod-name').value,
+    name: productName,
     category: document.getElementById('eprod-cat').value,
     cost: document.getElementById('eprod-cost').value,
     sell: document.getElementById('eprod-sell').value,
@@ -5445,7 +5848,12 @@ async function updateProduct(){
     alert: document.getElementById('eprod-alert').value,
     supplier: document.getElementById('eprod-supplier').value,
     notes: document.getElementById('eprod-notes').value,
+    splitIsmail: splitI,
+    splitAshik:  splitA,
+    splitRabbi:  splitR,
   };
+  // Update local product split DB
+  _saveProductSplit(productName, splitI, splitA, splitR);
   closeModal('edit-product');
   const ok=await postToAPI(payload);
   if(ok){
@@ -6168,7 +6576,9 @@ window.onload = async function(){
     _renderNotifList();
     // Demo chart দেখাও (API load হওয়ার আগে)
     drawChart({});
-    showToast('InnoGix Business OS v29 loaded ✅','success');
+    // v31: Inventory product dropdown populate করো
+    populateOrderProductDropdown();
+    showToast('InnoGix Business OS v31 loaded ✅','success');
 
     // Google Sheets connection
     if(API_URL&&API_URL.includes('script.google.com')){

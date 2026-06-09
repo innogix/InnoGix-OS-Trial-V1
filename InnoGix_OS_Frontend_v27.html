@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InnoGix Business OS v32 — Amanah Security</title>
+<title>InnoGix Business OS v33 — Amanah Security</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -3506,7 +3506,7 @@ tbody td.muted{color:var(--text3);}
 // ✅ Partner balance REF error ছাড়া calculate
 // ═══════════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbzzWkKpZiOppJjAsm0llIkcfWf_1UoR1jM4ND0lp97tabPEt12v_0Ip-rCydC7n6CfF3A/exec"; // ← এখানে আপনার Google Apps Script URL বসান
+const API_URL = "https://script.google.com/macros/s/AKfycbzIB4COAUYG8nIMP2U_bdTc4YVK3wEV2nli4ChClbyh6C0xjunqeGsYQMedyrP0BiBp/exec"; // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5156,25 +5156,67 @@ async function loadLiveDashboard(){
     if (!salesRows || salesRows.length === 0) {
       try {
         const sd = await fetchFromAPI('sales');
-        if (sd && sd.data) salesRows = sd.data.map(r=>({div:String(r[5]||''),status:String(r[16]||'')}));
+        if (sd && sd.data) salesRows = sd.data.map(r=>({div:String(r[5]||''),status:String(r[16]||''),rawDateISO:String(r[1]||'')}));
       } catch(e) { salesRows = []; }
     }
     if (salesRows && salesRows.length > 0) {
+      // BUG #5 FIX (v33): আগে nowMonth define করা হতো কিন্তু filter-এ ব্যবহার হতো না।
+      // ফলে সব সময়ের data দিয়ে "orders this month" দেখাতো — misleading।
+      // এখন rawDateISO দিয়ে এই মাস ও বছর match করে filter করা হচ্ছে।
+      const now      = new Date();
+      const nowMonth = now.getMonth();        // 0-indexed
+      const nowYear  = now.getFullYear();
       const regionCount = {};
-      const nowMonth = new Date().getMonth();
+      let   thisMonthTotal = 0;
       salesRows.forEach(r => {
         const region = String(r.div || '').trim();
-        if (region) regionCount[region] = (regionCount[region] || 0) + 1;
+        if (!region) return;
+        // Date match: rawDateISO বা rawDate থেকে মাস/বছর বের করো
+        let inThisMonth = false;
+        try {
+          const raw = r.rawDateISO || r.rawDate || '';
+          if (raw) {
+            const d = new Date(raw);
+            if (!isNaN(d.getTime())) {
+              inThisMonth = (d.getMonth() === nowMonth && d.getFullYear() === nowYear);
+            } else {
+              // "31-May-2026" format — parse manually
+              const parts = String(raw).split('-');
+              if (parts.length === 3) {
+                const months = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+                const m = months[parts[1]];
+                const y = parseInt(parts[2]);
+                inThisMonth = (m === nowMonth && y === nowYear);
+              }
+            }
+          } else {
+            inThisMonth = true; // date নেই, তাহলে count করো
+          }
+        } catch(de) { inThisMonth = true; }
+        if (inThisMonth) {
+          regionCount[region] = (regionCount[region] || 0) + 1;
+          thisMonthTotal++;
+        }
       });
       if(Object.keys(regionCount).length > 0){
         const topRegion = Object.keys(regionCount).reduce((a,b)=>regionCount[b]>regionCount[a]?b:a, Object.keys(regionCount)[0]);
         const topCount = regionCount[topRegion] || 0;
         setEl('kpi-top-region', topRegion || '—');
         setEl('kpi-top-region-sub', topCount + ' orders this month');
-        // Bug 3 Fix: Top Region card clickable → filter sales by region
-        // Top Region card-এ onclick="openTopRegionModal()" already set in HTML — no override needed
       } else {
-        setEl('kpi-top-region', '—'); setEl('kpi-top-region-sub', 'No data');
+        // এই মাসে কোনো data নেই — সব সময়ের top region দেখাও
+        const allCount = {};
+        salesRows.forEach(r => {
+          const region = String(r.div || '').trim();
+          if (region) allCount[region] = (allCount[region] || 0) + 1;
+        });
+        if (Object.keys(allCount).length > 0) {
+          const topAll = Object.keys(allCount).reduce((a,b)=>allCount[b]>allCount[a]?b:a, Object.keys(allCount)[0]);
+          setEl('kpi-top-region', topAll || '—');
+          setEl('kpi-top-region-sub', allCount[topAll] + ' orders (all time)');
+        } else {
+          setEl('kpi-top-region', '—'); setEl('kpi-top-region-sub', 'No data');
+        }
       }
     }
   })();
@@ -5292,6 +5334,14 @@ async function loadLiveSales(){
       delivery:Number(r[15])||0,
       status:String(r[16]||'Pending'), payment:String(r[17]||'Cash'),
       courier:String(r[18]||''), tracking:String(r[19]||''), delStatus:String(r[20]||'Not Sent'), notes:String(r[21]||''),
+      // BUG #6 FIX (v33): v27 নতুন কলাম W–AB (index 22–27) parse করো।
+      // আগে এই কলামগুলো পড়া হতো না — Edit Order modal prefill হতো না।
+      codPct:      Number(r[22])||0,   // Col W — COD Charge %
+      codAmount:   Number(r[23])||0,   // Col X — COD টাকার পরিমাণ
+      netPayable:  Number(r[24])||0,   // Col Y — নেট পাবেন
+      splitIsmail: Number(r[25])||0,   // Col Z — Ismail %
+      splitAshik:  Number(r[26])||0,   // Col AA — Ashik %
+      splitRabbi:  Number(r[27])||0,   // Col AB — Rabbi %
     };
   }).filter(r=>r.customer && r.customer.trim()); // skip empty rows
   // BUG 2 FIX: Reverse so newest orders (highest SL#) appear at top
@@ -5799,6 +5849,26 @@ function openEditOrder(r){
   m.querySelector('#order-courier').value=r.courier||'';
   m.querySelector('#order-tracking').value=r.tracking||'';
   m.querySelector('#order-notes').value=r.notes||'';
+  // BUG #6 FIX (v33): v27 নতুন কলাম — COD%, COD Amount, Net Payable, Split% prefill করো
+  const codPctEl = document.getElementById('order-cod-pct');
+  if (codPctEl) {
+    codPctEl.value = r.codPct || 0;
+    // COD charge group দেখাও যদি COD% > 0
+    const codGrp = document.getElementById('cod-charge-group');
+    if (codGrp) codGrp.style.display = (r.codPct > 0) ? '' : 'none';
+    // COD amount ও net payable display update করো
+    const codDisp = document.getElementById('cod-charge-display');
+    if (codDisp && r.codAmount) codDisp.textContent = '৳ ' + Math.round(r.codAmount).toLocaleString();
+    const codNet = document.getElementById('cod-net-display');
+    if (codNet && r.netPayable) codNet.textContent = '৳ ' + Math.round(r.netPayable).toLocaleString();
+  }
+  // Split % prefill
+  const splitIEl = document.getElementById('split-ismail');
+  const splitAEl = document.getElementById('split-ashik');
+  const splitREl = document.getElementById('split-rabbi');
+  if (splitIEl) splitIEl.value = r.splitIsmail || 0;
+  if (splitAEl) splitAEl.value = r.splitAshik  || 0;
+  if (splitREl) splitREl.value = r.splitRabbi  || 0;
   openModal('add-order');
 }
 

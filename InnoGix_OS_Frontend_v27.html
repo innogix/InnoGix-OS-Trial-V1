@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InnoGix Business OS v33 — Amanah Security</title>
+<title>InnoGix Business OS v34 — Amanah Security</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -4400,6 +4400,33 @@ function showPage(id, el) {
   if(window.innerWidth<=900) closeSidebarMobile();
   // ─ Activity log এ পেজ ভিজিট লগ করো (activity-log পেজ বাদে)
   if(id !== 'activity-log') logAction(`"${pageTitles[id]?.[0] || id}" পেজ ভিজিট করেছেন`);
+
+  // ── PAGE-LEVEL LAZY RELOAD (v34 FIX) ──────────────────────────────
+  // ব্রাউজার refresh বা নতুন tab এর পরে in-memory data (liveSalesData etc.)
+  // খালি থাকে — page navigate করলে সেই page এর data স্বয়ংক্রিয়ভাবে reload করো।
+  if(!apiConnected) return; // API connected না থাকলে লোড করার দরকার নেই
+  if(id==='sales'){
+    if(!window.liveSalesData||window.liveSalesData.length===0)
+      loadLiveSales().then(()=>loadLiveCRM());
+  } else if(id==='inventory'){
+    if(!liveInventoryData||liveInventoryData.length===0)
+      loadLiveInventory();
+  } else if(id==='expense'){
+    if(!liveExpenseData||liveExpenseData.length===0)
+      loadLiveExpenses();
+  } else if(id==='partners'){
+    if(!livePartnerData||livePartnerData.length===0)
+      loadLivePartners();
+  } else if(id==='crm'){
+    if(!window.liveSalesData||window.liveSalesData.length===0)
+      loadLiveSales().then(()=>loadLiveCRM());
+    else if(!document.getElementById('crm-body')?.querySelector('tr[data-id]'))
+      loadLiveCRM();
+  } else if(id==='dashboard'){
+    // Dashboard সবসময় fresh load (KPI সবসময় latest চাই)
+    loadLiveDashboard();
+  }
+  // ──────────────────────────────────────────────────────────────────
 }
 function toggleSidebar(){
   const sb = document.getElementById('sidebar');
@@ -5431,6 +5458,9 @@ function formatBDDate(rawDT){
     return `${day}-${month}-${year} ${time}`;
   } catch(e){ return String(rawDT); }
 }
+// ── v34 FIX: explicit declarations (implicit globals reset on browser refresh) ──
+if(typeof liveSalesData === 'undefined') var liveSalesData = [];
+if(typeof liveCRMData   === 'undefined') var liveCRMData   = [];
 let liveExpenseData = [];
 async function loadLiveExpenses(){
   const data=await fetchFromAPI('expenses'); if(!data||!data.data) return;
@@ -6699,7 +6729,7 @@ window.onload = async function(){
     drawChart({});
     // v31: Inventory product dropdown populate করো
     populateOrderProductDropdown();
-    showToast('InnoGix Business OS v31 loaded ✅','success');
+    showToast('InnoGix Business OS v34 loaded ✅','success');
 
     // Google Sheets connection
     if(API_URL&&API_URL.includes('script.google.com')){

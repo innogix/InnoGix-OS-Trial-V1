@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>InnoGix Business OS v34 — Amanah Security</title>
+<title>InnoGix Business OS v35 — Amanah Security</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&family=Playfair+Display:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
@@ -1655,7 +1655,7 @@ tbody td.muted{color:var(--text3);}
           <div class="table-actions">
             <button class="btn primary" onclick="openModal('add-order')">+ New Order</button>
             <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="openModal('import-csv')">📥 Import CSV</button>
-            <button class="btn export-excel" onclick="exportTableToCSV('sales-table','sales-orders')">📥 Export Excel</button>
+            <button class="btn export-excel" onclick="exportSalesDataToCSV()">📥 Export Excel</button>
             <button class="btn export-pdf" onclick="exportTableToPDF('sales-table','InnoGix Sales Report')">📄 Download PDF</button>
             <button class="btn">🖨 Print</button>
           </div>
@@ -1749,7 +1749,7 @@ tbody td.muted{color:var(--text3);}
             <button class="btn primary" onclick="openModal('add-product')">+ Add Product</button>
             <button class="btn" onclick="openModal('stock-in')">📦 Stock In</button>
             <button class="btn" onclick="openModal('import-inventory-csv')" style="background:rgba(88,166,255,0.1);border-color:rgba(88,166,255,0.3);color:#58a6ff;">📥 CSV Import</button>
-            <button class="btn export-excel" onclick="exportTableToCSV('inv-body','inventory-data',true)">📥 Export Excel</button>
+            <button class="btn export-excel" onclick="exportInventoryDataToCSV()">📥 Export Excel</button>
             <button class="btn export-pdf" onclick="exportTableToPDF('inv-body','InnoGix Inventory Report',true)">📄 Download PDF</button>
           </div>
         </div>
@@ -4398,35 +4398,24 @@ function showPage(id, el) {
   if(id==='courier-hub') renderCourierHub();
   if(id==='activity-log') renderActivityLog();
   if(window.innerWidth<=900) closeSidebarMobile();
-  // ─ Activity log এ পেজ ভিজিট লগ করো (activity-log পেজ বাদে)
   if(id !== 'activity-log') logAction(`"${pageTitles[id]?.[0] || id}" পেজ ভিজিট করেছেন`);
 
-  // ── PAGE-LEVEL LAZY RELOAD (v34 FIX) ──────────────────────────────
-  // ব্রাউজার refresh বা নতুন tab এর পরে in-memory data (liveSalesData etc.)
-  // খালি থাকে — page navigate করলে সেই page এর data স্বয়ংক্রিয়ভাবে reload করো।
-  if(!apiConnected) return; // API connected না থাকলে লোড করার দরকার নেই
+  // ── v35 FIX: Lazy reload — browser refresh এর পরে page navigate করলে data reload ──
+  if(!apiConnected) return;
   if(id==='sales'){
-    if(!window.liveSalesData||window.liveSalesData.length===0)
-      loadLiveSales().then(()=>loadLiveCRM());
+    if(!(window.liveSalesData||[]).length) loadLiveSales().then(()=>loadLiveCRM());
   } else if(id==='inventory'){
-    if(!liveInventoryData||liveInventoryData.length===0)
-      loadLiveInventory();
+    if(!liveInventoryData||!liveInventoryData.length) loadLiveInventory();
   } else if(id==='expense'){
-    if(!liveExpenseData||liveExpenseData.length===0)
-      loadLiveExpenses();
-  } else if(id==='partners'){
-    if(!livePartnerData||livePartnerData.length===0)
-      loadLivePartners();
+    if(!liveExpenseData||!liveExpenseData.length) loadLiveExpenses();
+  } else if(id==='partner'){
+    if(!livePartnerData||!livePartnerData.length) loadLivePartners();
   } else if(id==='crm'){
-    if(!window.liveSalesData||window.liveSalesData.length===0)
-      loadLiveSales().then(()=>loadLiveCRM());
-    else if(!document.getElementById('crm-body')?.querySelector('tr[data-id]'))
-      loadLiveCRM();
+    if(!(window.liveSalesData||[]).length) loadLiveSales().then(()=>loadLiveCRM());
+    else if(!document.getElementById('crm-body')?.querySelector('tr td')) loadLiveCRM();
   } else if(id==='dashboard'){
-    // Dashboard সবসময় fresh load (KPI সবসময় latest চাই)
     loadLiveDashboard();
   }
-  // ──────────────────────────────────────────────────────────────────
 }
 function toggleSidebar(){
   const sb = document.getElementById('sidebar');
@@ -5434,6 +5423,7 @@ async function loadLiveInventory(){
     }
   });
   liveInventoryData = rows;
+  window.liveInventoryData = rows; // global for export
   // v31: Update order product dropdown with inventory products
   populateOrderProductDropdown();
   renderInventoryData(rows); showToast('Inventory loaded ✅','success');
@@ -5458,7 +5448,7 @@ function formatBDDate(rawDT){
     return `${day}-${month}-${year} ${time}`;
   } catch(e){ return String(rawDT); }
 }
-// ── v34 FIX: explicit declarations (implicit globals reset on browser refresh) ──
+// v35 FIX: explicit declarations — implicit globals reset silently on browser refresh
 if(typeof liveSalesData === 'undefined') var liveSalesData = [];
 if(typeof liveCRMData   === 'undefined') var liveCRMData   = [];
 let liveExpenseData = [];
@@ -5487,6 +5477,7 @@ async function loadLiveExpenses(){
     notes: String(r[8]||''),
   })).filter(r=>r.cat && String(r.cat).trim() && Number(r.amount)>=0);
   liveExpenseData = rows; // cache so filter works on live data
+  window.liveExpenseData = rows; // global for export
   window.allExpenses = rows; // global for KPI Detail
   renderExpenseRows(rows); updateExpenseCats(rows); showToast('Expenses loaded ✅','success');
 }
@@ -6606,6 +6597,108 @@ function exportTableToCSV(tableId, filename, isTbody) {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// v35 FIX: DATA-BASED EXPORT FUNCTIONS
+// DOM থেকে innerText পড়লে Date/Time কাটা যায়, বাংলা হরফ ভাঙে।
+// এই functions live data arrays থেকে সরাসরি clean CSV বানায়।
+// ═══════════════════════════════════════════════════════════════
+
+function _csvCell(v){
+  // একটা cell কে CSV safe string বানাও
+  const s = String(v===null||v===undefined?'':v).replace(/"/g,'""').replace(/\r?\n/g,' ');
+  return `"${s}"`;
+}
+function _downloadCSV(rows, filename){
+  const bom = '\uFEFF';
+  const csv = bom + rows.map(r=>r.map(_csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href=url; a.download=`${filename}_${date}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+// ── Sales Export ──────────────────────────────────────────────
+function exportSalesDataToCSV(){
+  const data = window.liveSalesData || liveSalesData || [];
+  if(!data.length){ showToast('কোনো Sales data নেই — আগে load করুন','error'); return; }
+  const header = ['#','Date','Time','Customer','Phone','Division','District','Thana','Address',
+                  'Product','Qty','Unit Price','Total','Paid','Due','Delivery','Status','Payment',
+                  'Courier','Tracking','Del Status','Notes'];
+  const rows = [header, ...data.map(r=>[
+    r.id, r.date, r.time, r.customer, r.phone,
+    r.div, r.dist, r.thana, r.address,
+    r.product, r.qty, r.price, r.total, r.paid, r.due,
+    r.delivery, r.status, r.payment,
+    r.courier, r.tracking, r.delStatus, r.notes
+  ])];
+  _downloadCSV(rows,'sales-orders');
+  showToast(`📥 ${data.length}টি Order export হয়েছে`,'success');
+}
+
+// ── Inventory Export ──────────────────────────────────────────
+function exportInventoryDataToCSV(){
+  const data = window.liveInventoryData || liveInventoryData || [];
+  if(!data.length){ showToast('কোনো Inventory data নেই — আগে load করুন','error'); return; }
+  const header = ['#','Product Name','Category','Cost Price','Sell Price','Margin %','Opening Stock','Stock In','Stock Out (Sold)','Current Stock','Alert Level','Stock Status','Supplier','Supplier Phone'];
+  const rows = [header, ...data.map(r=>[
+    r.id, r.name, r.cat||r.category, r.cost, r.sell, r.margin,
+    r.opening, r.in, r.sold, r.current,
+    r.alert, r.stockStatus||'', r.supplier, r.supplierPhone
+  ])];
+  _downloadCSV(rows,'inventory-data');
+  showToast(`📥 ${data.length}টি Product export হয়েছে`,'success');
+}
+
+// ── Expense Export ────────────────────────────────────────────
+function exportExpenseDataToCSV(){
+  const data = window.liveExpenseData || liveExpenseData || [];
+  if(!data.length){ showToast('কোনো Expense data নেই — আগে load করুন','error'); return; }
+  const header = ['#','Date','Category','Description','Amount','Payment Method','Vendor','Invoice','Notes'];
+  const rows = [header, ...data.map(r=>[
+    r.id, r.date, r.cat||r.category, r.desc||r.description,
+    r.amount, r.payment||r.method, r.vendor, r.invoice, r.notes
+  ])];
+  _downloadCSV(rows,'expenses-data');
+  showToast(`📥 ${data.length}টি Expense export হয়েছে`,'success');
+}
+
+// ── Partner Export ────────────────────────────────────────────
+function exportPartnerDataToCSV(){
+  const data = window.livePartnerData || livePartnerData || [];
+  if(!data.length){ showToast('কোনো Partner data নেই — আগে load করুন','error'); return; }
+  const header = ['#','Date','Partner','Type','Amount','Payment Method','Description'];
+  const rows = [header, ...data.map(r=>[
+    r.id, r.date, r.partner, r.type, r.amount, r.method, r.desc
+  ])];
+  _downloadCSV(rows,'partners-data');
+  showToast(`📥 ${data.length}টি Transaction export হয়েছে`,'success');
+}
+
+// ── CRM/Customer Export ───────────────────────────────────────
+function exportCRMDataToCSV(){
+  const data = window.liveSalesData || liveSalesData || [];
+  if(!data.length){ showToast('কোনো Customer data নেই — আগে load করুন','error'); return; }
+  // Unique customers from sales data
+  const custMap = {};
+  data.forEach(r=>{
+    const k = r.phone||r.customer;
+    if(!custMap[k]) custMap[k] = {name:r.customer,phone:r.phone,orders:0,total:0,due:0,lastDate:r.date};
+    custMap[k].orders++;
+    custMap[k].total += Number(r.total||0);
+    custMap[k].due   += Number(r.due||0);
+    custMap[k].lastDate = r.date;
+  });
+  const custs = Object.values(custMap);
+  const header = ['Customer Name','Phone','Total Orders','Total Revenue','Due Amount','Last Order Date'];
+  const rows = [header, ...custs.map(c=>[c.name,c.phone,c.orders,c.total,c.due,c.lastDate])];
+  _downloadCSV(rows,'customers-data');
+  showToast(`📥 ${custs.length}জন Customer export হয়েছে`,'success');
+}
+
 /**
  * exportTableToPDF — প্রিন্ট-ডায়ালগ ব্যবহার করে PDF সেভ করার সুবিধা দেয়
  * @param {string} tableId  — table / tbody-এর id
@@ -6708,17 +6801,30 @@ window.onload = async function(){
       }
     } catch(e2){ console.warn('Refresh btn:', e2); }
 
-    // Wire export buttons
-    document.querySelectorAll('.btn').forEach(btn=>{
+    // ── v35 FIX: Export বাটন — page-specific, আগের code সব page এ sales data পাঠাত ──
+    // Sales ও Inventory page এ ইতিমধ্যে inline onclick আছে, তাই skip করা হচ্ছে।
+    // অন্য page গুলোতে সঠিক data-based function দিয়ে wire করা হচ্ছে।
+    document.querySelectorAll('#page-expense .table-actions .btn').forEach(btn=>{
       const t=btn.textContent.trim();
-      if(t==='⬇ Export'){
-        btn.onclick=()=>{
-          const page=document.querySelector('.page.active')?.id?.replace('page-','');
-          const map={sales:'sales-table',inventory:'inv-body',expense:'exp-body'};
-          exportToCSV(map[page]||'sales-table',page||'export');
-        };
-      }
-      if(t==='🖨 Print') btn.onclick=printPage;
+      if(t==='⬇ Export') btn.onclick=exportExpenseDataToCSV;
+      if(t==='🖨 Print')  btn.onclick=()=>exportTableToPDF('exp-body','Expense Report',true);
+    });
+    document.querySelectorAll('#page-partner .table-actions .btn').forEach(btn=>{
+      const t=btn.textContent.trim();
+      if(t==='⬇ Export') btn.onclick=exportPartnerDataToCSV;
+      if(t==='🖨 Print')  btn.onclick=()=>exportTableToPDF('partner-body','Partner Ledger',true);
+    });
+    document.querySelectorAll('#page-crm .table-actions .btn').forEach(btn=>{
+      const t=btn.textContent.trim();
+      if(t==='⬇ Export') btn.onclick=exportCRMDataToCSV;
+      if(t==='🖨 Print')  btn.onclick=()=>exportTableToPDF('crm-body','Customer Report',true);
+    });
+    // Inventory Export Excel — data-based এ upgrade
+    const invExportBtn = document.querySelector('.btn.export-excel[onclick*="inv-body"]');
+    if(invExportBtn) invExportBtn.onclick=exportInventoryDataToCSV;
+    // Print global fallback
+    document.querySelectorAll('.btn').forEach(btn=>{
+      if(btn.textContent.trim()==='🖨 Print' && !btn.onclick) btn.onclick=printPage;
     });
 
     startClock();
@@ -6729,7 +6835,7 @@ window.onload = async function(){
     drawChart({});
     // v31: Inventory product dropdown populate করো
     populateOrderProductDropdown();
-    showToast('InnoGix Business OS v34 loaded ✅','success');
+    showToast('InnoGix Business OS v35 loaded ✅','success');
 
     // Google Sheets connection
     if(API_URL&&API_URL.includes('script.google.com')){
@@ -7603,13 +7709,15 @@ async function impSubmit() {
     res.style.border='1px solid rgba(34,201,122,0.3)';
     res.style.color='var(--green)';
     res.textContent = `✅ ${success}টি order সফলভাবে import হয়েছে!`;
-    // Refresh all
+    // v35 FIX: সব module refresh করো — import এর পরে সব page এ data দেখা যাবে
     setTimeout(()=>{
       closeModal('import-csv');
       impReset();
       loadLiveSales().then(()=>{ loadLiveCRM(); });
       loadLiveDashboard();
       loadLiveInventory();
+      loadLiveExpenses();
+      loadLivePartners();
       showToast(`✅ ${success}টি order import সম্পন্ন!`,'success');
     }, 2000);
   } else {

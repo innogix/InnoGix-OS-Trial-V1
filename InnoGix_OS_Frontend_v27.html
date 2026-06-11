@@ -3545,7 +3545,7 @@ tbody td.muted{color:var(--text3);}
 // ✅ Partner balance REF error ছাড়া calculate
 // ═══════════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbxS1GhTm4aUZD8Lt4uaQxpqLbgzCCYov3hZm0XBNY3BuSpOO1nBZ8yx1-aorliYGTrv6A/exec"; // ← এখানে আপনার Google Apps Script URL বসান
+const API_URL = "https://script.google.com/macros/s/AKfycbyx_jsHAYjMOCkMpnWzJYO4-VMCNnRB3HH6_JgTCIuHy4E_ZsUTI4YITJ3DkmJ3nVKq/exec"; // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -3693,6 +3693,8 @@ async function fetchFromAPI(action, params = {}) {
 // ─── BUG 1 FIX: postToAPI now uses GET (CORS-safe for Apps Script) ──────
 // Google Apps Script Web Apps reject POST requests from browsers due to CORS
 // preflight failures. Encoding the payload as a base64 GET param avoids this.
+// ─── BUG 1 FIX v2: postToAPI now returns full response data (not just true/false)
+// so that addOrder can return the actual row/orderId from Google Sheet.
 async function postToAPI(payload) {
   if (!API_URL || !API_URL.includes('script.google.com')) {
     showToast('Google Sheets URL সেট নেই — Setup Guide দেখুন', 'error'); return false;
@@ -3708,7 +3710,8 @@ async function postToAPI(payload) {
       const result = await jsonpFetch(url);
       if (!result) return false;
       if (result.status === 'error') { showToast('Backend error: '+(result.message||'অজানা সমস্যা'),'error'); return false; }
-      return result.status === 'success' || result.status === 'ok';
+      // ✅ BUG 1 FIX: Return full result object so caller can read .row, .orderId etc.
+      return (result.status === 'success' || result.status === 'ok') ? result : false;
     }
     // http/https → regular fetch with timeout
     const ctrl  = new AbortController();
@@ -3725,7 +3728,8 @@ async function postToAPI(payload) {
       return false;
     }
     if (data.status === 'error') { showToast('Backend error: '+(data.message||'অজানা সমস্যা'),'error'); return false; }
-    return data.status === 'success' || data.status === 'ok';
+    // ✅ BUG 1 FIX: Return full data object (not just boolean) so addOrder gets row number
+    return (data.status === 'success' || data.status === 'ok') ? data : false;
   } catch(e) {
     showToast(e.name==='AbortError' ? 'Timeout — পুনরায় চেষ্টা করুন' : 'Error: '+e.message, 'error');
     return false;
@@ -5824,6 +5828,14 @@ async function submitOrder(){
   resetOrderModal();
   const ok=await postToAPI(payload);
   if(ok){
+    // ✅ BUG 1 FIX: Capture the Google Sheet row number returned by addOrder.
+    // GS returns { status:'success', row: <rowNumber> } for addOrder.
+    // This row number IS the order's SL# (Col A) which is used for tracking lookup.
+    // Store it globally so the courier dispatch hook can use the real ID.
+    if (!currentEditOrderId && ok.row) {
+      window._lastAddedOrderRow = ok.row; // actual sheet row (e.g. 5)
+      window._lastAddedOrderId  = String(ok.row - 1); // SL# = row - 1 (row 2 = SL#1)
+    }
     showToast(currentEditOrderId?'✅ Order updated!':'✅ Order saved!','success');
     logAction(currentEditOrderId ? `Order #${currentEditOrderId} আপডেট করেছেন` : `নতুন Order এন্ট্রি করেছেন — ${payload.customer} (${payload.product})`);
     // MODULE 1: Profit Split — নতুন অর্ডারে প্রফিট বণ্টন করো
@@ -8425,12 +8437,12 @@ if ('serviceWorker' in navigator) {
 ═══════════════════════════════════════════════════════════ */
 
 const COURIER_CONFIG = {
-  Pathao:      { cls:'pathao',    icon:'🏍️', color:'#f02d65', baseDelivery: 60 },
-  Steadfast:   { cls:'steadfast', icon:'🚛', color:'#0a84ff', baseDelivery: 70 },
-  Redx:        { cls:'redx',      icon:'🔴', color:'#e83a2b', baseDelivery: 65 },
-  'SA Paribahan':{ cls:'sa',      icon:'🟢', color:'#22c55e', baseDelivery: 80 },
-  Sundarban:   { cls:'sundarban', icon:'🌿', color:'#f59e0b', baseDelivery: 75 },
-  Janani:      { cls:'janani',    icon:'💜', color:'#8b5cf6', baseDelivery: 70 },
+  Pathao:      { cls:'pathao',    icon:'🏍️', color:'#f02d65', baseDelivery: 60,  trackUrl: 'https://pathao.com/track/{code}' },
+  Steadfast:   { cls:'steadfast', icon:'🚛', color:'#0a84ff', baseDelivery: 70,  trackUrl: 'https://steadfast.com.bd/t/{code}' },
+  Redx:        { cls:'redx',      icon:'🔴', color:'#e83a2b', baseDelivery: 65,  trackUrl: 'https://redx.com.bd/track-parcel/?trackingId={code}' },
+  'SA Paribahan':{ cls:'sa',      icon:'🟢', color:'#22c55e', baseDelivery: 80,  trackUrl: '' },
+  Sundarban:   { cls:'sundarban', icon:'🌿', color:'#f59e0b', baseDelivery: 75,  trackUrl: '' },
+  Janani:      { cls:'janani',    icon:'💜', color:'#8b5cf6', baseDelivery: 70,  trackUrl: '' },
 };
 
 // ── বর্তমান অবস্থানের লিস্ট (ট্র্যাকিং সিমুলেশন)
@@ -8471,11 +8483,14 @@ function buildCourierData() {
 
     // ট্র্যাকিং লোকেশন — স্ট্যাটাস দিয়ে অনুমান
     const locMap = { Pending:'Warehouse', Processing:'Sorting Hub', 'In Transit':'District Hub', Delivered:'Delivered', Returned:'Sorting Hub', Cancelled:'Warehouse' };
+    // ✅ BUG 1 FIX: Use the actual SL# (o.id) stored in salesData — not a padded fake ID.
+    // o.id = SL# from Col A (e.g. "1", "2"). orderId sent to GS for tracking lookup must match.
+    const realId = o.id || o.orderId || o.OrderID || String(idx+1);
     r.orders.push({
       date:      o.date || o.Date || '—',
       customer:  o.customer || o.Customer || '—',
-      orderId:   o.orderId || o.OrderID || `#${String(idx+1).padStart(5,'0')}`,
-      tracking:  o.tracking || o.Tracking || `TRK-${cName.slice(0,2).toUpperCase()}${String(Math.floor(Math.random()*900000)+100000)}`,
+      orderId:   realId,
+      tracking:  o.tracking || o.Tracking || '',
       location:  locMap[stat] || 'In Transit',
       status:    stat,
       delivFee,
@@ -8565,14 +8580,27 @@ function renderCourierTable(data) {
   const cfg = COURIER_CONFIG;
 
   tbody.innerHTML = rows.slice(0, 200).map((r, i) => {
-    const clsKey = cfg[r.courier]?.cls || '';
+    const clsKey   = cfg[r.courier]?.cls || '';
+    const trackUrl = cfg[r.courier]?.trackUrl || '';
+    // ✅ BUG 2 FIX: Build tracking link for this order's tracking code
+    const trackLink = (r.tracking && trackUrl)
+      ? trackUrl.replace('{code}', encodeURIComponent(r.tracking))
+      : '';
+    // Tracking cell: show code + copy-link button if URL exists
+    const trackCell = r.tracking
+      ? `<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${r.tracking}</span>${
+          trackLink
+          ? ` <button onclick="(function(){navigator.clipboard.writeText('${trackLink.replace(/'/g,"\\'")}').then(()=>showToast('✅ ট্র্যাকিং লিংক কপি হয়েছে!','success')).catch(()=>{window.open('${trackLink.replace(/'/g,"\\'")}','_blank');});})()"
+               title="ট্র্যাকিং লিংক কপি করুন" style="margin-left:4px;padding:2px 7px;font-size:10px;font-weight:700;background:var(--blue);color:#fff;border:none;border-radius:5px;cursor:pointer;">🔗 কপি</button>`
+          : ''}`
+      : '<span style="color:var(--text3);font-size:11px;">—</span>';
     return `<tr>
       <td style="color:var(--text3);font-size:11px;">${i+1}</td>
       <td style="font-size:11px;color:var(--text3);">${r.date}</td>
       <td style="font-weight:600;">${r.customer}</td>
       <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue);">${r.orderId}</td>
       <td><span class="courier-badge-pill cb-${clsKey}">${cfg[r.courier]?.icon||''} ${r.courier}</span></td>
-      <td style="font-family:'IBM Plex Mono',monospace;font-size:11px;">${r.tracking}</td>
+      <td>${trackCell}</td>
       <td style="font-size:12px;">${r.location}</td>
       <td class="delivery-cost-cell">৳${fmt(r.delivFee)}</td>
       <td class="cod-cost-cell" style="color:${r.codAmt>0?'var(--red)':'var(--text3)'};" title="COD চার্জ: ৳${fmt(r.codAmt)}">৳${fmt(r.codAmt)}</td>
@@ -8900,7 +8928,7 @@ function _mapCourierStatus(rawStatus, courierName) {
     const _netPay   = Math.max(0, _customerPayable - _codAmt);
 
     const orderSnapshot = {
-      orderId:     `#${String(Date.now()).slice(-6)}`,  // temp; Google Sheet থেকে override হবে
+      orderId:     `#${String(Date.now()).slice(-6)}`,  // temp; overridden below after sheet save
       customer:    m.querySelector("#order-customer")?.value || "",
       phone:       m.querySelector("#order-phone")?.value || "",
       division:    m.querySelector("#order-division")?.value || "",
@@ -8923,6 +8951,14 @@ function _mapCourierStatus(rawStatus, courierName) {
 
     // ── মূল OS submitOrder চালাও (Google Sheet save)
     await _original();
+
+    // ✅ BUG 1 FIX: After save, replace temp orderId with the real SL# from Google Sheet.
+    // _original() (submitOrder) stores ok.row in window._lastAddedOrderId.
+    // updateTracking GAS looks up Col A (SL#) with this ID.
+    if (window._lastAddedOrderId) {
+      orderSnapshot.orderId = String(window._lastAddedOrderId);
+      window._lastAddedOrderId = null; // clear after use
+    }
 
     // ── OS save সফল হলে courier API-তে dispatch করো
     // (ছোট delay দিয়ে UI toast collision এড়াও)

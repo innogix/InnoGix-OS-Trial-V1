@@ -3545,7 +3545,7 @@ tbody td.muted{color:var(--text3);}
 // ✅ Partner balance REF error ছাড়া calculate
 // ═══════════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbwCIIWmF_v_FtmtsBBYPNVYRkC8Kl3QPFEzHBBepOJ0QlGVt5BBSmvHEfAktReW00eE/exec"; // ← এখানে আপনার Google Apps Script URL বসান
+const API_URL = "https://script.google.com/macros/s/AKfycbxS1GhTm4aUZD8Lt4uaQxpqLbgzCCYov3hZm0XBNY3BuSpOO1nBZ8yx1-aorliYGTrv6A/exec"; // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -4317,8 +4317,11 @@ function updateCompanyFundPreview() {
     const totalSale  = parseFloat(totalPriceEl.value||0);
     const delivery   = parseFloat(deliveryEl?.value||0);
     const codPct2    = parseFloat(codPctEl2?.value||0);
-    const codAmt2    = (totalSale * codPct2) / 100;
-    const netProfit  = totalSale - delivery - codAmt2;
+    // ✅ BUG #2 FIX: COD % applies to customerPayable (totalSale + delivery)
+    const customerPayable2 = totalSale + delivery;
+    const codAmt2    = (customerPayable2 * codPct2) / 100;
+    // netProfit = totalSale - codAmt2 (delivery is pass-through, cancels out)
+    const netProfit  = totalSale - codAmt2;
     const codNote    = codAmt2 > 0 ? ` (COD: ৳${Math.round(codAmt2).toLocaleString()} বাদে)` : '';
     el('preview-net').textContent = netProfit > 0 ? '৳' + Math.round(netProfit).toLocaleString() + codNote : '—';
   }
@@ -5714,11 +5717,17 @@ function calcDue(){
   const delivery=parseFloat(document.querySelector('#modal-add-order #order-delivery')?.value)||0;
   const codPctEl=document.getElementById('order-cod-pct');
   const codPct=codPctEl?parseFloat(codPctEl.value)||0:0;
-  const codCharge=codPct>0?parseFloat(((total*codPct)/100).toFixed(2)):0;
-  const netAfterCod=total-codCharge;
+  // ✅ BUG #2 FIX: Customer Payable = Product Total + Delivery Charge
+  // COD % applies to the full customer payable — NOT just product total.
+  // COD fee is OUR expense and must NOT reduce what the customer pays.
+  const customerPayable=total+delivery;
+  const codCharge=codPct>0?parseFloat(((customerPayable*codPct)/100).toFixed(2)):0;
+  // netAfterCod = what we actually receive after courier deducts COD fee
+  const netAfterCod=Math.max(0,customerPayable-codCharge);
   if(document.getElementById('cod-charge-display')) document.getElementById('cod-charge-display').textContent='৳ '+codCharge.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
   if(document.getElementById('cod-net-display')) document.getElementById('cod-net-display').textContent='৳ '+netAfterCod.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('due-amount').value=Math.max(0,total+delivery-paid);
+  // Due = Customer Payable - already paid (customer owes the full product+delivery amount)
+  document.getElementById('due-amount').value=Math.max(0,customerPayable-paid);
 }
 function toggleCodField(){
   const pm=document.getElementById('order-payment');
@@ -5791,13 +5800,16 @@ async function submitOrder(){
     codPct: (()=>{ const el=document.getElementById('order-cod-pct'); return el?el.value:'0'; })(),
     codCharge: (()=>{ const el=document.getElementById('cod-charge-display'); if(!el) return '0'; return el.textContent.replace('৳','').replace(/,/g,'').trim()||'0'; })(),
     netPayable: (()=>{
-      // Net Payable = Total - Delivery Charge - COD Charge (এটা ডাটাবেজে সেভ হবে)
+      // ✅ BUG #2 FIX: Customer Payable = Total + Delivery (what courier collects)
+      // COD fee is deducted from OUR net — NOT from customer's bill.
+      // netPayable = what we actually receive after COD fee deduction.
       const tp  = parseFloat(document.getElementById('total-price')?.value||0);
       const del = parseFloat(m.querySelector('#order-delivery')?.value||0);
+      const customerPayable = tp + del;
       const codPctEl = document.getElementById('order-cod-pct');
       const codPct   = codPctEl ? parseFloat(codPctEl.value)||0 : 0;
-      const codAmt   = (tp * codPct) / 100;
-      return Math.max(0, tp - del - codAmt).toFixed(2);
+      const codAmt   = (customerPayable * codPct) / 100;
+      return Math.max(0, customerPayable - codAmt).toFixed(2);
     })(),
     status: m.querySelector('#order-status').value,
     courier: m.querySelector('#order-courier').value,
@@ -5819,8 +5831,12 @@ async function submitOrder(){
       const totalSale = parseFloat(payload.price||0) * parseFloat(payload.qty||1);
       const delivery  = parseFloat(payload.delivery||0);
       const codChargeSplit = parseFloat(payload.codCharge||0);
-      // Net Profit = Total Sale - Delivery Charge - COD Charge
-      const netProfit = Math.max(0, totalSale - delivery - codChargeSplit);
+      // ✅ BUG #2 FIX: Net Profit = Customer Payable - COD Charge
+      // Customer Payable = totalSale + delivery (courier collects both from customer)
+      // Delivery is a pass-through — we receive it back, so it cancels out in profit.
+      // Final: Net Profit = totalSale - codChargeSplit
+      const customerPayable = totalSale + delivery;
+      const netProfit = Math.max(0, customerPayable - delivery - codChargeSplit);
       if (netProfit > 0) {
         // ── AUTO-LINK: Inventory থেকে product-specific split নাও ──
         const productName = payload.product || '';
@@ -8436,10 +8452,12 @@ function buildCourierData() {
     const codPct = parseFloat(o.codPct || o.CODPct || o['COD%'] || 0);
     // salesData-এ codAmount (col X) সরাসরি আছে, সেটা ব্যবহার করো
     const savedCodAmt = parseFloat(o.codAmount || o.codCharge || o.CODCharge || o['COD Charge'] || 0);
-    const codAmt = savedCodAmt > 0 ? savedCodAmt : Math.round((total * codPct) / 100);
+    // ✅ BUG #2 FIX: COD % applies to customerPayable (total + delivery), not just total
+    const customerPayable = total + delivFee;
+    const codAmt = savedCodAmt > 0 ? savedCodAmt : Math.round((customerPayable * codPct) / 100);
     // netPayable সরাসরি থাকলে সেটা ব্যবহার করো, না হলে হিসাব করো
     const savedNetPay = parseFloat(o.netPayable || 0);
-    const netPay = savedNetPay > 0 ? savedNetPay : Math.max(0, total - delivFee - codAmt);
+    const netPay = savedNetPay > 0 ? savedNetPay : Math.max(0, customerPayable - codAmt);
 
     const r = result[cName];
     r.total++;
@@ -8625,17 +8643,10 @@ function _fixPhone(raw) {
 // বিদ্যমান calcDue ফাংশনকে extend করি যাতে courier-hub ও আপডেট হয়
 const _origCalcDue = window.calcDue;
 window.calcDue = function() {
+  // ✅ BUG #2 FIX: _origCalcDue (Fix D) already runs the correct COD calculation.
+  // The duplicate calculation below was overwriting the correct values with wrong ones
+  // (was using total*codPct instead of customerPayable*codPct) — removed entirely.
   if (typeof _origCalcDue === 'function') _origCalcDue();
-  // COD display আপডেট
-  const total   = parseFloat(document.getElementById('total-price')?.value) || 0;
-  const deliv   = parseFloat(document.getElementById('order-delivery')?.value) || 0;
-  const codPct  = parseFloat(document.getElementById('order-cod-pct')?.value) || 0;
-  const codAmt  = (total * codPct) / 100;
-  const netPay  = total - deliv - codAmt;
-  const dispEl  = document.getElementById('cod-charge-display');
-  const netEl   = document.getElementById('cod-net-display');
-  if (dispEl) dispEl.textContent = `৳ ${fmt(codAmt)}`;
-  if (netEl)  netEl.textContent  = `৳ ${fmt(netPay)}`;
 };
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -8680,7 +8691,9 @@ async function bookWithSteadfast(order) {
     codCharge:   order.codCharge   || 0,
     netPayable:  order.netPayable  || 0,
     notes:       order.notes    || '',
-    cod_amount:  parseFloat(order.netPayable || order.cod_amount || order.total || 0),
+    // ✅ BUG #2 FIX: cod_amount = Customer Payable = product total + delivery
+    // Courier must collect the FULL customer bill. COD fee is OUR cost, not customer's.
+    cod_amount:  Math.round(parseFloat(order.total||0) + parseFloat(order.delivery||0)),
   };
   return await _gasBookCourier(payload);
 }
@@ -8702,7 +8715,8 @@ async function bookWithPathao(order) {
     product:     order.product  || '',
     qty:         order.qty      || 1,
     notes:       order.notes    || '',
-    cod_amount:  parseFloat(order.netPayable || order.cod_amount || order.total || 0),
+    // ✅ BUG #2 FIX: cod_amount = Customer Payable = product total + delivery
+    cod_amount:  Math.round(parseFloat(order.total||0) + parseFloat(order.delivery||0)),
   };
   return await _gasBookCourier(payload);
 }
@@ -8878,8 +8892,12 @@ function _mapCourierStatus(rawStatus, courierName) {
     const _delivery = parseFloat(m.querySelector("#order-delivery")?.value || "0") || 0;
     const _codPct   = parseFloat(document.getElementById("order-cod-pct")?.value || "0") || 0;
     const _total    = _qty * _price;
-    const _codAmt   = Math.round(_total * _codPct / 100);
-    const _netPay   = Math.max(0, _total - _delivery - _codAmt);
+    // ✅ BUG #2 FIX: COD % applies to customerPayable (product total + delivery)
+    // COD fee is OUR expense — deducted from our net, NOT from what customer pays.
+    const _customerPayable = _total + _delivery;
+    const _codAmt   = Math.round(_customerPayable * _codPct / 100);
+    // _netPay = what we receive after courier deducts COD fee
+    const _netPay   = Math.max(0, _customerPayable - _codAmt);
 
     const orderSnapshot = {
       orderId:     `#${String(Date.now()).slice(-6)}`,  // temp; Google Sheet থেকে override হবে

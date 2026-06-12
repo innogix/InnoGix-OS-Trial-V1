@@ -8700,7 +8700,7 @@ async function manualBookCourier(orderId, courierName) {
       // FIX 1: cod_amount = customerPayable (Product Total + Delivery), NOT netPayable
       cod_amount: (Number(ord.total||0) + Number(ord.delivery||0)),
     };
-    const result = await gas(payload);
+    const result = await _gasBookCourier(payload);
     if (result?.status === 'success') {
       showToast('✅ ' + courierName + ' বুকিং সম্পন্ন! CN: ' + (result.tracking_code||'—'), 'success');
       renderCourierHub();

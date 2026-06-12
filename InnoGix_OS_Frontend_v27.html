@@ -8682,7 +8682,7 @@ async function manualBookCourier(orderId, courierName) {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ বুকিং হচ্ছে...'; }
   try {
     // salesData থেকে এই order-এর পুরো info নাও
-    const allOrders = window.salesData || [];
+    const allOrders = window.liveSalesData || liveSalesData || [];
     const ord = allOrders.find(o => String(o.id||o.orderId||'') === String(orderId)) || {};
     const payload = {
       action:   'bookCourier',

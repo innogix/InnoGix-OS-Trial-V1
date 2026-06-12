@@ -8606,11 +8606,11 @@ function renderCourierTable(data) {
     // FIX 2.1+2.2+2.3: consignmentId/CN# সঠিকভাবে দেখাও + working copy button
     const rawCN = r.consignmentId || r.tracking || '';
     const trackCell = rawCN
-      ? ('<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.4px;">' + rawCN + '</span>'
+      ? ('<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.4px;">' + rawCN + '</span>'
         + '<button onclick="(function(){var v=' + JSON.stringify(rawCN) + ';'
         + 'if(navigator.clipboard&&navigator.clipboard.writeText){'
-        + 'navigator.clipboard.writeText(v).then(function(){showToast('✅ CN# কপি হয়েছে!','success');}).catch(function(){var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('✅ কপি হয়েছে!','success');});'
-        + '}else{var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('✅ কপি হয়েছে!','success');};})()"'
+        + 'navigator.clipboard.writeText(v).then(function(){showToast(\'✅ CN# কপি হয়েছে!\',\'success\');}).catch(function(){var t=document.createElement(\'textarea\');t.value=v;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);showToast(\'✅ কপি হয়েছে!\',\'success\');});'
+        + '}else{var t=document.createElement(\'textarea\');t.value=v;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);showToast(\'✅ কপি হয়েছে!\',\'success\');};})()"'
         + ' title="Consignment ID কপি" style="margin-left:5px;padding:2px 8px;font-size:10px;font-weight:700;background:rgba(77,158,255,.15);color:var(--blue);border:1px solid rgba(77,158,255,.4);border-radius:5px;cursor:pointer;">📋 CN</button>'
         + (trackLink ? '<a href="' + trackLink + '" target="_blank" style="margin-left:4px;padding:2px 7px;font-size:10px;background:rgba(52,209,116,.15);color:var(--green);border:1px solid rgba(52,209,116,.3);border-radius:5px;text-decoration:none;font-weight:700;">🔗</a>' : ''))
       : '<span style="color:var(--text3);font-size:11px;">—</span>';
@@ -8619,14 +8619,14 @@ function renderCourierTable(data) {
     const notBooked = !rawCN && (r.courier === 'Steadfast' || r.courier === 'Pathao');
     const oid = String(r.orderId).replace(/'/g, "\\'");
     const statusCell = notBooked
-      ? '<button onclick="manualBookCourier('' + oid + '','' + r.courier + '')" title="' + r.courier + '-এ বুক করুন" style="padding:3px 10px;font-size:11px;font-weight:700;background:rgba(212,160,23,.2);color:var(--gold,#f0b429);border:1px solid rgba(212,160,23,.45);border-radius:6px;cursor:pointer;">🚀 Book Courier</button>'
+      ? '<button onclick="manualBookCourier(\'' + oid + '\',\'' + r.courier + '\')" title="' + r.courier + '-এ বুক করুন" style="padding:3px 10px;font-size:11px;font-weight:700;background:rgba(212,160,23,.2);color:var(--gold,#f0b429);border:1px solid rgba(212,160,23,.45);border-radius:6px;cursor:pointer;">🚀 Book Courier</button>'
       : '<span style="font-size:11px;font-weight:700;color:' + (statusColor[r.status]||'var(--text3)') + ';">' + r.status + '</span>';
 
     return '<tr>'
       + '<td style="color:var(--text3);font-size:11px;">' + (i+1) + '</td>'
       + '<td style="font-size:11px;color:var(--text3);">' + r.date + '</td>'
       + '<td style="font-weight:600;">' + r.customer + '</td>'
-      + '<td style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--blue);">' + r.orderId + '</td>'
+      + '<td style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--blue);">' + r.orderId + '</td>'
       + '<td><span class="courier-badge-pill cb-' + clsKey + '">' + (cfg[r.courier]?.icon||'') + ' ' + r.courier + '</span></td>'
       + '<td>' + trackCell + '</td>'
       + '<td style="font-size:12px;">' + r.location + '</td>'

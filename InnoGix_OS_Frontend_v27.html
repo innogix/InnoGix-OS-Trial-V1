@@ -8676,6 +8676,28 @@ function renderCODStats(data) {
     </div>`;
 }
 
+// ── GAS-এ raw call — পুরো response (status/message/tracking_code) অপরিবর্তিত ফেরায়
+async function _gasRawCall(payload) {
+  if (!API_URL || !API_URL.includes('script.google.com')) {
+    return { status:'error', message:'API URL সেট নেই — Setup করুন' };
+  }
+  const jsonStr = JSON.stringify(payload);
+  const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(jsonStr))));
+  const url     = `${API_URL}?action=${encodeURIComponent(payload.action||'')}&data=${encoded}`;
+  try {
+    const ctrl  = new AbortController();
+    const timer = setTimeout(()=>ctrl.abort(), 30000);
+    const res   = await fetch(url, { method:'GET', redirect:'follow', signal:ctrl.signal });
+    clearTimeout(timer);
+    if (!res.ok) return { status:'error', message:'HTTP ' + res.status };
+    const data = safeJSONParse(await res.text());
+    if (!data) return { status:'error', message:'Response parse ব্যর্থ' };
+    return data;
+  } catch(e) {
+    return { status:'error', message: (e.name === 'AbortError') ? 'Timeout' : e.message };
+  }
+}
+
 // ── Feature 5: Manual Book Courier — "🚀 Book Courier" বাটনের handler
 async function manualBookCourier(orderId, courierName) {
   const btn = event?.target;
@@ -8700,7 +8722,7 @@ async function manualBookCourier(orderId, courierName) {
       // FIX 1: cod_amount = customerPayable (Product Total + Delivery), NOT netPayable
       cod_amount: (Number(ord.total||0) + Number(ord.delivery||0)),
     };
-    const result = await _gasBookCourier(payload);
+    const result = await _gasRawCall(payload);
     if (result?.status === 'success') {
       showToast('✅ ' + courierName + ' বুকিং সম্পন্ন! CN: ' + (result.tracking_code||'—'), 'success');
       renderCourierHub();

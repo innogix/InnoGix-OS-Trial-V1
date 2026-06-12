@@ -8725,6 +8725,8 @@ async function manualBookCourier(orderId, courierName) {
     const result = await _gasRawCall(payload);
     if (result?.status === 'success') {
       showToast('✅ ' + courierName + ' বুকিং সম্পন্ন! CN: ' + (result.tracking_code||'—'), 'success');
+      // in-memory data + UI dynamically আপডেট করো (sheet আগেই server-এ সেভ হয়ে গেছে)
+      _updateOSTracking(orderId, result.tracking_code||'', result.order_status||'Pending', courierName, true);
       renderCourierHub();
     } else {
       showToast('❌ বুকিং ব্যর্থ: ' + (result?.message||'Unknown error'), 'error');
@@ -8961,14 +8963,14 @@ async function dispatchCourierBooking(order) {
  * কুরিয়ারের সার্ভার থেকে আসা tracking_code ও status
  * OS-এর কুরিয়ার ম্যানেজার টেবিলে এবং Google Sheet-এ আপডেট করো।
  */
-function _updateOSTracking(orderId, trackingCode, liveStatus, courierName) {
+function _updateOSTracking(orderId, trackingCode, liveStatus, courierName, skipSheetWrite) {
   // ── ১. salesData array আপডেট (in-memory)
   // liveSalesData ও salesData দুটোই আপডেট করো
   const _sArr = (typeof liveSalesData !== "undefined" && liveSalesData.length) ? liveSalesData
                : (typeof salesData !== "undefined" ? salesData : []);
   if (_sArr.length) {
     const idx = _sArr.findIndex(
-      o => (o.orderId || o.OrderID || "") === String(orderId)
+      o => String(o.id || o.orderId || o.OrderID || "") === String(orderId)
     );
     if (idx > -1) {
       _sArr[idx].tracking  = trackingCode;
@@ -8982,7 +8984,8 @@ function _updateOSTracking(orderId, trackingCode, liveStatus, courierName) {
     renderCourierHub();
   }
 
-  // ── ৩. Google Sheet-এ tracking update পাঠাও
+  // ── ৩. Google Sheet-এ tracking update পাঠাও (যদি আগে থেকেই সেভ না হয়ে থাকে)
+  if (skipSheetWrite) return;
   postToAPI({
     action:    "updateTracking",
     orderId:   String(orderId),

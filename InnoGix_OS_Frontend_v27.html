@@ -1402,6 +1402,145 @@ tbody td.muted{color:var(--text3);}
 .fa-mini-table tr:last-child td { border-bottom: none; }
 .fa-mini-table tr:hover td { background: var(--bg3); }
 .fa-empty { text-align: center; padding: 28px; color: var(--text3); font-size: 13px; }
+
+/* ═══════════════════════════════════════════════════════════════
+   DASHBOARD KPI FILTER BAR — Year / Month / All-Time Dropdowns
+   ═══════════════════════════════════════════════════════════════ */
+.dash-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.dash-filter-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text3);
+  letter-spacing: .8px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.dash-filter-sel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 28px 5px 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238B949E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: border-color .15s, box-shadow .15s;
+  min-width: 100px;
+}
+.dash-filter-sel:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(212,160,23,.18); }
+.dash-filter-sel:hover { border-color: var(--text3); }
+
+.dash-filter-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+.dash-filter-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.dash-filter-all-btn:hover { background: var(--bg4); color: var(--text); border-color: var(--gold); }
+.dash-filter-all-btn.active {
+  background: var(--gold2);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.dash-filter-info {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text3);
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--bg3);
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border2);
+}
+
+/* FA Modal — Dropdown controls row inside modal */
+.fa-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 22px;
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+.fa-filter-sel {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 5px 28px 5px 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238B949E' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+  transition: border-color .15s;
+  flex: 1;
+  min-width: 90px;
+}
+.fa-filter-sel:focus { border-color: var(--gold); }
+.fa-filter-all-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: 'IBM Plex Sans', sans-serif;
+  transition: all .15s;
+  white-space: nowrap;
+  letter-spacing: .3px;
+}
+.fa-filter-all-btn:hover { border-color: var(--gold); color: var(--gold); }
+.fa-filter-all-btn.active {
+  background: var(--gold2);
+  border-color: var(--gold);
+  color: var(--gold);
+}
 </style>
 </head>
 <body>
@@ -1746,6 +1885,43 @@ tbody td.muted{color:var(--text3);}
     ══════════════════════════════ -->
     <div class="page active" id="page-dashboard">
       <div class="breadcrumb">InnoGix OS / <span>Dashboard</span></div>
+
+      <!-- ═══ DASHBOARD KPI FILTER BAR ═══ -->
+      <div class="dash-filter-bar" id="dash-filter-bar">
+        <span class="dash-filter-label">🗓 ফিল্টার</span>
+
+        <!-- Year Selector -->
+        <select class="dash-filter-sel" id="dash-year-sel" onchange="onDashFilterChange()">
+          <option value="0">সব বছর</option>
+        </select>
+
+        <!-- Month Selector -->
+        <select class="dash-filter-sel" id="dash-month-sel" onchange="onDashFilterChange()">
+          <option value="0">সব মাস</option>
+          <option value="1">জানুয়ারি</option>
+          <option value="2">ফেব্রুয়ারি</option>
+          <option value="3">মার্চ</option>
+          <option value="4">এপ্রিল</option>
+          <option value="5">মে</option>
+          <option value="6">জুন</option>
+          <option value="7">জুলাই</option>
+          <option value="8">আগস্ট</option>
+          <option value="9">সেপ্টেম্বর</option>
+          <option value="10">অক্টোবর</option>
+          <option value="11">নভেম্বর</option>
+          <option value="12">ডিসেম্বর</option>
+        </select>
+
+        <div class="dash-filter-divider"></div>
+
+        <!-- All-Time Button -->
+        <button class="dash-filter-all-btn active" id="dash-alltime-btn" onclick="setDashAllTime()">
+          🔢 শুরু থেকে শেষ
+        </button>
+
+        <!-- Filter Info -->
+        <span class="dash-filter-info" id="dash-filter-info">সব ডেটা দেখাচ্ছে</span>
+      </div>
 
       <!-- KPI Row 1 -->
       <div class="kpi-grid">
@@ -3806,6 +3982,35 @@ tbody td.muted{color:var(--text3);}
       <button class="fa-tab" id="fa-tab-yearly"  data-accent="green" onclick="_faTab('yearly')">📆 Yearly</button>
     </div>
 
+    <!-- Dropdown Filter Row: Year / Month / All-Time -->
+    <div class="fa-filter-row" id="fa-filter-row">
+      <!-- All-Time Toggle -->
+      <button class="fa-filter-all-btn" id="fa-alltime-btn" onclick="_faSetAllTime()">
+        🔢 শুরু থেকে শেষ
+      </button>
+      <div style="width:1px;height:20px;background:var(--border);flex-shrink:0;"></div>
+      <!-- Year Selector -->
+      <select class="fa-filter-sel" id="fa-year-sel" onchange="_faDropdownChange()">
+        <option value="0">সব বছর</option>
+      </select>
+      <!-- Month Selector -->
+      <select class="fa-filter-sel" id="fa-month-sel" onchange="_faDropdownChange()">
+        <option value="0">সব মাস</option>
+        <option value="1">জানুয়ারি</option>
+        <option value="2">ফেব্রুয়ারি</option>
+        <option value="3">মার্চ</option>
+        <option value="4">এপ্রিল</option>
+        <option value="5">মে</option>
+        <option value="6">জুন</option>
+        <option value="7">জুলাই</option>
+        <option value="8">আগস্ট</option>
+        <option value="9">সেপ্টেম্বর</option>
+        <option value="10">অক্টোবর</option>
+        <option value="11">নভেম্বর</option>
+        <option value="12">ডিসেম্বর</option>
+      </select>
+    </div>
+
     <!-- Dynamic Content Body -->
     <div class="fa-body" id="fa-body">
       <div class="fa-empty">ডেটা লোড হচ্ছে...</div>
@@ -5445,6 +5650,183 @@ function refreshAfterOrder() {
   debouncedLoad(() => loadLiveInventory(), 'inv', 2500);
 }
 
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD KPI FILTER — Year / Month / All-Time Dropdown Logic
+// ═══════════════════════════════════════════════════════════════
+(function(){
+  'use strict';
+  // ── State ──
+  var _dashYear   = 0;    // 0 = all
+  var _dashMonth  = 0;    // 0 = all
+  var _dashAllTime= true; // default: all-time
+
+  var MONTH_NAMES = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন',
+                     'জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+
+  // ── Parse date (reuse same logic as FA modal) ──
+  function parseD(raw){
+    if(!raw) return null;
+    if(typeof raw==='number') return new Date((raw-25569)*86400*1000);
+    var s=String(raw).trim();
+    if(s.indexOf('T')>-1){ var d=new Date(s); return isNaN(d.getTime())?null:d; }
+    var m=s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})/);
+    if(m){ var mons={Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11}; return new Date(parseInt(m[3]),mons[m[2]]||0,parseInt(m[1])); }
+    var fb=new Date(s); return isNaN(fb.getTime())?null:fb;
+  }
+
+  // ── Format taka ──
+  function fmt(n){ return '৳'+Math.round(Number(n)||0).toLocaleString('en-BD'); }
+
+  // ── Update dashboard KPI cards with filtered data ──
+  function applyDashFilter(){
+    var sales    = window.allSales    ||(typeof liveSalesData   !=='undefined'?liveSalesData   :[])||[];
+    var expenses = window.allExpenses ||(typeof liveExpenseData !=='undefined'?liveExpenseData :[])||[];
+
+    // Filter sales
+    var filtSales = sales.filter(function(o){
+      if(_dashAllTime) return true;
+      var d = parseD(o.rawDateISO||o.rawDate||o.date||'');
+      if(!d) return (_dashYear===0 && _dashMonth===0);
+      var yOk = _dashYear===0  || d.getFullYear()===_dashYear;
+      var mOk = _dashMonth===0 || (d.getMonth()+1)===_dashMonth;
+      return yOk && mOk;
+    });
+
+    // Filter expenses
+    var filtExp = expenses.filter(function(e){
+      if(_dashAllTime) return true;
+      var d = parseD(e.rawDate||e.date||'');
+      if(!d) return (_dashYear===0 && _dashMonth===0);
+      var yOk = _dashYear===0  || d.getFullYear()===_dashYear;
+      var mOk = _dashMonth===0 || (d.getMonth()+1)===_dashMonth;
+      return yOk && mOk;
+    });
+
+    // Revenue = sum of Delivered orders
+    var revenue = filtSales
+      .filter(function(o){ return String(o.status||'').trim()==='Delivered'; })
+      .reduce(function(s,o){ return s+(Number(o.total)||0); }, 0);
+
+    // Expenses total
+    var expTotal = filtExp.reduce(function(s,e){ return s+(Number(e.amount)||0); }, 0);
+
+    // Net Profit
+    var profit = revenue - expTotal;
+
+    // Due = non-cancelled, non-returned orders due
+    var due = filtSales.reduce(function(s,o){
+      var st = String(o.status||'').trim();
+      if(st==='Cancelled'||st==='Returned') return s;
+      return s + (Number(o.due)||0);
+    }, 0);
+
+    // Pending count
+    var pending = filtSales.filter(function(o){ return String(o.status||'').trim()==='Pending'; }).length;
+    var delivered = filtSales.filter(function(o){ return String(o.status||'').trim()==='Delivered'; }).length;
+
+    // Update KPI elements
+    function setEl(id,val){ var el=document.getElementById(id); if(el) el.textContent=val; }
+    setEl('kpi-revenue', Math.round(revenue).toLocaleString('en-BD'));
+    setEl('kpi-profit',  Math.round(profit).toLocaleString('en-BD'));
+    setEl('kpi-expense', Math.round(expTotal).toLocaleString('en-BD'));
+    setEl('kpi-due',     Math.round(due).toLocaleString('en-BD'));
+    setEl('kpi-pending', String(pending));
+    setEl('kpi-delivered', String(delivered));
+
+    // Update filter info badge
+    var info = document.getElementById('dash-filter-info');
+    if(info){
+      if(_dashAllTime){
+        info.textContent = 'সব ডেটা — '+filtSales.length+'টি অর্ডার';
+      } else {
+        var yStr = _dashYear>0 ? _dashYear+' সাল' : 'সব বছর';
+        var mStr = _dashMonth>0 ? MONTH_NAMES[_dashMonth-1] : 'সব মাস';
+        info.textContent = mStr+' / '+yStr+' — '+filtSales.length+'টি অর্ডার';
+      }
+    }
+
+    // Update KPI change labels
+    var revCh = document.getElementById('kpi-revenue-change');
+    var prCh  = document.getElementById('kpi-profit-change');
+    if(revCh && !_dashAllTime && (_dashYear>0||_dashMonth>0)){
+      revCh.textContent = '💰 '+fmt(revenue);
+      revCh.className = 'kpi-change up';
+    }
+    if(prCh && !_dashAllTime && (_dashYear>0||_dashMonth>0)){
+      prCh.textContent = (profit>=0?'▲ ':'▼ ')+fmt(Math.abs(profit));
+      prCh.className = 'kpi-change '+(profit>=0?'up':'down');
+    }
+  }
+
+  // ── Populate year dropdown from liveSalesData ──
+  function populateDashYears(){
+    var sales = window.allSales||(typeof liveSalesData!=='undefined'?liveSalesData:[])||[];
+    var years = {};
+    sales.forEach(function(o){
+      var d = parseD(o.rawDateISO||o.rawDate||o.date||'');
+      if(d) years[d.getFullYear()]=1;
+    });
+    var sorted = Object.keys(years).map(Number).sort(function(a,b){return b-a;});
+    var sel = document.getElementById('dash-year-sel');
+    if(!sel) return;
+    var curVal = sel.value;
+    sel.innerHTML = '<option value="0">সব বছর</option>';
+    sorted.forEach(function(y){
+      var opt = document.createElement('option');
+      opt.value=y; opt.textContent=y+' সাল';
+      if(Number(curVal)===y) opt.selected=true;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ── Update UI state (All-Time button active/inactive) ──
+  function updateDashUI(){
+    var allBtn  = document.getElementById('dash-alltime-btn');
+    var yearSel = document.getElementById('dash-year-sel');
+    var monthSel= document.getElementById('dash-month-sel');
+    if(allBtn) allBtn.classList.toggle('active', _dashAllTime);
+    if(yearSel){  yearSel.disabled =_dashAllTime; yearSel.style.opacity =_dashAllTime?'0.4':'1'; }
+    if(monthSel){ monthSel.disabled=_dashAllTime; monthSel.style.opacity=_dashAllTime?'0.4':'1'; }
+  }
+
+  // ── Public handlers ──
+  window.setDashAllTime = function(){
+    _dashAllTime = !_dashAllTime;
+    if(_dashAllTime){
+      _dashYear=0; _dashMonth=0;
+      var ySel=document.getElementById('dash-year-sel');
+      var mSel=document.getElementById('dash-month-sel');
+      if(ySel) ySel.value='0';
+      if(mSel) mSel.value='0';
+    }
+    updateDashUI();
+    applyDashFilter();
+  };
+
+  window.onDashFilterChange = function(){
+    var ySel  = document.getElementById('dash-year-sel');
+    var mSel  = document.getElementById('dash-month-sel');
+    _dashYear  = ySel  ? parseInt(ySel.value) ||0 : 0;
+    _dashMonth = mSel  ? parseInt(mSel.value) ||0 : 0;
+    if(_dashYear>0 || _dashMonth>0){
+      _dashAllTime = false;
+    } else {
+      _dashAllTime = true;
+    }
+    updateDashUI();
+    applyDashFilter();
+  };
+
+  // ── Auto-populate years after sales load ──
+  window._dashFilterRefresh = function(){
+    populateDashYears();
+    applyDashFilter();
+  };
+
+  // ── Initial state ──
+  updateDashUI();
+})();
+
 async function loadLiveDashboard(){
   const data = await fetchFromAPI('dashboard'); if(!data) return;
 
@@ -5714,6 +6096,8 @@ async function loadLiveSales(){
   showToast('Sales loaded ✅','success');
   // Update dashboard pending badge with real count
   updatePendingBadge(rows);
+  // Refresh dashboard KPI filter with fresh sales data
+  if(typeof window._dashFilterRefresh === 'function') window._dashFilterRefresh();
   // Refresh delivery analytics if currently open
   if(document.getElementById('page-delivery-analytics')?.classList.contains('active')) renderDeliveryAnalytics();
 }
@@ -5825,6 +6209,8 @@ async function loadLiveExpenses(){
   window.liveExpenseData = rows; // global for export
   window.allExpenses = rows; // global for KPI Detail
   renderExpenseRows(rows); updateExpenseCats(rows); showToast('Expenses loaded ✅','success');
+  // Refresh dashboard KPI filter with fresh expense data
+  if(typeof window._dashFilterRefresh === 'function') window._dashFilterRefresh();
 }
 async function loadLivePartners(){
   const data=await fetchFromAPI('partners'); if(!data||!data.data) return;
@@ -8575,9 +8961,12 @@ function openKpiDetail(type){
   'use strict';
 
   // ── private state ──
-  var _type   = 'revenue'; // 'revenue' | 'profit'
-  var _period = 'monthly'; // 'weekly' | 'monthly' | 'yearly'
-  var _accent = 'green';   // 'green' | 'gold'
+  var _type    = 'revenue'; // 'revenue' | 'profit'
+  var _period  = 'monthly'; // 'weekly' | 'monthly' | 'yearly' | 'custom'
+  var _accent  = 'green';   // 'green' | 'gold'
+  var _selYear = 0;         // 0 = all years
+  var _selMonth= 0;         // 0 = all months
+  var _allTime = false;     // true = শুরু থেকে শেষ পর্যন্ত
 
   // ── Date parser: handles GSheet serial, ISO, and BD text ──
   function parseDate(raw){
@@ -8733,22 +9122,61 @@ function openKpiDetail(type){
     var sales   =window.allSales   ||(typeof liveSalesData   !=='undefined'?liveSalesData   :[])||[];
     var expenses=window.allExpenses||(typeof liveExpenseData !=='undefined'?liveExpenseData :[])||[];
 
-    var b=getBounds(_period);
     var accent=_type==='profit'?'gold':'green';
+    var cSales, pSales, cExp, pExp;
+    var currLabel='', prevLabel='', showBadge=true;
 
-    // Filter each period's data
-    var cSales=filterPeriod(sales,   'rawDateISO',b.curr.s,b.curr.e);
-    var pSales=filterPeriod(sales,   'rawDateISO',b.prev.s,b.prev.e);
-    var cExp  =filterPeriod(expenses,'rawDate',   b.curr.s,b.curr.e);
-    var pExp  =filterPeriod(expenses,'rawDate',   b.prev.s,b.prev.e);
+    if(_allTime){
+      // ── All-Time mode: সব ডেটা একসাথে, কোনো period comparison নেই ──
+      cSales = sales;
+      pSales = [];
+      cExp   = expenses;
+      pExp   = [];
+      currLabel = 'শুরু থেকে এখন পর্যন্ত';
+      prevLabel = '—';
+      showBadge = false;
+    } else if(_selYear > 0 || _selMonth > 0){
+      // ── Custom dropdown filter mode ──
+      cSales = sales.filter(function(o){
+        var d = parseDate(o.rawDateISO||o.rawDate||o.date||'');
+        if(!d) return _selYear===0 && _selMonth===0;
+        var yMatch = _selYear===0 || d.getFullYear()===_selYear;
+        var mMatch = _selMonth===0 || (d.getMonth()+1)===_selMonth;
+        return yMatch && mMatch;
+      });
+      pSales = [];
+      cExp = expenses.filter(function(e){
+        var d = parseDate(e.rawDate||e.date||'');
+        if(!d) return _selYear===0 && _selMonth===0;
+        var yMatch = _selYear===0 || d.getFullYear()===_selYear;
+        var mMatch = _selMonth===0 || (d.getMonth()+1)===_selMonth;
+        return yMatch && mMatch;
+      });
+      pExp = [];
+      var mnames=['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+      var yStr = _selYear > 0 ? String(_selYear) : 'সব বছর';
+      var mStr = _selMonth > 0 ? mnames[_selMonth-1] : 'সব মাস';
+      currLabel = mStr + (_selYear>0 ? ' ' + yStr : '');
+      prevLabel = '—';
+      showBadge = false;
+    } else {
+      // ── Period mode (Weekly / Monthly / Yearly) — original logic ──
+      var b=getBounds(_period);
+      cSales=filterPeriod(sales,   'rawDateISO',b.curr.s,b.curr.e);
+      pSales=filterPeriod(sales,   'rawDateISO',b.prev.s,b.prev.e);
+      cExp  =filterPeriod(expenses,'rawDate',   b.curr.s,b.curr.e);
+      pExp  =filterPeriod(expenses,'rawDate',   b.prev.s,b.prev.e);
+      currLabel = b.cLbl;
+      prevLabel = b.pLbl;
+    }
 
     var currVal, prevVal, breakdown='', orderSection='';
 
     if(_type==='revenue'){
       currVal=sumRevenue(cSales);
-      prevVal=sumRevenue(pSales);
+      prevVal=showBadge ? sumRevenue(pSales) : null;
 
-      // Top products by revenue (current period)
+      // Top products by revenue
       var prodMap={};
       cSales.filter(function(o){return o.status==='Delivered';}).forEach(function(o){
         var p=String(o.product||'Other');
@@ -8758,21 +9186,18 @@ function openKpiDetail(type){
 
       breakdown='<hr class="fa-sep"><div class="fa-sec-title">টপ প্রোডাক্ট — Revenue ব্রেকডাউন</div>'
                +( prodItems.length ? buildBars(prodItems,'total','product','var(--green)')
-                                   : '<div class="fa-empty">এই পিরিয়ডে কোনো ডেটা নেই</div>');
+                                   : '<div class="fa-empty">এই ফিল্টারে কোনো ডেটা নেই</div>');
 
-      // Recent delivered orders table
       var deliveredRows=cSales.filter(function(o){return o.status==='Delivered';});
-      orderSection='<hr class="fa-sep"><div class="fa-sec-title">সাম্প্রতিক Delivered অর্ডার (Top 8)</div>'
+      orderSection='<hr class="fa-sep"><div class="fa-sec-title">Delivered অর্ডার (Top 8)</div>'
                   +buildOrdersTable(deliveredRows);
 
     } else {
-      // Profit = Revenue − Expenses per period
-      var cRev=sumRevenue(cSales), pRev=sumRevenue(pSales);
-      var cExpTotal=sumExpenses(cExp), pExpTotal=sumExpenses(pExp);
+      var cRev=sumRevenue(cSales), pRev= showBadge ? sumRevenue(pSales) : 0;
+      var cExpTotal=sumExpenses(cExp), pExpTotal= showBadge ? sumExpenses(pExp) : 0;
       currVal=cRev-cExpTotal;
-      prevVal=pRev-pExpTotal;
+      prevVal=showBadge ? (pRev-pExpTotal) : null;
 
-      // Expense breakdown by category (current period)
       var catMap={};
       cExp.forEach(function(e){
         var c=String(e.cat||e.category||'Other');
@@ -8780,13 +9205,12 @@ function openKpiDetail(type){
       });
       var catItems=Object.keys(catMap).map(function(k){return{cat:k,amount:catMap[k]};});
 
-      breakdown='<hr class="fa-sep"><div class="fa-sec-title">খরচের ক্যাটাগরি ব্রেকডাউন (এই পিরিয়ড)</div>'
+      breakdown='<hr class="fa-sep"><div class="fa-sec-title">খরচের ক্যাটাগরি ব্রেকডাউন</div>'
                +(catItems.length ? buildBars(catItems,'amount','cat','var(--red)')
-                                 : '<div class="fa-empty">এই পিরিয়ডে খরচের ডেটা নেই</div>');
+                                 : '<div class="fa-empty">এই ফিল্টারে খরচের ডেটা নেই</div>');
 
-      // Revenue & Expense summary row
       orderSection='<hr class="fa-sep">'
-        +'<div class="fa-sec-title">এই পিরিয়ডের সারাংশ</div>'
+        +'<div class="fa-sec-title">সারাংশ</div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">'
           +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;">'
             +'<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:6px;">Revenue</div>'
@@ -8801,30 +9225,99 @@ function openKpiDetail(type){
 
     var goldClass=accent==='gold'?' is-gold':'';
 
-    body.innerHTML=
-      // Comparison metric cards
-      '<div class="fa-metric-row">'
+    // Build the metric comparison row
+    var metricRow;
+    if(!showBadge || prevVal===null){
+      // Single metric card (All-Time or custom filter)
+      metricRow='<div style="background:var(--bg3);border:1px solid var(--border'+(accent==='gold'?'2':')');
+      metricRow='<div style="background:var(--bg3);border:1px solid var(--border);border-radius:13px;padding:18px 16px 14px;text-align:center;position:relative;overflow:hidden;margin-bottom:14px;">'
+        +'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--'+(accent==='gold'?'gold':'green')+'),transparent);"></div>'
+        +'<div style="font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">'+(currLabel||'নির্বাচিত পিরিয়ড')+'</div>'
+        +'<div style="font-size:28px;font-weight:700;font-family:\'IBM Plex Mono\',monospace;color:var(--'+(accent==='gold'?'gold':'green')+');">'+taka(currVal)+'</div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-top:5px;">মোট '+(currVal>=0?'':'লোকসান ')+(accent==='gold'?'মুনাফা':'রাজস্ব')+'</div>'
+        +'</div>';
+    } else {
+      metricRow='<div class="fa-metric-row">'
         +'<div class="fa-metric-card curr'+goldClass+'">'
           +'<div class="fa-metric-lbl">বর্তমান পিরিয়ড</div>'
           +'<div class="fa-metric-val">'+taka(currVal)+'</div>'
-          +'<div class="fa-metric-period">'+b.cLbl+'</div>'
+          +'<div class="fa-metric-period">'+currLabel+'</div>'
         +'</div>'
         +'<div class="fa-metric-card prev">'
           +'<div class="fa-metric-lbl">আগের পিরিয়ড</div>'
           +'<div class="fa-metric-val">'+taka(prevVal)+'</div>'
-          +'<div class="fa-metric-period">'+b.pLbl+'</div>'
+          +'<div class="fa-metric-period">'+prevLabel+'</div>'
         +'</div>'
       +'</div>'
-      // Badge
-      +'<div class="fa-badge-row">'+badge(currVal,prevVal)+'</div>'
-      // Dynamic sections
-      +breakdown
-      +orderSection;
+      +'<div class="fa-badge-row">'+badge(currVal,prevVal)+'</div>';
+    }
+
+    body.innerHTML = metricRow + breakdown + orderSection;
+  }
+
+  // ── Populate Year dropdowns from available sales data ──
+  function _populateYears(){
+    var sales=window.allSales||(typeof liveSalesData!=='undefined'?liveSalesData:[])||[];
+    var years={};
+    sales.forEach(function(o){
+      var d=parseDate(o.rawDateISO||o.rawDate||o.date||'');
+      if(d) years[d.getFullYear()]=1;
+    });
+    var sortedYears=Object.keys(years).map(Number).sort(function(a,b){return b-a;});
+
+    // FA modal year dropdown
+    var faSel=document.getElementById('fa-year-sel');
+    if(faSel){
+      var curFaVal=faSel.value;
+      faSel.innerHTML='<option value="0">সব বছর</option>';
+      sortedYears.forEach(function(y){
+        var opt=document.createElement('option');
+        opt.value=y; opt.textContent=y+' সাল';
+        if(Number(curFaVal)===y) opt.selected=true;
+        faSel.appendChild(opt);
+      });
+    }
+
+    // Dashboard year dropdown
+    var dashSel=document.getElementById('dash-year-sel');
+    if(dashSel){
+      var curDashVal=dashSel.value;
+      dashSel.innerHTML='<option value="0">সব বছর</option>';
+      sortedYears.forEach(function(y){
+        var opt=document.createElement('option');
+        opt.value=y; opt.textContent=y+' সাল';
+        if(Number(curDashVal)===y) opt.selected=true;
+        dashSel.appendChild(opt);
+      });
+    }
+  }
+
+  // ── Update FA filter UI state ──
+  function _updateFaFilterUI(){
+    var allBtn=document.getElementById('fa-alltime-btn');
+    var yearSel=document.getElementById('fa-year-sel');
+    var monthSel=document.getElementById('fa-month-sel');
+    if(allBtn) allBtn.classList.toggle('active',_allTime);
+    if(yearSel){ yearSel.disabled=_allTime; yearSel.style.opacity=_allTime?'0.4':'1'; }
+    if(monthSel){ monthSel.disabled=_allTime; monthSel.style.opacity=_allTime?'0.4':'1'; }
+    // Tab buttons dim when custom/alltime
+    ['weekly','monthly','yearly'].forEach(function(t){
+      var el=document.getElementById('fa-tab-'+t);
+      if(el) el.style.opacity=(_allTime||_selYear>0||_selMonth>0)?'0.45':'1';
+    });
   }
 
   // ── Public API ──
   window._faTab=function(period){
     _period=period;
+    _allTime=false;
+    _selYear=0;
+    _selMonth=0;
+    // Reset dropdowns
+    var ySel=document.getElementById('fa-year-sel');
+    var mSel=document.getElementById('fa-month-sel');
+    if(ySel) ySel.value='0';
+    if(mSel) mSel.value='0';
     // Update tab active states
     ['weekly','monthly','yearly'].forEach(function(t){
       var el=document.getElementById('fa-tab-'+t);
@@ -8832,6 +9325,52 @@ function openKpiDetail(type){
       el.classList.toggle('active',t===period);
       el.setAttribute('data-accent',_accent);
     });
+    _updateFaFilterUI();
+    render();
+  };
+
+  window._faSetAllTime=function(){
+    _allTime=!_allTime;
+    if(_allTime){
+      _selYear=0; _selMonth=0;
+      var ySel=document.getElementById('fa-year-sel');
+      var mSel=document.getElementById('fa-month-sel');
+      if(ySel) ySel.value='0';
+      if(mSel) mSel.value='0';
+      // Deactivate period tabs visually
+      ['weekly','monthly','yearly'].forEach(function(t){
+        var el=document.getElementById('fa-tab-'+t);
+        if(el) el.classList.remove('active');
+      });
+    } else {
+      // Restore monthly tab
+      _period='monthly';
+      var el=document.getElementById('fa-tab-monthly');
+      if(el) el.classList.add('active');
+    }
+    _updateFaFilterUI();
+    render();
+  };
+
+  window._faDropdownChange=function(){
+    var ySel=document.getElementById('fa-year-sel');
+    var mSel=document.getElementById('fa-month-sel');
+    _selYear = ySel ? parseInt(ySel.value)||0 : 0;
+    _selMonth= mSel ? parseInt(mSel.value)||0 : 0;
+    if(_selYear>0||_selMonth>0){
+      _allTime=false;
+      // Deactivate period tabs
+      ['weekly','monthly','yearly'].forEach(function(t){
+        var el=document.getElementById('fa-tab-'+t);
+        if(el) el.classList.remove('active');
+      });
+    } else {
+      // If both reset to 0, go back to monthly
+      _period='monthly';
+      var el=document.getElementById('fa-tab-monthly');
+      if(el) el.classList.add('active');
+    }
+    _updateFaFilterUI();
     render();
   };
 
@@ -8839,6 +9378,9 @@ function openKpiDetail(type){
     _type   = type||'revenue';
     _period = 'monthly';
     _accent = type==='profit'?'gold':'green';
+    _allTime= false;
+    _selYear= 0;
+    _selMonth=0;
 
     var modal=document.getElementById('modal-fin-analytics');
     var titleEl=document.getElementById('fa-title');
@@ -8855,7 +9397,19 @@ function openKpiDetail(type){
       el.classList.remove('active');
       el.setAttribute('data-accent',_accent);
       if(t==='monthly') el.classList.add('active');
+      el.style.opacity='1';
     });
+
+    // Reset dropdowns
+    var ySel=document.getElementById('fa-year-sel');
+    var mSel=document.getElementById('fa-month-sel');
+    var aBtn=document.getElementById('fa-alltime-btn');
+    if(ySel){ ySel.value='0'; ySel.disabled=false; ySel.style.opacity='1'; }
+    if(mSel){ mSel.value='0'; mSel.disabled=false; mSel.style.opacity='1'; }
+    if(aBtn) aBtn.classList.remove('active');
+
+    // Populate years
+    _populateYears();
 
     modal.classList.add('open');
     document.body.style.overflow='hidden';

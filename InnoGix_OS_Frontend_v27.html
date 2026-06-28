@@ -1863,6 +1863,7 @@ tbody td.muted{color:var(--text3);}
   <div class="nav-item" onclick="showPage('formulas',this)"><span class="nav-icon">📐</span>Formula Guide</div>
   <div class="nav-item" onclick="showPage('setup',this)"><span class="nav-icon">⚙️</span>Setup Roadmap</div>
   <div class="nav-item" onclick="showPage('activity-log',this)"><span class="nav-icon">📋</span>অ্যাক্টিভিটি লগ</div>
+  <div class="nav-item" onclick="showPage('recycle-bin',this)" id="nav-recycle-bin"><span class="nav-icon">🗑️</span>রিসাইকেল বিন<span class="nav-badge" id="bin-badge" style="display:none">0</span></div>
   <div class="nav-item" onclick="openModal('change-pin')"><span class="nav-icon">🔑</span>PIN পরিবর্তন</div>
 
   <div class="sidebar-footer">
@@ -2618,6 +2619,69 @@ tbody td.muted{color:var(--text3);}
         <div class="modal-body" id="investor-report-body">লোড হচ্ছে...</div>
         <div class="modal-footer">
           <button class="btn" onclick="closeModal('investor-report')">বন্ধ করুন</button>
+
+    <!-- Edit Investor Modal -->
+    <div class="modal-overlay" id="modal-edit-investor">
+      <div class="modal-box" style="max-width:480px;">
+        <div class="modal-header">
+          <span class="modal-title">✏️ Investor Edit</span>
+          <button class="modal-close" onclick="closeModal('edit-investor')">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="edit-inv-id">
+          <div class="form-group">
+            <label class="form-label">নাম *</label>
+            <input class="form-input" id="edit-inv-name" placeholder="Investor-এর নাম">
+          </div>
+          <div class="form-group">
+            <label class="form-label">ফোন নম্বর</label>
+            <input class="form-input" id="edit-inv-phone" type="tel" placeholder="01XXXXXXXXX">
+          </div>
+          <div class="form-group">
+            <label class="form-label">বিনিয়োগের ধরন</label>
+            <select class="form-select" id="edit-inv-type" onchange="toggleEditInvTypeFields()">
+              <option value="Equity">📊 Equity</option>
+              <option value="Fixed Return">💰 Fixed Return</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">বিনিয়োগের পরিমাণ (৳)</label>
+            <input class="form-input" id="edit-inv-amount" type="number" placeholder="0">
+          </div>
+          <div id="edit-inv-fixed-fields" style="display:none;">
+            <div class="form-group">
+              <label class="form-label">মাসিক লাভের হার (%)</label>
+              <input class="form-input" id="edit-inv-profit-rate" type="number" placeholder="যেমন: 2" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">মেয়াদ (মাস)</label>
+              <input class="form-input" id="edit-inv-duration" type="number" placeholder="যেমন: 12">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Cycle</label>
+            <select class="form-select" id="edit-inv-cycle">
+              <option value="Monthly">Monthly</option>
+              <option value="Quarterly">Quarterly</option>
+              <option value="Yearly">Yearly</option>
+              <option value="Anytime">Anytime</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="edit-inv-status">
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+              <option value="Exited">Exited</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('edit-investor')">বাতিল</button>
+          <button class="btn primary" onclick="submitEditInvestor()">✅ আপডেট করুন</button>
+        </div>
+      </div>
+    </div>
           <button class="btn btn-gold" onclick="printInvestorReport()">🖨️ Print / PDF</button>
         </div>
       </div>
@@ -3488,6 +3552,82 @@ tbody td.muted{color:var(--text3);}
       </div>
     </div>
 
+    <!-- ══════════════════════════════════════════
+         RECYCLE BIN PAGE
+    ══════════════════════════════════════════ -->
+    <div class="page" id="page-recycle-bin">
+      <div class="breadcrumb">InnoGix OS / <span>রিসাইকেল বিন</span></div>
+      <div class="section-head">
+        <h2>🗑️ রিসাইকেল বিন</h2>
+        <p>মুছে ফেলা ডেটা ৩০ দিন পর্যন্ত এখানে সংরক্ষিত থাকে। মেয়াদ শেষে স্বয়ংক্রিয়ভাবে মুছে যাবে।</p>
+      </div>
+
+      <!-- Stats bar -->
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">📦</span>
+          <div>
+            <div style="font-size:11px;color:var(--text3);">মোট আইটেম</div>
+            <div style="font-size:18px;font-weight:700;color:var(--gold);" id="bin-total-count">0</div>
+          </div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 20px;display:flex;align-items:center;gap:10px;">
+          <span style="font-size:20px;">⏳</span>
+          <div>
+            <div style="font-size:11px;color:var(--text3);">৩০ দিনের মধ্যে মুছবে</div>
+            <div style="font-size:13px;font-weight:600;color:var(--text2);" id="bin-expiry-info">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filter & Actions -->
+      <div class="table-wrapper">
+        <div class="table-header">
+          <span class="table-title">মুছে ফেলা আইটেম</span>
+          <span class="table-count" id="bin-count">0 items</span>
+          <div class="table-actions">
+            <select class="filter-select" id="bin-type-filter" onchange="renderRecycleBin()" style="min-width:140px;">
+              <option value="">সব ধরন</option>
+              <option value="Order">Order</option>
+              <option value="Expense">Expense</option>
+              <option value="Product">Product</option>
+              <option value="Transaction">Transaction</option>
+              <option value="Investor">Investor</option>
+            </select>
+            <button class="btn" onclick="loadRecycleBin()">🔄 রিফ্রেশ</button>
+          </div>
+        </div>
+        <div class="table-scroll">
+          <table id="recycle-bin-table">
+            <thead>
+              <tr>
+                <th>Bin ID</th>
+                <th>ধরন</th>
+                <th>আইটেম</th>
+                <th>মুছেছেন কখন</th>
+                <th>বাকি দিন</th>
+                <th>অ্যাকশন</th>
+              </tr>
+            </thead>
+            <tbody id="recycle-bin-body">
+              <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3);">রিসাইকেল বিন খালি</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Info box -->
+      <div style="margin-top:20px;background:rgba(212,160,23,.08);border:1px solid rgba(212,160,23,.2);border-radius:10px;padding:16px 20px;">
+        <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:8px;">ℹ️ রিসাইকেল বিন সম্পর্কে</div>
+        <div style="font-size:12px;color:var(--text3);line-height:1.7;">
+          • যেকোনো ডেটা ডিলিট করলে সরাসরি মুছে না গিয়ে প্রথমে এখানে আসে<br>
+          • ৩০ দিনের মধ্যে Restore করলে মূল শিটে ফিরে যাবে<br>
+          • ৩০ দিন পার হলে স্বয়ংক্রিয়ভাবে চিরতরে মুছে যাবে<br>
+          • Permanent Delete করলে আর রিকভার সম্ভব নয়
+        </div>
+      </div>
+    </div>
+
   </div><!-- end content -->
 </div><!-- end main -->
 
@@ -3498,43 +3638,29 @@ tbody td.muted{color:var(--text3);}
   <div class="modal">
     <div class="modal-header">
       <span class="modal-title">🛒 New Order Entry</span>
-      <button class="btn" id="ai-paste-toggle-btn" onclick="toggleAIPastePanel()" style="margin-right:8px;background:linear-gradient(135deg,rgba(188,140,255,.18),rgba(56,139,253,.12));border-color:rgba(188,140,255,.5);color:var(--purple);font-size:12px;padding:5px 12px;gap:5px;">
-        <span>✨</span> AI Smart Paste
-      </button>
-      <button class="modal-close" onclick="closeModal('add-order');resetOrderModal()">✕</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button onclick="openSmartPaste()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;display:flex;align-items:center;gap:5px;">✨ AI Smart Paste</button>
+        <button class="modal-close" onclick="closeModal('add-order');resetOrderModal()">✕</button>
+      </div>
     </div>
 
-    <!-- ══ AI SMART PASTE PANEL ══ -->
-    <div id="ai-paste-panel" style="display:none;padding:16px 24px 0;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(188,140,255,.06),rgba(56,139,253,.04));">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-        <span style="font-size:20px;">🤖</span>
-        <div>
-          <div style="font-size:13px;font-weight:700;color:var(--purple);">AI Smart Paste</div>
-          <div style="font-size:11px;color:var(--text3);">WhatsApp / Facebook / SMS — যেকোনো ফরম্যাটের টেক্সট পেস্ট করুন</div>
+    <!-- AI Smart Paste Panel -->
+    <div id="smart-paste-panel" style="display:none;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(79,70,229,.08));border:1px solid rgba(124,58,237,.3);border-radius:12px;margin:12px 20px 0;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:16px;">🤖</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:#a78bfa;">AI Smart Paste</div>
+            <div style="font-size:11px;color:var(--text3);">WhatsApp / Facebook / SMS — যেকোনো ফরম্যাটের টেক্সট পেস্ট করুন</div>
+          </div>
         </div>
-        <button onclick="toggleAIPastePanel()" style="margin-left:auto;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;padding:0 4px;">✕</button>
+        <button onclick="closeSmartPaste()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;">✕</button>
       </div>
-      <textarea id="ai-raw-input"
-        placeholder="এখানে কাস্টমারের ইনফো পেস্ট করুন...
-
-উদাহরণ:
-নাম: রাহেলা বেগম
-মোবাইল: 01711234567
-ঠিকানা: বাড়ি ৫, রোড ৩, মিরপুর, ঢাকা
-পণ্য: Amanah Door Lock Pro
-পরিমাণ: ২টি — ৳২৮০০
-ডেলিভারি: Steadfast"
-        style="width:100%;min-height:110px;resize:vertical;background:var(--bg3);border:1px solid rgba(188,140,255,.3);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;font-family:'IBM Plex Sans',sans-serif;outline:none;line-height:1.6;"
-        onfocus="this.style.borderColor='var(--purple)'" onblur="this.style.borderColor='rgba(188,140,255,.3)'"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px;margin-bottom:14px;align-items:center;flex-wrap:wrap;">
-        <button class="btn primary" onclick="runAISmartPaste()" id="ai-paste-run-btn"
-          style="background:linear-gradient(135deg,var(--purple),#8860e0);border-color:var(--purple);color:#fff;font-size:13px;padding:8px 20px;">
-          ✨ AI দিয়ে ফিল করুন
-        </button>
-        <button class="btn" onclick="document.getElementById('ai-raw-input').value=''" style="font-size:12px;">🗑 ক্লিয়ার</button>
-        <div id="ai-paste-status" style="font-size:12px;color:var(--text3);margin-left:4px;"></div>
-      </div>
-      <div id="ai-paste-result-preview" style="display:none;padding:10px 14px;background:var(--bg4);border-radius:8px;border:1px solid rgba(63,185,80,.25);margin-bottom:14px;font-size:12px;line-height:1.8;color:var(--text2);">
+      <textarea id="smart-paste-input" placeholder="এখানে WhatsApp message পেস্ট করুন...&#10;&#10;উদাহরণ:&#10;নাম: রহিম&#10;ফোন: 01711234567&#10;ঠিকানা: ঢাকা, মিরপুর&#10;পণ্য: Door Lock&#10;দাম: ৩৬৯০" style="width:100%;min-height:100px;background:rgba(0,0,0,.2);border:1px solid rgba(124,58,237,.3);border-radius:8px;color:var(--text);padding:10px;font-size:13px;resize:vertical;font-family:inherit;box-sizing:border-box;"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+        <button id="smart-paste-btn" onclick="runSmartPaste()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:700;padding:8px 18px;cursor:pointer;">✨ AI বিশ্লেষণ করো</button>
+        <button onclick="clearSmartPaste()" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text3);font-size:12px;padding:8px 12px;cursor:pointer;">🗑 ক্লিয়ার</button>
+        <span id="smart-paste-status" style="font-size:12px;color:var(--text3);"></span>
       </div>
     </div>
 
@@ -4370,7 +4496,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbwdGsEy_KPvHFXwZ3ZHoxxaVt4hOMrJsYhIBG5c43gv19dYmwT0siRfSZdf3S0GwhS6bw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbzjp83MSzxEUIiqu8AF29xITSFQ-o6E2kfqkzxJ2mb1-HgjlOAwhw_lRyVk59po9qlc/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5380,16 +5506,32 @@ function renderInvestors(rows) {
   if (!tbody) return;
   el('inv-list-count') && (el('inv-list-count').textContent = rows.length + ' investors');
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;">কোনো Investor নেই। "+ নতুন Investor" বাটনে ক্লিক করুন।</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:40px;">কোনো Investor নেই। \"+ নতুন Investor\" বাটনে ক্লিক করুন।</td></tr>';
     return;
   }
   const statusColor = { 'Active':'var(--green)', 'Exited':'var(--text3)', 'Inactive':'var(--red)' };
+
+  // Date formatter — handles ISO string, serial number, plain text
+  const fmtDate = raw => {
+    if(!raw) return '—';
+    try {
+      let d;
+      if(typeof raw === 'number') d = new Date((raw - 25569) * 86400 * 1000);
+      else { const s = String(raw); d = new Date(s); }
+      if(isNaN(d.getTime())) return String(raw);
+      return new Intl.DateTimeFormat('en-BD',{timeZone:'Asia/Dhaka',day:'2-digit',month:'short',year:'numeric'}).format(d);
+    } catch(e){ return String(raw); }
+  };
+
   tbody.innerHTML = rows.map(r => {
-    const id=r[0],name=r[1],phone=r[2],date=r[3],amt=Number(r[4])||0,pct=Number(r[5])||0,cycle=r[6],status=r[7];
+    const id=r[0],name=r[1],phone=String(r[2]||'').trim(),rawDate=r[3],amt=Number(r[4])||0,pct=Number(r[5])||0,cycle=r[6],status=r[7];
     const invType    = r[9] || 'Equity';
     const profitRate = Number(r[10])||0;
-    const dueAmt     = Number(r[13])||0;  // calculated due profit
+    const duration   = Number(r[11])||0;
+    const dueAmt     = Number(r[13])||0;
     const color = statusColor[status] || 'var(--text3)';
+    const dateStr = fmtDate(rawDate);
+
     const typeTag = invType === 'Fixed Return'
       ? `<span style="background:rgba(245,180,0,.15);color:var(--gold);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;">💰 Fixed ${profitRate}%/mo</span>`
       : `<span style="background:rgba(52,209,116,.12);color:var(--green);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;">📊 Equity</span>`;
@@ -5399,28 +5541,98 @@ function renderInvestors(rows) {
     const dueCell = invType === 'Fixed Return' && dueAmt > 0
       ? `<span style="color:var(--red);font-size:11px;font-weight:600;">⚠️ বকেয়া ৳${fmt(dueAmt)}</span>`
       : `<span style="color:var(--text3);font-size:11px;">—</span>`;
+
+    // Data for edit/delete
+    const invData = JSON.stringify({id,name,phone,date:dateStr,amt,pct,cycle,status,invType,profitRate,duration});
+
     return `<tr>
       <td class="mono" style="color:var(--text3);font-size:11px;">${id}</td>
       <td>
         <div style="font-weight:600;color:var(--text);">${name}</div>
         <div style="margin-top:3px;">${typeTag}</div>
       </td>
-      <td>${phone||'—'}</td>
-      <td style="font-size:12px;color:var(--text3);">${date||'—'}</td>
+      <td style="font-size:13px;">${phone || '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-size:12px;color:var(--text3);">${dateStr}</td>
       <td style="color:var(--gold);font-weight:600;">৳${fmt(amt)}</td>
       <td>${pctOrRate}</td>
       <td>${dueCell}</td>
       <td style="font-size:12px;">${cycle||'—'}</td>
       <td><span style="color:${color};font-weight:600;font-size:12px;">${status||'—'}</span></td>
       <td>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <div style="display:flex;gap:5px;flex-wrap:wrap;">
           <button class="btn btn-sm" style="font-size:11px;" onclick='openPayProfit(${JSON.stringify({id,name,amt,pct,invType,profitRate,dueAmt})})'>💰 Profit</button>
           <button class="btn btn-sm" style="font-size:11px;" onclick='openBuyback(${JSON.stringify({id,name,amt,pct})})'>🔄 Buyback</button>
           <button class="btn btn-sm" style="font-size:11px;" onclick="viewInvestorReport('${id}')">📊 Report</button>
+          <button class="btn btn-sm" style="font-size:11px;background:rgba(56,139,253,.15);color:#58a6ff;border-color:rgba(56,139,253,.3);" onclick='openEditInvestor(${invData})'>✏️ Edit</button>
+          <button class="btn btn-sm" style="font-size:11px;background:rgba(248,81,73,.1);color:var(--red);border-color:rgba(248,81,73,.3);" onclick="confirmDeleteInvestor('${id}','${name}')">🗑 Delete</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+// ── Edit Investor ──────────────────────────────────────────────
+function toggleEditInvTypeFields(){
+  const isFixed = el('edit-inv-type')?.value === 'Fixed Return';
+  if(el('edit-inv-fixed-fields')) el('edit-inv-fixed-fields').style.display = isFixed ? 'block' : 'none';
+}
+
+function openEditInvestor(inv){
+  el('edit-inv-id').value          = inv.id || '';
+  el('edit-inv-name').value        = inv.name || '';
+  el('edit-inv-phone').value       = inv.phone || '';
+  el('edit-inv-amount').value      = inv.amt || '';
+  el('edit-inv-type').value        = inv.invType || 'Equity';
+  el('edit-inv-profit-rate').value = inv.profitRate || '';
+  el('edit-inv-duration').value    = inv.duration || '';
+  el('edit-inv-cycle').value       = inv.cycle || 'Quarterly';
+  el('edit-inv-status').value      = inv.status || 'Active';
+  toggleEditInvTypeFields();
+  openModal('edit-investor');
+}
+
+async function submitEditInvestor(){
+  const id = el('edit-inv-id')?.value;
+  const name = (el('edit-inv-name')?.value||'').trim();
+  if(!id || !name){ showToast('নাম দিন','warning'); return; }
+  const payload = {
+    action: 'updateInvestorStatus',
+    investorId: id,
+    name,
+    phone:      el('edit-inv-phone')?.value || '',
+    amount:     parseFloat(el('edit-inv-amount')?.value||0),
+    investmentType: el('edit-inv-type')?.value || 'Equity',
+    profitRate: parseFloat(el('edit-inv-profit-rate')?.value||0),
+    duration:   parseInt(el('edit-inv-duration')?.value||0),
+    paymentCycle: el('edit-inv-cycle')?.value || 'Quarterly',
+    status:     el('edit-inv-status')?.value || 'Active',
+    isEdit: true
+  };
+  const res = await postToAPI(payload);
+  if(res?.status==='success'){
+    showToast('✅ Investor আপডেট হয়েছে','success');
+    closeModal('edit-investor');
+    loadInvestors();
+  } else {
+    showToast('❌ '+(res?.message||'Error'),'error');
+  }
+}
+
+// ── Delete Investor ────────────────────────────────────────────
+function confirmDeleteInvestor(id, name){
+  if(!confirm(`"${name}" কে Investor তালিকা থেকে সরাতে চান?\n\n🗑️ Recycle Bin-এ যাবে। ৩০ দিনের মধ্যে Restore করা যাবে।`)) return;
+  deleteInvestor(id, name);
+}
+
+async function deleteInvestor(id, name){
+  const res = await postToAPI({ action: 'deleteInvestor', investorId: id });
+  if(res?.status==='success'){
+    showToast(`🗑️ ${name} Recycle Bin-এ গেছে`,'info');
+    loadInvestors();
+    updateBinBadge();
+  } else {
+    showToast('❌ '+(res?.message||'Delete failed'),'error');
+  }
 }
 
 // ── Modal openers ──────────────────────────────────────────────────
@@ -5677,6 +5889,7 @@ const pageTitles = {
   'delivery-analytics':['Delivery Analytics','— ডেলিভারি বিশ্লেষণ'],
   'courier-hub':['কুরিয়ার ম্যানেজার হাব','— Live Tracking & COD'],
   'activity-log':['অ্যাক্টিভিটি লগ','— Audit Trail'],
+  'recycle-bin':['রিসাইকেল বিন','— মুছে ফেলা ডেটা পুনরুদ্ধার'],
   architecture:['Architecture','— System Guide'], formulas:['Formula Guide','— Reference'],
   setup:['Setup Roadmap','— Implementation Plan'],
 };
@@ -5703,8 +5916,9 @@ function showPage(id, el) {
   if(id==='courier-hub') renderCourierHub();
   if(id==='activity-log') renderActivityLog();
   if(id==='investors') loadInvestors();
+  if(id==='recycle-bin') loadRecycleBin();
   if(window.innerWidth<=900) closeSidebarMobile();
-  if(id !== 'activity-log') logAction(`"${pageTitles[id]?.[0] || id}" পেজ ভিজিট করেছেন`);
+  if(id !== 'activity-log' && id !== 'recycle-bin') logAction(`"${pageTitles[id]?.[0] || id}" পেজ ভিজিট করেছেন`);
 
   // ── v35 FIX: Lazy reload — browser refresh এর পরে page navigate করলে data reload ──
   if(!apiConnected) return;
@@ -7420,49 +7634,153 @@ async function submitOrder(){
 // ─── DELETE FUNCTIONS ────────────────────────────────────────────────
 
 async function deleteOrder(info) {
-  if (!confirm('⚠️ Order #' + info.id + ' (' + info.customer + ') ডিলিট করবেন?\nএই কাজ undo করা যাবে না।')) return;
+  if (!confirm('⚠️ Order #' + info.id + ' (' + info.customer + ') ডিলিট করবেন?\n\n🗑️ আইটেমটি Recycle Bin-এ যাবে। ৩০ দিনের মধ্যে Restore করা যাবে।')) return;
   const ok = await postToAPI({action:'deleteOrder', orderId: String(info.id)});
   if (ok) {
-    showToast('✅ Order #' + info.id + ' ডিলিট হয়েছে', 'success');
-    logAction(`Order #${info.id} (${info.customer}) ডিলিট করেছেন`);
-    refreshAfterOrder(); // FIX v24: debounced refresh
+    showToast('🗑️ Order #' + info.id + ' Recycle Bin-এ গেছে', 'info');
+    logAction(`Order #${info.id} (${info.customer}) Recycle Bin-এ পাঠিয়েছেন`);
+    refreshAfterOrder();
+    updateBinBadge();
   } else {
     showToast('❌ ডিলিট হয়নি — আবার চেষ্টা করুন', 'error');
   }
 }
 
 async function deleteExpense(info) {
-  if (!confirm('⚠️ Expense #' + info.id + ' (' + info.cat + ') ডিলিট করবেন?\nএই কাজ undo করা যাবে না।')) return;
+  if (!confirm('⚠️ Expense #' + info.id + ' (' + info.cat + ') ডিলিট করবেন?\n\n🗑️ আইটেমটি Recycle Bin-এ যাবে। ৩০ দিনের মধ্যে Restore করা যাবে।')) return;
   const ok = await postToAPI({action:'deleteExpense', expId: String(info.id)});
   if (ok) {
-    showToast('✅ Expense #' + info.id + ' ডিলিট হয়েছে', 'success');
-    logAction(`Expense #${info.id} (${info.cat}) ডিলিট করেছেন`);
+    showToast('🗑️ Expense #' + info.id + ' Recycle Bin-এ গেছে', 'info');
+    logAction(`Expense #${info.id} (${info.cat}) Recycle Bin-এ পাঠিয়েছেন`);
     setTimeout(() => { loadLiveExpenses(); loadLiveDashboard(); }, 1000);
+    updateBinBadge();
   } else {
     showToast('❌ ডিলিট হয়নি — আবার চেষ্টা করুন', 'error');
   }
 }
 
 async function deleteProduct(info) {
-  if (!confirm('⚠️ Product "' + info.name + '" (' + info.id + ') ডিলিট করবেন?\nএই কাজ undo করা যাবে না।')) return;
+  if (!confirm('⚠️ Product "' + info.name + '" (' + info.id + ') ডিলিট করবেন?\n\n🗑️ আইটেমটি Recycle Bin-এ যাবে। ৩০ দিনের মধ্যে Restore করা যাবে।')) return;
   const ok = await postToAPI({action:'deleteProduct', productId: String(info.id)});
   if (ok) {
-    showToast('✅ Product ' + info.id + ' ডিলিট হয়েছে', 'success');
+    showToast('🗑️ Product ' + info.id + ' Recycle Bin-এ গেছে', 'info');
     setTimeout(() => { loadLiveInventory(); loadLiveDashboard(); }, 1000);
+    updateBinBadge();
   } else {
     showToast('❌ ডিলিট হয়নি — আবার চেষ্টা করুন', 'error');
   }
 }
 
 async function deletePartnerTxn(info) {
-  if (!confirm('⚠️ ' + info.partner + '-এর Transaction #' + info.id + ' ডিলিট করবেন?\nএই কাজ undo করা যাবে না।')) return;
+  if (!confirm('⚠️ ' + info.partner + '-এর Transaction #' + info.id + ' ডিলিট করবেন?\n\n🗑️ আইটেমটি Recycle Bin-এ যাবে। ৩০ দিনের মধ্যে Restore করা যাবে।')) return;
   const ok = await postToAPI({action:'deleteTransaction', txnId: String(info.id)});
   if (ok) {
-    showToast('✅ Transaction #' + info.id + ' ডিলিট হয়েছে', 'success');
+    showToast('🗑️ Transaction #' + info.id + ' Recycle Bin-এ গেছে', 'info');
     setTimeout(() => { loadLivePartners(); }, 1000);
+    updateBinBadge();
   } else {
     showToast('❌ ডিলিট হয়নি — আবার চেষ্টা করুন', 'error');
   }
+}
+
+// ══════════════════════════════════════════
+// RECYCLE BIN FUNCTIONS
+// ══════════════════════════════════════════
+let _binData = [];
+
+async function loadRecycleBin() {
+  const tbody = document.getElementById('recycle-bin-body');
+  if(tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text3);">⏳ লোড হচ্ছে...</td></tr>';
+  const res = await postToAPI({action:'getRecycleBin'});
+  _binData = (res && res.data) ? res.data : [];
+  renderRecycleBin();
+  updateBinBadge(_binData.length);
+}
+
+function renderRecycleBin() {
+  const tbody = document.getElementById('recycle-bin-body');
+  if(!tbody) return;
+  const filter = (document.getElementById('bin-type-filter')||{}).value || '';
+  let items = filter ? _binData.filter(x=>x.itemType===filter) : _binData;
+
+  document.getElementById('bin-count').textContent = items.length + ' items';
+  document.getElementById('bin-total-count').textContent = _binData.length;
+
+  // Expiry info
+  const expInfo = document.getElementById('bin-expiry-info');
+  if(_binData.length > 0) {
+    const soonest = _binData.reduce((a,b)=>a.daysLeft<b.daysLeft?a:b);
+    expInfo.textContent = `"${soonest.label.substring(0,30)}..." — ${soonest.daysLeft} দিন বাকি`;
+  } else {
+    if(expInfo) expInfo.textContent = '—';
+  }
+
+  if(items.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text3);">🗑️ রিসাইকেল বিন খালি</td></tr>';
+    return;
+  }
+
+  const typeColor = {Order:'var(--blue)',Expense:'var(--red)',Product:'var(--green)',Transaction:'var(--gold)',Investor:'#a78bfa'};
+  const typeIcon  = {Order:'🛒',Expense:'💸',Product:'📦',Transaction:'🤝',Investor:'📈'};
+
+  tbody.innerHTML = items.map(item => {
+    const daysLeft = item.daysLeft;
+    const urgentStyle = daysLeft <= 5 ? 'color:var(--red);font-weight:700;' : daysLeft <= 10 ? 'color:orange;font-weight:600;' : 'color:var(--text3);';
+    const tc = typeColor[item.itemType] || 'var(--text)';
+    return `<tr>
+      <td><code style="font-size:10px;color:var(--text3);">${item.binId}</code></td>
+      <td><span style="background:${tc}22;color:${tc};border:1px solid ${tc}44;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;">${typeIcon[item.itemType]||'📄'} ${item.itemType}</span></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${item.label}">${item.label}</td>
+      <td style="font-size:12px;color:var(--text3);">${item.deletedAt}</td>
+      <td style="${urgentStyle}font-size:12px;">${daysLeft <= 0 ? '⚠️ মুছে যাবে শীঘ্রই' : daysLeft + ' দিন'}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn" style="padding:4px 10px;font-size:11px;background:rgba(16,185,129,.15);color:var(--green);border-color:rgba(16,185,129,.3);" onclick="restoreBinItem('${item.binId}')">♻️ Restore</button>
+        <button class="btn danger" style="padding:4px 10px;font-size:11px;margin-left:4px;" onclick="permanentDeleteItem('${item.binId}','${item.label.replace(/'/g,'')}')">🗑 চিরতরে মুছুন</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function restoreBinItem(binId) {
+  if(!confirm('এই আইটেমটি মূল শিটে ফিরিয়ে দেবেন?')) return;
+  showToast('⏳ পুনরুদ্ধার হচ্ছে...','info');
+  const res = await postToAPI({action:'restoreItem', binId});
+  if(res && res.status==='success') {
+    showToast('✅ ' + res.message, 'success');
+    logAction(`Recycle Bin থেকে আইটেম Restore করেছেন — ${binId}`);
+    await loadRecycleBin();
+    // Refresh all modules
+    setTimeout(()=>{ try{loadLiveOrders();}catch(e){} try{loadLiveExpenses();}catch(e){} try{loadLiveInventory();}catch(e){} try{loadLivePartners();}catch(e){} try{loadLiveDashboard();}catch(e){} }, 1200);
+  } else {
+    showToast('❌ ' + (res?.message || 'Restore ব্যর্থ হয়েছে'), 'error');
+  }
+}
+
+async function permanentDeleteItem(binId, label) {
+  if(!confirm(`"${label}" চিরতরে মুছে ফেলবেন?\n\n⚠️ এই কাজ আর undo করা যাবে না!`)) return;
+  const res = await postToAPI({action:'permanentDelete', binId});
+  if(res && res.status==='success') {
+    showToast('🗑️ চিরতরে মুছে ফেলা হয়েছে', 'info');
+    await loadRecycleBin();
+  } else {
+    showToast('❌ ' + (res?.message || 'ব্যর্থ হয়েছে'), 'error');
+  }
+}
+
+function updateBinBadge(count) {
+  const badge = document.getElementById('bin-badge');
+  if(!badge) return;
+  if(count === undefined) {
+    // Just fetch count silently
+    postToAPI({action:'getRecycleBin'}).then(res=>{
+      const n = res?.data?.length || 0;
+      badge.textContent = n;
+      badge.style.display = n > 0 ? 'inline-block' : 'none';
+    }).catch(()=>{});
+    return;
+  }
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'inline-block' : 'none';
 }
 
 function openEditOrder(r){
@@ -7515,6 +7833,230 @@ function openEditOrder(r){
   openModal('add-order');
 }
 
+// ═══════════════════════════════════════════════════════════
+// AI SMART PASTE — WhatsApp/Facebook message → Order form
+// ═══════════════════════════════════════════════════════════
+function openSmartPaste(){
+  const panel = document.getElementById('smart-paste-panel');
+  if(panel) panel.style.display = 'block';
+  setTimeout(()=>document.getElementById('smart-paste-input')?.focus(), 100);
+}
+function closeSmartPaste(){
+  const panel = document.getElementById('smart-paste-panel');
+  if(panel) panel.style.display = 'none';
+}
+function clearSmartPaste(){
+  const inp = document.getElementById('smart-paste-input');
+  if(inp) inp.value = '';
+  const st = document.getElementById('smart-paste-status');
+  if(st) st.textContent = '';
+}
+
+async function runSmartPaste(){
+  const text = (document.getElementById('smart-paste-input')?.value||'').trim();
+  if(!text){ showToast('কিছু পেস্ট করুন আগে','warning'); return; }
+
+  const btn    = document.getElementById('smart-paste-btn');
+  const status = document.getElementById('smart-paste-status');
+  btn.disabled = true;
+  btn.textContent = '⏳ AI বিশ্লেষণ করছে...';
+  if(status) status.textContent = '';
+
+  try {
+    let res = null;
+
+    // ── GS-এর মাধ্যমে parse (CORS নেই, BD_LOCATIONS সম্পূর্ণ) ──
+    if(API_URL && API_URL.includes('script.google.com')){
+      res = await fetchFromAPI('smartParse&text='+encodeURIComponent(text));
+    }
+
+    // ── GS নেই বা fail — local regex ──
+    if(!res || res.status !== 'ok'){
+      const fb = parseOrderRegex(text);
+      if(status) status.innerHTML = `<span style="color:var(--gold);">⚡ Local: ${fb.filled}টি field</span>`;
+      showToast(`⚡ ${fb.filled}টি field পূরণ হয়েছে`,'info');
+      closeSmartPaste();
+      return;
+    }
+
+    const p = res.data;
+    const mode = res.mode || 'offline';
+    let filled = 0;
+
+    // ── Basic fields ──
+    if(p.name)    { setField('order-customer', p.name);  filled++; }
+    if(p.phone)   { setField('order-phone', String(p.phone).replace(/[^0-9]/g,'').slice(0,11)); filled++; }
+    if(p.address) { setField('order-address', p.address); filled++; }
+    if(p.note)    { const nEl=document.getElementById('order-notes'); if(nEl){ nEl.value=p.note; filled++; } }
+    if(parseInt(p.qty)>1) { setField('order-qty', String(p.qty)); }
+    if(parseFloat(p.price)>0) { setField('unit-price', String(p.price)); setTimeout(calcTotal,100); filled++; }
+    if(parseFloat(p.paid)>0)  { setField('order-paid',  String(p.paid));  setTimeout(calcDue,200);  }
+
+    // ── Product ──
+    if(p.product){
+      const prodSel = document.getElementById('order-product');
+      if(prodSel){
+        const pOpt = Array.from(prodSel.options).find(o=>
+          o.text.toLowerCase().includes(p.product.toLowerCase()) ||
+          p.product.toLowerCase().includes(o.text.toLowerCase().replace('amanah ',''))
+        );
+        if(pOpt){ prodSel.value=pOpt.value||pOpt.text; onOrderProductChange(prodSel.value); filled++; }
+      }
+    }
+
+    // ── Division → District → Thana (async cascade) ──
+    if(p.division){
+      const divSel = document.getElementById('order-division');
+      if(divSel){
+        const divOpt = Array.from(divSel.options).find(o=>o.text===p.division);
+        if(divOpt){
+          divSel.value = divOpt.value || divOpt.text;
+          updateDistricts(divSel);
+          filled++;
+          await new Promise(r=>setTimeout(r,400));
+
+          if(p.district){
+            const distSel = document.getElementById('district-select');
+            if(distSel){
+              const distOpt = Array.from(distSel.options).find(o=>
+                o.text===p.district || o.text.toLowerCase().includes(p.district.toLowerCase()) || p.district.toLowerCase().includes(o.text.toLowerCase())
+              );
+              if(distOpt){
+                distSel.value = distOpt.value || distOpt.text;
+                updateThanas(distSel);
+                filled++;
+                await new Promise(r=>setTimeout(r,400));
+
+                if(p.thana){
+                  const thanaSel = document.getElementById('thana-select');
+                  if(thanaSel){
+                    const thanaOpt = Array.from(thanaSel.options).find(o=>
+                      o.text===p.thana || o.text.toLowerCase().includes(p.thana.toLowerCase())
+                    );
+                    if(thanaOpt){ thanaSel.value=thanaOpt.value||thanaOpt.text; filled++; }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    const modeLabel = mode==='ai' ? '🤖 AI' : '⚡ Smart';
+    if(status) status.innerHTML = `<span style="color:var(--green);">✅ ${modeLabel}: ${filled}টি field পূরণ</span>`;
+    showToast(`✅ ${filled}টি field পূরণ হয়েছে!`,'success');
+    closeSmartPaste();
+
+  } catch(err){
+    console.error('SmartPaste:', err);
+    const fb = parseOrderRegex(text);
+    if(status) status.innerHTML = `<span style="color:var(--gold);">⚡ Local: ${fb.filled}টি field</span>`;
+    showToast(`⚡ ${fb.filled}টি field পূরণ হয়েছে`,'info');
+    closeSmartPaste();
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ AI বিশ্লেষণ করো';
+  }
+}
+
+function setField(id, val){
+  const el = document.getElementById(id);
+  if(el && val) el.value = val;
+}
+
+// Regex-based offline fallback (works without API)
+function parseOrderRegex(text){
+  let filled = 0;
+
+  // Convert Bengali digits to English
+  const toEn = s => s.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+
+  // ── Name ──
+  const nameMatch = text.match(/(?:নাম|name)[:\s]+([^\n,।]+)/i);
+  if(nameMatch){ setField('order-customer', nameMatch[1].trim()); filled++; }
+  else {
+    // First non-numeric line as name
+    const firstLine = text.split(/\n/).map(l=>l.trim()).find(l=>l.length>2&&!/\d{5,}/.test(l)&&!/ঠিকানা|অ্যাড|addr|note|দাম|price/i.test(l));
+    if(firstLine){ setField('order-customer', firstLine); filled++; }
+  }
+
+  // ── Phone (01XXXXXXXXX) ──
+  const phoneMatch = toEn(text).match(/01[3-9]\d{8}/);
+  if(phoneMatch){ setField('order-phone', phoneMatch[0]); filled++; }
+
+  // ── Price — Bengali or English digits, with or without label ──
+  const priceMatch = toEn(text).match(/(?:দাম|price|মূল্য|cost)[:\s৳]*(\d[\d,]+)/i) ||
+                     toEn(text).match(/(\d{3,6})\s*(?:টাকা|taka|tk|৳)/i) ||
+                     toEn(text).match(/(?:^|\n)\s*(\d{3,6})\s*(?:$|\n)/m);
+  if(priceMatch){
+    const p = priceMatch[1].replace(/,/g,'');
+    if(parseInt(p)>0){ setField('unit-price', p); setTimeout(calcTotal,100); filled++; }
+  }
+
+  // ── Division — Bengali names ──
+  const divMap = {
+    'ঢাকা':'Dhaka','dhaka':'Dhaka',
+    'চট্টগ্রাম':'Chittagong','chittagong':'Chittagong','চিটাগং':'Chittagong',
+    'রাজশাহী':'Rajshahi','rajshahi':'Rajshahi',
+    'খুলনা':'Khulna','khulna':'Khulna',
+    'সিলেট':'Sylhet','sylhet':'Sylhet',
+    'বরিশাল':'Barisal','barisal':'Barisal',
+    'রংপুর':'Rangpur','rangpur':'Rangpur',
+    'ময়মনসিংহ':'Mymensingh','mymensingh':'Mymensingh',
+    // Common districts as division hints
+    'কালিয়াকৈর':'Dhaka','গাজীপুর':'Dhaka','নারায়ণগঞ্জ':'Dhaka',
+    'টাঙ্গাইল':'Dhaka','মানিকগঞ্জ':'Dhaka','নরসিংদী':'Dhaka',
+    'কুমিল্লা':'Chittagong','নোয়াখালী':'Chittagong','ফেনী':'Chittagong',
+    'সিরাজগঞ্জ':'Rajshahi','পাবনা':'Rajshahi','নাটোর':'Rajshahi',
+    'বগুড়া':'Rajshahi','দিনাজপুর':'Rangpur','রংপুর':'Rangpur',
+  };
+  const lowerText = text.toLowerCase();
+  let foundDiv = false;
+  for(const [keyword, divEn] of Object.entries(divMap)){
+    if(text.includes(keyword) || lowerText.includes(keyword.toLowerCase())){
+      const divSel = document.getElementById('order-division');
+      if(divSel){
+        const opt = Array.from(divSel.options).find(o=>o.text===divEn);
+        if(opt){ divSel.value=opt.value||opt.text; updateDistricts(divSel); filled++; foundDiv=true; }
+      }
+      break;
+    }
+  }
+
+  // ── Address ──
+  const addrMatch = text.match(/(?:ঠিকানা|অ্যাড্রেস|address|addr)[:\s]+([^\n]+)/i);
+  if(addrMatch){ setField('order-address', addrMatch[1].trim()); filled++; }
+  else {
+    // Lines containing location keywords
+    const addrLine = text.split(/\n/).find(l=>/কালিয়াকৈর|গাজীপুর|মিরপুর|উত্তরা|মোহাম্মদপুর|যাত্রাবাড়ী|টাঙ্গাইল|নারায়ণগঞ্জ|ঢাকা|চট্টগ্রাম/i.test(l));
+    if(addrLine){ setField('order-address', addrLine.trim()); filled++; }
+  }
+
+  // ── Product match ──
+  const prodSel = document.getElementById('order-product');
+  if(prodSel){
+    const products = Array.from(prodSel.options).filter(o=>o.value);
+    const lowerT = text.toLowerCase();
+    const matched = products.find(o=>{
+      const name = o.text.toLowerCase();
+      const words = name.split(' ');
+      return words.some(w=>w.length>3 && lowerT.includes(w)) ||
+             lowerT.includes('cctv') && name.includes('cctv') ||
+             lowerT.includes('door lock') && name.includes('door') ||
+             lowerT.includes('alarm') && name.includes('alarm') ||
+             lowerT.includes('সিকিউরিটি') || lowerT.includes('security');
+    });
+    if(matched){ prodSel.value=matched.value||matched.text; onOrderProductChange(prodSel.value); filled++; }
+  }
+
+  // ── Note ──
+  const noteMatch = text.match(/(?:note|নোট|বিশেষ|মন্তব্য)[:\s]+([^\n]+)/i);
+  if(noteMatch){ const nEl=document.getElementById('order-notes'); if(nEl){ nEl.value=noteMatch[1].trim(); filled++; } }
+
+  return { filled };
+}
+
 function resetOrderModal(){
   currentEditOrderId=null;
   const m=document.getElementById('modal-add-order');
@@ -7522,6 +8064,9 @@ function resetOrderModal(){
   m.querySelector('.btn.primary').textContent='✅ Save Order';
   m.querySelectorAll('input,textarea').forEach(el=>el.value='');
   m.querySelectorAll('select').forEach(sel=>sel.selectedIndex=0);
+  // Reset Smart Paste panel
+  closeSmartPaste();
+  clearSmartPaste();
   // Reset COD fields
   const codGrp=document.getElementById('cod-charge-group');
   if(codGrp) codGrp.style.display='none';
@@ -7732,11 +8277,12 @@ async function updatePartnerTxn(){
 }
 
 async function deleteTransaction(){
-  if(!confirm('এই transaction delete করতে চান?')) return;
+  if(!confirm('এই transaction Recycle Bin-এ পাঠাবেন?\n\n৩০ দিনের মধ্যে Restore করা যাবে।')) return;
   closeModal('edit-partner');
   const ok=await postToAPI({action:'deleteTransaction',txnId:currentEditTxnId});
   if(ok){
-    showToast('✅ Transaction deleted!','success');
+    showToast('🗑️ Transaction Recycle Bin-এ গেছে','info');
+    updateBinBadge();
     setTimeout(()=>{ loadLivePartners(); loadLiveDashboard(); },1500);
   } else {
     showToast('Transaction delete হয়নি — API URL চেক করুন','error');
@@ -11147,337 +11693,6 @@ const _origSync = window.syncCourierData;
 window.syncCourierData = async function () {
   if (typeof _origSync === "function") _origSync();
   await liveRefreshAllTracking();
-};
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   🤖 AI SMART PASTE — v55
-   যেকোনো ফরম্যাটের কাস্টমার টেক্সট থেকে সমস্ত ফিল্ড অটো পূরণ
-   + Steadfast/Pathao COD charge location-based অটো সেট
-═══════════════════════════════════════════════════════════════════ */
-
-// ─── COD Charge Rules (Steadfast & Pathao — 2025 রেট) ───────────
-// Steadfast: ঢাকা ভেতরে ১%, বাইরে ১.২%, সাধারণ মার্কেট রেট
-// Pathao: ঢাকা সিটি ১%, অন্যান্য ১.৫%, রিমোট ২%
-const COD_RATE_DB = {
-  // ── Steadfast (সরকারি সাইট ও পাবলিক রেট অনুযায়ী) ──
-  steadfast: {
-    inside_dhaka_city: 1,      // ঢাকা মেট্রো
-    dhaka_district:    1,      // ঢাকা জেলা (সিটির বাইরে)
-    near_dhaka:        1.2,    // গাজীপুর, নারায়ণগঞ্জ, মানিকগঞ্জ, মুন্সিগঞ্জ
-    chittagong_city:   1,      // চট্টগ্রাম সিটি
-    division_city:     1.2,    // বিভাগীয় শহর (রাজশাহী, খুলনা, সিলেট, রংপুর, বরিশাল, ময়মনসিংহ)
-    outside:           1.5,    // অন্য জেলা সদর
-    remote:            2,      // প্রত্যন্ত অঞ্চল / দুর্গম
-  },
-  // ── Pathao (পাথাও অ্যাপ রেট ২০২৫) ──
-  pathao: {
-    inside_dhaka_city: 1,
-    dhaka_district:    1.2,
-    near_dhaka:        1.5,
-    chittagong_city:   1,
-    division_city:     1.5,
-    outside:           2,
-    remote:            2.5,
-  }
-};
-
-// ── District → Zone ম্যাপিং ──────────────────────────────────────
-function _getCODZone(division, district) {
-  if (!division && !district) return 'outside';
-  const div = (division || '').toLowerCase();
-  const dis = (district || '').toLowerCase();
-
-  // ঢাকা সিটি কর্পোরেশন
-  if (dis.includes('dhaka city') || dis === 'dhaka sadar' || (div === 'dhaka' && !dis)) return 'inside_dhaka_city';
-  // ঢাকার কাছাকাছি জেলা
-  const nearDhaka = ['gazipur','narayanganj','manikganj','munshiganj','narsingdi'];
-  if (nearDhaka.some(d => dis.includes(d))) return 'near_dhaka';
-  // ঢাকা জেলা (অন্যান্য)
-  if (div === 'dhaka') return 'dhaka_district';
-  // চট্টগ্রাম সিটি
-  if (dis.includes('chittagong city') || dis.includes('chittagong sadar')) return 'chittagong_city';
-  // বিভাগীয় শহর
-  const divCities = ['rajshahi city','khulna city','sylhet city','rangpur city','barisal city','mymensingh city','comilla','cumilla'];
-  if (divCities.some(d => dis.includes(d))) return 'division_city';
-  // সাধারণ জেলা
-  return 'outside';
-}
-
-function _calcCODRate(courierRaw, division, district) {
-  const c = (courierRaw || '').toLowerCase();
-  let courier = null;
-  if (c.includes('steadfast')) courier = 'steadfast';
-  else if (c.includes('pathao')) courier = 'pathao';
-  if (!courier) return null; // অন্য কুরিয়ার — COD rate প্রযোজ্য নয়
-  const zone = _getCODZone(division, district);
-  return COD_RATE_DB[courier][zone] || COD_RATE_DB[courier]['outside'];
-}
-
-// ─── AI Panel Toggle ─────────────────────────────────────────────
-function toggleAIPastePanel() {
-  const panel = document.getElementById('ai-paste-panel');
-  const btn   = document.getElementById('ai-paste-toggle-btn');
-  if (!panel) return;
-  const open = panel.style.display === 'none';
-  panel.style.display = open ? 'block' : 'none';
-  if (btn) {
-    btn.style.background = open
-      ? 'linear-gradient(135deg,rgba(188,140,255,.35),rgba(56,139,253,.25))'
-      : 'linear-gradient(135deg,rgba(188,140,255,.18),rgba(56,139,253,.12))';
-  }
-  if (open) {
-    setTimeout(() => document.getElementById('ai-raw-input')?.focus(), 100);
-    // reset status
-    document.getElementById('ai-paste-status').textContent = '';
-    document.getElementById('ai-paste-result-preview').style.display = 'none';
-  }
-}
-
-// ─── Main AI Parse Function ───────────────────────────────────────
-async function runAISmartPaste() {
-  const raw = (document.getElementById('ai-raw-input')?.value || '').trim();
-  if (!raw) { showToast('⚠️ প্রথমে টেক্সট পেস্ট করুন', 'error'); return; }
-
-  // API URL চেক
-  const apiUrl = (typeof API_URL !== 'undefined' ? API_URL : '') || (typeof GS_URL !== 'undefined' ? GS_URL : '');
-  if (!apiUrl || apiUrl.includes('YOUR_') || apiUrl.length < 30) {
-    showToast('⚠️ Setup Guide অনুযায়ী API URL সেট করুন', 'error');
-    document.getElementById('ai-paste-status').innerHTML = '<span style="color:var(--red);">❌ API URL সেট নেই — Setup Guide দেখুন</span>';
-    return;
-  }
-
-  const btn    = document.getElementById('ai-paste-run-btn');
-  const status = document.getElementById('ai-paste-status');
-  btn.disabled = true;
-  btn.textContent = '⏳ AI বিশ্লেষণ করছে...';
-  status.innerHTML = '<span style="color:var(--text3);">🤖 Google Sheets প্রক্সি দিয়ে AI call হচ্ছে...</span>';
-
-  // Inventory product list
-  let productList = [];
-  try {
-    document.querySelectorAll('#order-product option').forEach(o => { if (o.value) productList.push(o.value); });
-  } catch(e) {}
-
-  try {
-    const resp = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action:   'aiParse',
-        rawText:  raw,
-        products: productList.join(', ')
-      })
-    });
-
-    const result = await resp.json();
-
-    if (result.status === 'error') throw new Error(result.message || 'GS proxy error');
-
-    const parsed = result.data;
-    if (!parsed) throw new Error('AI থেকে ডেটা পাওয়া যায়নি');
-
-    // ফর্মে বসাও
-    await _fillOrderForm(parsed);
-
-    btn.textContent = '✅ সম্পন্ন!';
-    btn.style.background = 'var(--green)';
-    status.innerHTML = '<span style="color:var(--green);">✅ সমস্ত ফিল্ড পূরণ হয়েছে</span>';
-    _showAIPreview(parsed);
-    showToast('🤖 AI Smart Paste সম্পন্ন! সব ফিল্ড চেক করুন।', 'success');
-
-    setTimeout(() => {
-      document.getElementById('ai-paste-panel').style.display = 'none';
-      const tb = document.getElementById('ai-paste-toggle-btn');
-      if (tb) tb.style.background = 'linear-gradient(135deg,rgba(188,140,255,.18),rgba(56,139,253,.12))';
-    }, 2800);
-
-  } catch(err) {
-    status.innerHTML = `<span style="color:var(--red);">❌ ${err.message || 'Error হয়েছে'}</span>`;
-    showToast('❌ AI Smart Paste ব্যর্থ: ' + (err.message || ''), 'error');
-  } finally {
-    setTimeout(() => {
-      btn.disabled = false;
-      if (!btn.textContent.includes('✅')) btn.textContent = '✨ AI দিয়ে ফিল করুন';
-    }, 3500);
-  }
-}
-
-// ─── Form Fill ────────────────────────────────────────────────────
-async function _fillOrderForm(p) {
-  const m = document.getElementById('modal-add-order');
-  if (!m) return;
-
-  // নাম ও ফোন
-  const nameEl  = m.querySelector('#order-customer');
-  const phoneEl = m.querySelector('#order-phone');
-  if (nameEl)  nameEl.value  = p.name  || '';
-  if (phoneEl) phoneEl.value = (p.phone || '').replace(/[^0-9]/g,'').slice(0,11);
-
-  // Division → District → Thana cascade
-  const divEl = document.getElementById('order-division');
-  if (divEl && p.division) {
-    divEl.value = p.division;
-    divEl.dispatchEvent(new Event('change')); // updateDistricts trigger
-    await _delay(180);
-  }
-  const disEl = document.getElementById('district-select');
-  if (disEl && p.district) {
-    // option text match (case-insensitive partial)
-    const opts = Array.from(disEl.options);
-    const match = opts.find(o => o.value.toLowerCase().includes((p.district||'').toLowerCase())
-                               || (p.district||'').toLowerCase().includes(o.value.toLowerCase()));
-    if (match) disEl.value = match.value;
-    else disEl.value = p.district; // fallback
-    disEl.dispatchEvent(new Event('change')); // updateThanas trigger
-    await _delay(180);
-  }
-  const thanaEl = document.getElementById('thana-select');
-  if (thanaEl && p.thana) {
-    const topts = Array.from(thanaEl.options);
-    const tm = topts.find(o => o.value.toLowerCase().includes((p.thana||'').toLowerCase())
-                             || (p.thana||'').toLowerCase().includes(o.value.toLowerCase()));
-    if (tm) thanaEl.value = tm.value;
-    else thanaEl.value = p.thana;
-  }
-
-  // ঠিকানা
-  const addrEl = document.getElementById('order-address');
-  if (addrEl) addrEl.value = p.address || '';
-
-  // Product
-  const prodEl = document.getElementById('order-product');
-  if (prodEl && p.product) {
-    const popts = Array.from(prodEl.options);
-    const pm = popts.find(o => o.value && (
-      o.value.toLowerCase().includes((p.product||'').toLowerCase()) ||
-      (p.product||'').toLowerCase().includes(o.value.toLowerCase())
-    ));
-    if (pm) {
-      prodEl.value = pm.value;
-      if (typeof onOrderProductChange === 'function') onOrderProductChange(pm.value);
-    } else if (p.product) {
-      // নতুন option তৈরি করো
-      const newOpt = new Option(p.product, p.product);
-      prodEl.add(newOpt);
-      prodEl.value = p.product;
-    }
-    await _delay(120);
-  }
-
-  // Qty, Price
-  const qtyEl   = document.getElementById('order-qty');
-  const priceEl = document.getElementById('unit-price');
-  if (qtyEl)   { qtyEl.value   = p.qty   || 1; }
-  if (priceEl) { priceEl.value = p.price || 0; }
-  if (typeof calcTotal === 'function') calcTotal();
-
-  // Paid
-  const paidEl = document.getElementById('order-paid');
-  if (paidEl) paidEl.value = p.paid || 0;
-
-  // Delivery charge
-  const delEl = document.getElementById('order-delivery');
-  if (delEl) delEl.value = p.delivery || 0;
-
-  // Payment Method
-  const payEl = document.getElementById('order-payment');
-  if (payEl && p.payment) {
-    payEl.value = p.payment;
-    if (typeof toggleCodField === 'function') toggleCodField();
-  }
-
-  // Courier
-  const courierEl = document.getElementById('order-courier');
-  if (courierEl && p.courier) {
-    const copts = Array.from(courierEl.options);
-    const cm = copts.find(o => o.value && o.value.toLowerCase() === (p.courier||'').toLowerCase());
-    if (cm) courierEl.value = cm.value;
-  }
-
-  // ── COD Charge অটো সেট (Steadfast / Pathao location-based) ──
-  const selCourier  = courierEl?.value || p.courier || '';
-  const selDivision = divEl?.value     || p.division || '';
-  const selDistrict = disEl?.value     || p.district || '';
-  const codRate = _calcCODRate(selCourier, selDivision, selDistrict);
-  if (codRate !== null) {
-    // Payment Method → COD-এ সেট করো (যদি না থাকে)
-    if (payEl && payEl.value !== 'COD') {
-      payEl.value = 'COD';
-      if (typeof toggleCodField === 'function') toggleCodField();
-    }
-    await _delay(80);
-    const codPctEl = document.getElementById('order-cod-pct');
-    if (codPctEl) {
-      codPctEl.value = String(codRate);
-      if (typeof calcDue === 'function') calcDue();
-    }
-  }
-
-  // Status
-  const statEl = document.getElementById('order-status');
-  if (statEl && p.status) statEl.value = p.status;
-
-  // Tracking
-  const trackEl = document.getElementById('order-tracking');
-  if (trackEl && p.tracking) trackEl.value = p.tracking;
-
-  // Notes
-  const notesEl = document.getElementById('order-notes');
-  if (notesEl) notesEl.value = p.notes || '';
-
-  // Due হিসাব করো
-  if (typeof calcDue === 'function') calcDue();
-}
-
-function _delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ─── Result Preview ───────────────────────────────────────────────
-function _showAIPreview(p) {
-  const box = document.getElementById('ai-paste-result-preview');
-  if (!box) return;
-  const codRate = _calcCODRate(p.courier, p.division, p.district);
-  const zone    = p.courier && (p.courier.toLowerCase().includes('steadfast') || p.courier.toLowerCase().includes('pathao'))
-    ? ` (${_getCODZone(p.division, p.district)} zone → ${codRate}% COD)`
-    : '';
-  box.style.display = 'block';
-  box.innerHTML = `
-    <div style="font-weight:700;color:var(--green);margin-bottom:8px;">✅ AI যা খুঁজে পেয়েছে:</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;">
-      <span>👤 নাম: <strong style="color:var(--text);">${p.name||'—'}</strong></span>
-      <span>📞 ফোন: <strong style="color:var(--text);">${p.phone||'—'}</strong></span>
-      <span>🗺 বিভাগ: <strong style="color:var(--text);">${p.division||'—'}</strong></span>
-      <span>📍 জেলা: <strong style="color:var(--text);">${p.district||'—'}</strong></span>
-      <span>🏘 থানা: <strong style="color:var(--text);">${p.thana||'—'}</strong></span>
-      <span>📦 পণ্য: <strong style="color:var(--text);">${p.product||'—'}</strong></span>
-      <span>🔢 পরিমাণ: <strong style="color:var(--text);">${p.qty||1}</strong></span>
-      <span>💰 মূল্য: <strong style="color:var(--gold);">৳${p.price||0}</strong></span>
-      <span>🚚 ডেলিভারি: <strong style="color:var(--text);">৳${p.delivery||0}</strong></span>
-      <span>💳 পেমেন্ট: <strong style="color:var(--text);">${p.payment||'Cash'}</strong></span>
-      <span>🚛 কুরিয়ার: <strong style="color:var(--blue);">${p.courier||'—'}</strong></span>
-      ${codRate !== null ? `<span>📊 COD: <strong style="color:var(--purple);">${codRate}%${zone}</strong></span>` : ''}
-    </div>
-    ${p.address ? `<div style="margin-top:6px;">🏠 ঠিকানা: <strong style="color:var(--text);">${p.address}</strong></div>` : ''}
-    ${p.notes   ? `<div style="margin-top:4px;">📝 নোট: <em style="color:var(--text2);">${p.notes}</em></div>` : ''}
-  `;
-}
-
-// ─── Reset panel যখন modal বন্ধ হয় ──────────────────────────────
-const _origResetOrderModal = window.resetOrderModal;
-window.resetOrderModal = function() {
-  if (typeof _origResetOrderModal === 'function') _origResetOrderModal();
-  const panel = document.getElementById('ai-paste-panel');
-  if (panel) panel.style.display = 'none';
-  const rawEl = document.getElementById('ai-raw-input');
-  if (rawEl) rawEl.value = '';
-  const preview = document.getElementById('ai-paste-result-preview');
-  if (preview) { preview.style.display = 'none'; preview.innerHTML = ''; }
-  const statusEl = document.getElementById('ai-paste-status');
-  if (statusEl) statusEl.textContent = '';
-  const btn = document.getElementById('ai-paste-run-btn');
-  if (btn) { btn.disabled = false; btn.textContent = '✨ AI দিয়ে ফিল করুন'; btn.style.background = ''; }
-  const toggleBtn = document.getElementById('ai-paste-toggle-btn');
-  if (toggleBtn) toggleBtn.style.background = 'linear-gradient(135deg,rgba(188,140,255,.18),rgba(56,139,253,.12))';
 };
 </script>
 </body>

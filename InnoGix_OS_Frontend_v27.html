@@ -3066,7 +3066,7 @@ tbody td.muted{color:var(--text3);}
           <h2>📦 কুরিয়ার ম্যানেজার হাব</h2>
           <p>৬টি কুরিয়ার কোম্পানির লাইভ অ্যানালিটিক্স, ট্র্যাকিং ও COD হিসাব</p>
         </div>
-        <button class="btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="syncCourierData()">🔄 কুরিয়ার ডাটা সিঙ্ক করুন</button>
+        <button class="btn" id="courier-sync-btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="liveSyncCourierData()">🔄 লাইভ রিফ্রেশ</button>
       </div>
 
       <!-- ✅ Feature 4: COD Statistics Dashboard Widget -->
@@ -4496,7 +4496,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzjp83MSzxEUIiqu8AF29xITSFQ-o6E2kfqkzxJ2mb1-HgjlOAwhw_lRyVk59po9qlc/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbyEmyZ0abWFq0fMQRnb6JgM8QhmyMVyvpaLrgqclTn7j3or4hxgN0dXJ_ASZHmwVuLTbQ/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5913,7 +5913,10 @@ function showPage(id, el) {
   document.getElementById('page-title').textContent = pageTitles[id][0];
   document.getElementById('page-sub').textContent = pageTitles[id][1];
   if(id==='delivery-analytics') renderDeliveryAnalytics();
-  if(id==='courier-hub') renderCourierHub();
+  if(id==='courier-hub') {
+    // page খোলার সাথে সাথে GAS থেকে fresh data আনো
+    loadLiveSales().then(() => renderCourierHub()).catch(() => renderCourierHub());
+  }
   if(id==='activity-log') renderActivityLog();
   if(id==='investors') loadInvestors();
   if(id==='recycle-bin') loadRecycleBin();
@@ -6705,9 +6708,33 @@ function debouncedLoad(fn, key, delay) {
 }
 
 function refreshAfterOrder() {
-  debouncedLoad(() => loadLiveSales().then(()=>loadLiveCRM()), 'sales', 1200);
+  // Sales reload করো, তারপর Courier Hub আপডেট করো
+  debouncedLoad(() =>
+    loadLiveSales().then(() => {
+      loadLiveCRM();
+      // Sales data ready হওয়ার পর Courier Hub রেন্ডার করো
+      if (typeof renderCourierHub === 'function') renderCourierHub();
+      updateCourierBadge_();
+    }),
+    'sales', 1200
+  );
   debouncedLoad(() => loadLiveDashboard(), 'dash', 2000);
   debouncedLoad(() => loadLiveInventory(), 'inv', 2500);
+}
+
+// Courier badge count আপডেট
+function updateCourierBadge_() {
+  try {
+    const badge = document.getElementById('courier-badge');
+    if (!badge) return;
+    const orders = (typeof liveSalesData !== 'undefined' ? liveSalesData : []);
+    const pending = orders.filter(o => {
+      const s = (o.status || '').toLowerCase();
+      return s === 'pending' || s === 'processing' || s === 'in transit';
+    }).length;
+    badge.textContent = pending;
+    badge.style.display = pending > 0 ? 'inline-block' : 'none';
+  } catch(e) {}
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -7597,6 +7624,12 @@ async function submitOrder(){
       window._lastAddedOrderId  = String(ok.row - 1); // SL# = row - 1 (row 2 = SL#1)
     }
     showToast(currentEditOrderId?'✅ Order updated!':'✅ Order saved!','success');
+    // Return delivery charge auto-expense notification
+    if(ok.returnExpenseAdded && ok.returnExpenseAmount>0){
+      setTimeout(()=>{
+        showToast(`🔄 Return Delivery Charge ৳${ok.returnExpenseAmount} — Expense-এ স্বয়ংক্রিয় যোগ হয়েছে`,'info');
+      }, 1500);
+    }
     logAction(currentEditOrderId ? `Order #${currentEditOrderId} আপডেট করেছেন` : `নতুন Order এন্ট্রি করেছেন — ${payload.customer} (${payload.product})`);
     // MODULE 1: Profit Split — নতুন অর্ডারে প্রফিট বণ্টন করো
     if (!currentEditOrderId) {
@@ -7888,9 +7921,40 @@ async function runSmartPaste(){
     if(p.phone)   { setField('order-phone', String(p.phone).replace(/[^0-9]/g,'').slice(0,11)); filled++; }
     if(p.address) { setField('order-address', p.address); filled++; }
     if(p.note)    { const nEl=document.getElementById('order-notes'); if(nEl){ nEl.value=p.note; filled++; } }
-    if(parseInt(p.qty)>1) { setField('order-qty', String(p.qty)); }
+    if(parseInt(p.qty)>1) { setField('order-qty', String(p.qty)); setTimeout(calcTotal,150); filled++; }
     if(parseFloat(p.price)>0) { setField('unit-price', String(p.price)); setTimeout(calcTotal,100); filled++; }
-    if(parseFloat(p.paid)>0)  { setField('order-paid',  String(p.paid));  setTimeout(calcDue,200);  }
+    if(parseFloat(p.paid)>0)  { setField('order-paid',  String(p.paid));  setTimeout(calcDue,200);  filled++; }
+
+    // ── Delivery charge ──
+    if(parseFloat(p.delivery)>0) {
+      setField('order-delivery', String(p.delivery));
+      setTimeout(calcDue, 300);
+      filled++;
+    }
+
+    // ── Courier ──
+    if(p.courier) {
+      const courierSel = document.getElementById('order-courier');
+      if(courierSel) {
+        const cOpt = Array.from(courierSel.options).find(o=>
+          o.text.toLowerCase().includes(p.courier.toLowerCase()) ||
+          p.courier.toLowerCase().includes(o.text.toLowerCase())
+        );
+        if(cOpt) { courierSel.value = cOpt.value || cOpt.text; filled++; }
+      }
+    }
+
+    // ── Payment method ──
+    if(p.payment) {
+      const paymentSel = document.getElementById('order-payment');
+      if(paymentSel) {
+        const pOpt = Array.from(paymentSel.options).find(o=>
+          o.text.toLowerCase().includes(p.payment.toLowerCase()) ||
+          p.payment.toLowerCase().includes(o.text.toLowerCase())
+        );
+        if(pOpt) { paymentSel.value = pOpt.value || pOpt.text; filled++; }
+      }
+    }
 
     // ── Product ──
     if(p.product){
@@ -7944,7 +8008,7 @@ async function runSmartPaste(){
     }
 
     const modeLabel = mode==='ai' ? '🤖 AI' : '⚡ Smart';
-    if(status) status.innerHTML = `<span style="color:var(--green);">✅ ${modeLabel}: ${filled}টি field পূরণ</span>`;
+    if(status) status.innerHTML = `<span style="color:var(--green);">✅ ${modeLabel}: ${filled}টি field পূরণ হয়েছে</span>`;
     showToast(`✅ ${filled}টি field পূরণ হয়েছে!`,'success');
     closeSmartPaste();
 
@@ -7971,88 +8035,335 @@ function parseOrderRegex(text){
 
   // Convert Bengali digits to English
   const toEn = s => s.replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const t = toEn(text);
+  const tl = t.toLowerCase();
 
   // ── Name ──
-  const nameMatch = text.match(/(?:নাম|name)[:\s]+([^\n,।]+)/i);
+  const nameMatch = t.match(/(?:নাম|name)[:\s]+([^\n,।]+)/i);
   if(nameMatch){ setField('order-customer', nameMatch[1].trim()); filled++; }
   else {
-    // First non-numeric line as name
-    const firstLine = text.split(/\n/).map(l=>l.trim()).find(l=>l.length>2&&!/\d{5,}/.test(l)&&!/ঠিকানা|অ্যাড|addr|note|দাম|price/i.test(l));
+    const firstLine = text.split(/\n/).map(l=>l.trim()).find(l=>
+      l.length>2 && !/\d{5,}/.test(l) &&
+      !/ঠিকানা|অ্যাড|addr|note|দাম|price|ডেলি|deliv|courier|pay|cash|bkash|nagad|steadfast|pathao|fit tar|fit\b/i.test(l)
+    );
     if(firstLine){ setField('order-customer', firstLine); filled++; }
   }
 
   // ── Phone (01XXXXXXXXX) ──
-  const phoneMatch = toEn(text).match(/01[3-9]\d{8}/);
+  const phoneMatch = t.match(/01[3-9]\d{8}/);
   if(phoneMatch){ setField('order-phone', phoneMatch[0]); filled++; }
 
-  // ── Price — Bengali or English digits, with or without label ──
-  const priceMatch = toEn(text).match(/(?:দাম|price|মূল্য|cost)[:\s৳]*(\d[\d,]+)/i) ||
-                     toEn(text).match(/(\d{3,6})\s*(?:টাকা|taka|tk|৳)/i) ||
-                     toEn(text).match(/(?:^|\n)\s*(\d{3,6})\s*(?:$|\n)/m);
+  // ── Price (product price, not delivery) ──
+  const priceMatch =
+    t.match(/(?:দাম|price|মূল্য|unit)[:\s৳]*(\d[\d,]+)/i) ||
+    t.match(/(\d{3,6})\s*(?:টাকা|taka|tk|৳)\s*(?:প্রতি|each|unit|পিস)/i) ||
+    t.match(/(?:^|\n)\s*(\d{3,6})\s*(?:$|\n)/m);
   if(priceMatch){
     const p = priceMatch[1].replace(/,/g,'');
     if(parseInt(p)>0){ setField('unit-price', p); setTimeout(calcTotal,100); filled++; }
   }
 
-  // ── Division — Bengali names ──
-  const divMap = {
-    'ঢাকা':'Dhaka','dhaka':'Dhaka',
-    'চট্টগ্রাম':'Chittagong','chittagong':'Chittagong','চিটাগং':'Chittagong',
-    'রাজশাহী':'Rajshahi','rajshahi':'Rajshahi',
-    'খুলনা':'Khulna','khulna':'Khulna',
-    'সিলেট':'Sylhet','sylhet':'Sylhet',
-    'বরিশাল':'Barisal','barisal':'Barisal',
-    'রংপুর':'Rangpur','rangpur':'Rangpur',
-    'ময়মনসিংহ':'Mymensingh','mymensingh':'Mymensingh',
-    // Common districts as division hints
-    'কালিয়াকৈর':'Dhaka','গাজীপুর':'Dhaka','নারায়ণগঞ্জ':'Dhaka',
-    'টাঙ্গাইল':'Dhaka','মানিকগঞ্জ':'Dhaka','নরসিংদী':'Dhaka',
-    'কুমিল্লা':'Chittagong','নোয়াখালী':'Chittagong','ফেনী':'Chittagong',
-    'সিরাজগঞ্জ':'Rajshahi','পাবনা':'Rajshahi','নাটোর':'Rajshahi',
-    'বগুড়া':'Rajshahi','দিনাজপুর':'Rangpur','রংপুর':'Rangpur',
-  };
-  const lowerText = text.toLowerCase();
-  let foundDiv = false;
-  for(const [keyword, divEn] of Object.entries(divMap)){
-    if(text.includes(keyword) || lowerText.includes(keyword.toLowerCase())){
-      const divSel = document.getElementById('order-division');
-      if(divSel){
-        const opt = Array.from(divSel.options).find(o=>o.text===divEn);
-        if(opt){ divSel.value=opt.value||opt.text; updateDistricts(divSel); filled++; foundDiv=true; }
-      }
-      break;
+  // ── Paid amount (actual advance only — NOT "FIT TAR LAGBO") ──
+  const paidMatch =
+    t.match(/(?:paid|পেমেন্ট|পরিশোধ|অগ্রিম|advance|বায়না|deposit)[:\s৳]*(\d+)/i);
+  if(paidMatch){
+    const pv = parseInt(paidMatch[1])||0;
+    if(pv>0){ setField('order-paid', String(pv)); setTimeout(calcDue,200); filled++; }
+  }
+
+  // ── Delivery charge ──
+  const deliveryMatch =
+    t.match(/(?:ডেলিভারি|delivery|deliv)[^\d]*(\d+)/i) ||
+    t.match(/(?:courier charge|কুরিয়ার চার্জ)[:\s]*(\d+)/i) ||
+    t.match(/(?:charge)[:\s]*(\d+)/i);
+  if(deliveryMatch){
+    const dv = parseInt(deliveryMatch[1])||0;
+    if(dv>0){ setField('order-delivery', String(dv)); setTimeout(calcDue,300); filled++; }
+  }
+
+  // ── Courier ──
+  const courierSel = document.getElementById('order-courier');
+  if(courierSel){
+    let courier = '';
+    if(/steadfast|স্টেডফাস্ট/.test(tl)) courier='Steadfast';
+    else if(/pathao|পাঠাও/.test(tl)) courier='Pathao';
+    else if(/redx|রেডএক্স/.test(tl)) courier='RedX';
+    else if(/sundarban|সুন্দরবন/.test(tl)) courier='Sundarban';
+    else if(/ecourier/.test(tl)) courier='eCourier';
+    if(courier){
+      const cOpt = Array.from(courierSel.options).find(o=>o.text.toLowerCase().includes(courier.toLowerCase()));
+      if(cOpt){ courierSel.value=cOpt.value||cOpt.text; filled++; }
     }
   }
 
-  // ── Address ──
-  const addrMatch = text.match(/(?:ঠিকানা|অ্যাড্রেস|address|addr)[:\s]+([^\n]+)/i);
-  if(addrMatch){ setField('order-address', addrMatch[1].trim()); filled++; }
-  else {
-    // Lines containing location keywords
-    const addrLine = text.split(/\n/).find(l=>/কালিয়াকৈর|গাজীপুর|মিরপুর|উত্তরা|মোহাম্মদপুর|যাত্রাবাড়ী|টাঙ্গাইল|নারায়ণগঞ্জ|ঢাকা|চট্টগ্রাম/i.test(l));
-    if(addrLine){ setField('order-address', addrLine.trim()); filled++; }
+  // ── Payment method ──
+  const paymentSel = document.getElementById('order-payment');
+  if(paymentSel){
+    let payment = '';
+    if(/bkash|বিকাশ/.test(tl)) payment='Bkash';
+    else if(/nagad|নগদ/.test(tl)) payment='Nagad';
+    else if(/rocket|রকেট/.test(tl)) payment='Rocket';
+    else if(/\bcod\b|ক্যাশ অন/.test(tl)) payment='COD';
+    else if(/bank|transfer|ট্রান্সফার/.test(tl)) payment='Bank Transfer';
+    if(payment){
+      const pOpt = Array.from(paymentSel.options).find(o=>o.text.toLowerCase().includes(payment.toLowerCase()));
+      if(pOpt){ paymentSel.value=pOpt.value||pOpt.text; filled++; }
+    }
+  }
+
+  // ── Location: Bengali aliases + district + thana cascade ──
+  // Bengali word → English name as stored in BD_LOCATIONS (loaded from GAS)
+  const BN_ALIAS = {
+    // Thanas
+    'কালিহাতী':'Kalihati','কালিহাতি':'Kalihati',
+    'ঘাটাইল':'Ghatail','মধুপুর':'Madhupur','মির্জাপুর':'Mirzapur',
+    'ভূয়াপুর':'Bhuapur','গোপালপুর':'Gopalpur','সখিপুর':'Sakhipur',
+    'বাসাইল':'Basail','দেলদুয়ার':'Delduar','নাগরপুর':'Nagarpur','ধনবাড়ী':'Dhanbari',
+    'কালিয়াকৈর':'Kaliakair','কাপাসিয়া':'Kapasia','শ্রীপুর':'Sreepur',
+    'গাজীপুর সদর':'Gazipur Sadar','কালীগঞ্জ':'Kaliganj',
+    'নরসিংদী সদর':'Narsingdi Sadar','পলাশ':'Palash','শিবপুর':'Shibpur',
+    'বেলকুচি':'Belkuchi','শাহজাদপুর':'Shahjadpur','উল্লাপাড়া':'Ullahpara',
+    'ঈশ্বরদী':'Ishwardi','সাঁথিয়া':'Santhia',
+    'টঙ্গীবাড়ী':'Tongibari','মুন্সিগঞ্জ সদর':'Munshiganj Sadar',
+    'ভালুকা':'Bhaluka','ত্রিশাল':'Trishal','মুক্তাগাছা':'Muktagacha',
+    'ফুলবাড়িয়া':'Fulbaria','গফরগাঁও':'Gaffargaon','ফুলপুর':'Phulpur',
+    'সরিষাবাড়ী':'Sarishabari','দেওয়ানগঞ্জ':'Dewanganj','ইসলামপুর':'Islampur',
+    'বকশিগঞ্জ':'Bakshiganj','মেলান্দহ':'Melandaha','মাদারগঞ্জ':'Madarganj',
+    'কলমাকান্দা':'Kalmakanda','কেন্দুয়া':'Kendua','আটপাড়া':'Atpara',
+    'বারহাট্টা':'Barhatta','দুর্গাপুর':'Durgapur','পূর্বধলা':'Purbadhala',
+    'মোহনগঞ্জ':'Mohanganj','খালিয়াজুরী':'Khaliajuri','মদন':'Madan',
+    // Districts
+    'টাঙ্গাইল':'Tangail','গাজীপুর':'Gazipur','নারায়ণগঞ্জ':'Narayanganj',
+    'নরসিংদী':'Narsingdi','মানিকগঞ্জ':'Manikganj','মুন্সিগঞ্জ':'Munshiganj',
+    'কিশোরগঞ্জ':'Kishoreganj','ফরিদপুর':'Faridpur','মাদারীপুর':'Madaripur',
+    'গোপালগঞ্জ':'Gopalganj','শরীয়তপুর':'Shariatpur','রাজবাড়ী':'Rajbari',
+    'সিরাজগঞ্জ':'Sirajganj','পাবনা':'Pabna','বগুড়া':'Bogra','নাটোর':'Natore',
+    'জয়পুরহাট':'Joypurhat','নওগাঁ':'Naogaon','চাঁপাইনবাবগঞ্জ':'Chapai Nawabganj',
+    'কুমিল্লা':'Comilla','নোয়াখালী':'Noakhali','ফেনী':'Feni',
+    'লক্ষ্মীপুর':'Lakshmipur','চাঁদপুর':'Chandpur','ব্রাহ্মণবাড়িয়া':'Brahmanbaria',
+    'রাঙামাটি':'Rangamati','খাগড়াছড়ি':'Khagrachhari','বান্দরবান':'Bandarban',
+    'কক্সবাজার':"Cox's Bazar",
+    'যশোর':'Jessore','সাতক্ষীরা':'Satkhira','নড়াইল':'Narail',
+    'চুয়াডাঙ্গা':'Chuadanga','মেহেরপুর':'Meherpur','মাগুরা':'Magura',
+    'ঝিনাইদহ':'Jhenaidah','কুষ্টিয়া':'Kushtia','বাগেরহাট':'Bagerhat',
+    'ময়মনসিংহ':'Mymensingh City','জামালপুর':'Jamalpur','নেত্রকোণা':'Netrokona','শেরপুর':'Sherpur',
+    'সিলেট':'Sylhet City','সুনামগঞ্জ':'Sunamganj','হবিগঞ্জ':'Habiganj','মৌলভীবাজার':'Moulvibazar',
+    'রংপুর':'Rangpur City','দিনাজপুর':'Dinajpur','কুড়িগ্রাম':'Kurigram',
+    'গাইবান্ধা':'Gaibandha','লালমনিরহাট':'Lalmonirhat','নীলফামারী':'Nilphamari',
+    'পঞ্চগড়':'Panchagarh','ঠাকুরগাঁও':'Thakurgaon',
+    'বরিশাল':'Barisal City','ভোলা':'Bhola','পটুয়াখালী':'Patuakhali',
+    'বরগুনা':'Barguna','পিরোজপুর':'Pirojpur','ঝালকাঠি':'Jhalokati',
+    // Divisions
+    'ঢাকা':'Dhaka','চট্টগ্রাম':'Chittagong','রাজশাহী':'Rajshahi',
+    'খুলনা':'Khulna','সিলেট':'Sylhet','বরিশাল':'Barisal',
+    'রংপুর':'Rangpur','ময়মনসিংহ':'Mymensingh',
+  };
+
+  // Try to get BD_LOCATIONS from window (loaded from GAS)
+  const BD = (typeof BD_LOCATIONS !== 'undefined' && Object.keys(BD_LOCATIONS).length > 0) ? BD_LOCATIONS : null;
+  let foundLoc = false;
+
+  // Helper: set division→district→thana dropdowns
+  const setLocation = (divName, distName, thanaName) => {
+    const divSel = document.getElementById('order-division');
+    if(!divSel) return;
+    // Set division
+    let divOpt = Array.from(divSel.options).find(o=>
+      o.text===divName || o.value===divName ||
+      o.text.toLowerCase()===divName.toLowerCase()
+    );
+    if(divOpt){
+      divSel.value = divOpt.value || divOpt.text;
+      if(typeof updateDistricts==='function') updateDistricts(divSel);
+      filled++;
+      // Set district after short delay for cascade
+      setTimeout(()=>{
+        if(distName){
+          const distSel = document.getElementById('order-district');
+          if(distSel){
+            const distOpt = Array.from(distSel.options).find(o=>
+              o.text===distName||o.text.toLowerCase()===distName.toLowerCase()
+            );
+            if(distOpt){
+              distSel.value = distOpt.value||distOpt.text;
+              if(typeof updateThanas==='function') updateThanas(distSel);
+              filled++;
+              // Set thana after another delay
+              if(thanaName) setTimeout(()=>{
+                const thanaSel = document.getElementById('order-thana');
+                if(thanaSel){
+                  const thanaOpt = Array.from(thanaSel.options).find(o=>
+                    o.text===thanaName||o.text.toLowerCase()===thanaName.toLowerCase()
+                  );
+                  if(thanaOpt){ thanaSel.value=thanaOpt.value||thanaOpt.text; filled++; }
+                }
+              },300);
+            }
+          }
+        }
+      },200);
+    }
+    foundLoc = true;
+  };
+
+  // Step 1: scan Bengali aliases
+  for(const [bn, en] of Object.entries(BN_ALIAS)){
+    if(text.includes(bn)){
+      if(BD){
+        // Find en in BD_LOCATIONS as division, district, or thana
+        for(const [div, districts] of Object.entries(BD)){
+          if(div===en){ setLocation(div,'',''); break; }
+          for(const [dist, thanas] of Object.entries(districts)){
+            if(dist===en){ setLocation(div,dist,''); break; }
+            const thanaMatch = thanas.find(th=>th===en);
+            if(thanaMatch){ setLocation(div,dist,thanaMatch); break; }
+          }
+          if(foundLoc) break;
+        }
+      } else {
+        // No BD cache — just set division by known mapping
+        const divisionOf = {
+          'Tangail':'Dhaka','Gazipur':'Dhaka','Narayanganj':'Dhaka','Narsingdi':'Dhaka',
+          'Manikganj':'Dhaka','Munshiganj':'Dhaka','Kishoreganj':'Dhaka','Faridpur':'Dhaka',
+          'Sirajganj':'Rajshahi','Pabna':'Rajshahi','Bogra':'Rajshahi','Natore':'Rajshahi',
+          'Comilla':'Chittagong','Noakhali':'Chittagong','Feni':'Chittagong',
+          'Brahmanbaria':'Chittagong','Chandpur':'Chittagong','Lakshmipur':'Chittagong',
+          "Cox's Bazar":'Chittagong',
+          'Mymensingh City':'Mymensingh','Jamalpur':'Mymensingh','Netrokona':'Mymensingh','Sherpur':'Mymensingh',
+          'Sylhet City':'Sylhet','Sunamganj':'Sylhet','Habiganj':'Sylhet','Moulvibazar':'Sylhet',
+          'Rangpur City':'Rangpur','Dinajpur':'Rangpur','Kurigram':'Rangpur','Gaibandha':'Rangpur',
+          'Barisal City':'Barisal','Bhola':'Barisal','Patuakhali':'Barisal',
+          'Jessore':'Khulna','Satkhira':'Khulna','Kushtia':'Khulna','Khulna City':'Khulna',
+        };
+        const divName = divisionOf[en] || (
+          ['Dhaka','Chittagong','Rajshahi','Khulna','Sylhet','Barisal','Rangpur','Mymensingh'].includes(en) ? en : ''
+        );
+        if(divName) setLocation(divName, '', '');
+      }
+      if(foundLoc) break;
+    }
+  }
+
+  // Step 2: English thana/district scan (if BD cache available)
+  if(!foundLoc && BD){
+    for(const [div, districts] of Object.entries(BD)){
+      for(const [dist, thanas] of Object.entries(districts)){
+        if(text.includes(dist) || tl.includes(dist.toLowerCase())){
+          const thana = thanas.find(th=>text.includes(th)) || '';
+          setLocation(div, dist, thana);
+          break;
+        }
+        const thana = thanas.find(th=>text.includes(th));
+        if(thana){ setLocation(div, dist, thana); break; }
+      }
+      if(foundLoc) break;
+    }
+  }
+
+  // ── Address — label, গ্রাম/বাজার/পাড়া/রোড keyword lines, or all non-system lines joined ──
+  {
+    const addrLabeled = text.match(/(?:ঠিকানা|অ্যাড্রেস|address|addr)[:\s]+([^\n]+)/i);
+    if(addrLabeled){
+      setField('order-address', addrLabeled[1].trim()); filled++;
+    } else {
+      // Collect lines that look like address parts:
+      // গ্রাম/বাজার/পাড়া/রোড/মোড়/ওয়ার্ড/ব্লক/সেক্টর/উপজেলা/থানা or known location words
+      const locationKeywords = /গ্রাম|বাজার|পাড়া|মহল্লা|রোড|মোড়|ওয়ার্ড|ব্লক|সেক্টর|উপজেলা|থানা|নগর|সিটি|এলাকা|হাট|চর|কান্দি|village|road|bazar|para|sector|block|union|ward|dist|thana|upazila/i;
+      const skipLine = /01[3-9]\d{8}|\d{4,6}\s*(taka|tk|৳|টাকা)|^(steadfast|pathao|redx|sundarban|ecourier|bkash|nagad|rocket|cod|cash)$|fit tar lagbo|delivery|charge|পিস|piece|qty|quantity|পরিশোধ|advance|paid/i;
+      const lines = text.split(/\n/).map(l=>l.trim()).filter(l=>l.length>2);
+      const addrParts = [];
+      for(const line of lines){
+        if(skipLine.test(line)) continue;
+        if(/^[A-Z\s]{3,}$/.test(line) && lines.indexOf(line)===0) continue; // skip name (all caps first line)
+        if(/^01[3-9]\d{8}$/.test(line)) continue; // phone
+        if(locationKeywords.test(line)){
+          addrParts.push(line);
+        }
+      }
+      // Also grab lines containing comma-separated location parts (like "Tangail, Dhaka")
+      const commaLocLine = text.split(/\n/).find(l=>/,/.test(l) && !/\d{5,}/.test(l) && !/steadfast|pathao|delivery|charge|paid|fit tar/i.test(l) && l.trim().split(',').length>=2);
+      if(commaLocLine && !addrParts.includes(commaLocLine.trim())) addrParts.push(commaLocLine.trim());
+
+      if(addrParts.length>0){
+        setField('order-address', addrParts.join(', ')); filled++;
+      }
+    }
+  }
+
+  // ── Quantity — "২ পিস", "2 piece", "দুইটা", "3টা" ──
+  {
+    const wordNum = {'এক':1,'দুই':2,'তিন':3,'চার':4,'পাঁচ':5,'ছয়':6,'সাত':7,'আট':8,'নয়':9,'দশ':10,'one':1,'two':2,'three':3,'four':4,'five':5};
+    const qtyMatch =
+      t.match(/(\d+)\s*(?:পিস|piece|পিছ|টি|টা|পিক্স|pcs|nos)/i) ||
+      t.match(/(?:qty|quantity|পরিমাণ)[:\s]*(\d+)/i);
+    if(qtyMatch){
+      const qv = parseInt(qtyMatch[1]);
+      if(qv>1){ setField('order-qty', String(qv)); filled++; }
+    } else {
+      // Word-form: "দুই পিস", "তিনটা"
+      for(const [word, num] of Object.entries(wordNum)){
+        if(num>1 && new RegExp(word+'\\s*(?:পিস|পিক্স|টি|টা|piece|pcs)','i').test(text)){
+          setField('order-qty', String(num)); filled++; break;
+        }
+      }
+    }
   }
 
   // ── Product match ──
   const prodSel = document.getElementById('order-product');
   if(prodSel){
     const products = Array.from(prodSel.options).filter(o=>o.value);
-    const lowerT = text.toLowerCase();
     const matched = products.find(o=>{
       const name = o.text.toLowerCase();
       const words = name.split(' ');
-      return words.some(w=>w.length>3 && lowerT.includes(w)) ||
-             lowerT.includes('cctv') && name.includes('cctv') ||
-             lowerT.includes('door lock') && name.includes('door') ||
-             lowerT.includes('alarm') && name.includes('alarm') ||
-             lowerT.includes('সিকিউরিটি') || lowerT.includes('security');
+      return words.some(w=>w.length>3 && tl.includes(w)) ||
+             tl.includes('cctv') && name.includes('cctv') ||
+             tl.includes('door lock') && name.includes('door') ||
+             tl.includes('alarm') && name.includes('alarm') ||
+             tl.includes('সিকিউরিটি') || tl.includes('security');
     });
     if(matched){ prodSel.value=matched.value||matched.text; onOrderProductChange(prodSel.value); filled++; }
   }
 
-  // ── Note ──
-  const noteMatch = text.match(/(?:note|নোট|বিশেষ|মন্তব্য)[:\s]+([^\n]+)/i);
-  if(noteMatch){ const nEl=document.getElementById('order-notes'); if(nEl){ nEl.value=noteMatch[1].trim(); filled++; } }
+  // ── Smart Notes — collect special instructions AI should write down ──
+  {
+    const noteEl = document.getElementById('order-notes');
+    const noteParts = [];
+
+    // Explicit note label
+    const noteLabeled = text.match(/(?:note|নোট|বিশেষ নির্দেশ|মন্তব্য)[:\s]+([^\n]+)/i);
+    if(noteLabeled) noteParts.push(noteLabeled[1].trim());
+
+    // "X FIT TAR LAGBO" / "X ফুট/মিটার তার" → wire instruction
+    const wireFit = text.match(/(\d+)\s*(?:FIT TAR LAGBO|ফিট তার লাগবো?|fit tar lagbo)/i);
+    if(wireFit) noteParts.push(`তার: ${wireFit[1]} ফিট লাগবে`);
+
+    const wireLen = t.match(/(\d+)\s*(?:ফুট|futt?|feet?|মিটার|meter|metre)\s*(?:তার|wire|cable)/i) ||
+                    t.match(/(?:তার|wire|cable)\s*(\d+)\s*(?:ফুট|futt?|feet?|মিটার|meter)/i);
+    if(wireLen && !wireFit) noteParts.push(`তার: ${wireLen[1]} ${wireLen[0].match(/মিটার|meter/i)?'মিটার':'ফুট'}`);
+
+    // Multiple doors/rooms — "২টা দরজা", "3 room", "দুই দরজা"
+    const doorMatch = text.match(/(\d+|এক|দুই|তিন|চার|পাঁচ)\s*(?:টা|টি)?\s*(?:দরজা|door)/i);
+    if(doorMatch) noteParts.push(`দরজা: ${doorMatch[1]}টি`);
+
+    const roomMatch = text.match(/(\d+|এক|দুই|তিন|চার|পাঁচ)\s*(?:টা|টি)?\s*(?:রুম|room|কক্ষ)/i);
+    if(roomMatch) noteParts.push(`রুম: ${roomMatch[1]}টি`);
+
+    // Color preference
+    const colorMatch = text.match(/(?:রং|color|colour)[:\s]*([^\n,।]+)/i);
+    if(colorMatch) noteParts.push(`রং: ${colorMatch[1].trim()}`);
+
+    // Installation request
+    if(/ইন্সটল|install|লাগিয়ে|সেটআপ|setup/i.test(text)) noteParts.push('ইন্সটলেশন সহ দিতে হবে');
+
+    // Urgent/fast delivery
+    if(/জরুরি|urgent|asap|দ্রুত|তাড়াতাড়ি/i.test(text)) noteParts.push('জরুরি ডেলিভারি');
+
+    if(noteParts.length>0 && noteEl){
+      noteEl.value = noteParts.join(' | ');
+      filled++;
+    }
+  }
 
   return { filled };
 }
@@ -11025,15 +11336,20 @@ function buildCourierData() {
     // ট্র্যাকিং লোকেশন — স্ট্যাটাস দিয়ে অনুমান
     const locMap = { Pending:'Warehouse', Processing:'Sorting Hub', 'In Transit':'District Hub', Delivered:'Delivered', Returned:'Sorting Hub', Cancelled:'Warehouse' };
     // ✅ FIX 2.1 (v40): consignmentId — tracking field-এ Pathao consignment_id ও Steadfast tracking_code দুটোই হতে পারে।
-    // salesData-এ o.tracking = col T (Tracking No) — এটাই Consignment ID / CN#
+    // salesData-এ o.tracking = col T (Tracking No) — এটাই CN#
+    // Notes-এ [CID:XXXXXXX] tag থেকে Consignment ID বের করি
     const realId = o.id || o.orderId || o.OrderID || String(idx+1);
     const trackingVal = o.tracking || o.Tracking || o.trackingNo || '';
+    const notesVal = String(o.notes || o.Notes || '');
+    const cidMatch = notesVal.match(/\[CID:([^\]]+)\]/);
+    const consignmentId = cidMatch ? cidMatch[1] : '';   // e.g. "265282795"
     r.orders.push({
       date:           o.date || o.Date || '—',
       customer:       o.customer || o.Customer || '—',
       orderId:        realId,
-      tracking:       trackingVal,
-      consignmentId:  trackingVal,   // ✅ FIX 2.1: explicit consignmentId field
+      tracking:       trackingVal,        // CN# e.g. SFR260629ST9B4579DBD
+      consignmentId:  consignmentId || trackingVal,  // Numeric Consignment ID preferred
+      cnCode:         trackingVal,        // always CN#
       phone:          o.phone || o.Phone || '',
       division:       o.division || o.Division || '',
       district:       o.district || o.District || '',
@@ -11042,7 +11358,7 @@ function buildCourierData() {
       product:        o.product || o.Product || '',
       qty:            o.qty || o.Qty || 1,
       price:          o.price || o.Price || 0,
-      notes:          o.notes || o.Notes || '',
+      notes:          notesVal,
       courier:        cName,
       status:         stat,
       location:       locMap[stat] || 'In Transit',
@@ -11141,17 +11457,37 @@ function renderCourierTable(data) {
       ? trackUrl.replace('{code}', encodeURIComponent(r.tracking))
       : '';
 
-    // FIX 2.1+2.2+2.3: consignmentId/CN# সঠিকভাবে দেখাও + working copy button
-    const rawCN = r.consignmentId || r.tracking || '';
-    const trackCell = rawCN
-      ? ('<span style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;letter-spacing:.4px;">' + rawCN + '</span>'
-        + '<button onclick="(function(){var v=' + JSON.stringify(rawCN) + ';'
-        + 'if(navigator.clipboard&&navigator.clipboard.writeText){'
-        + 'navigator.clipboard.writeText(v).then(function(){showToast(\'✅ CN# কপি হয়েছে!\',\'success\');}).catch(function(){var t=document.createElement(\'textarea\');t.value=v;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);showToast(\'✅ কপি হয়েছে!\',\'success\');});'
-        + '}else{var t=document.createElement(\'textarea\');t.value=v;document.body.appendChild(t);t.select();document.execCommand(\'copy\');document.body.removeChild(t);showToast(\'✅ কপি হয়েছে!\',\'success\');};})()"'
-        + ' title="Consignment ID কপি" style="margin-left:5px;padding:2px 8px;font-size:10px;font-weight:700;background:rgba(77,158,255,.15);color:var(--blue);border:1px solid rgba(77,158,255,.4);border-radius:5px;cursor:pointer;">📋 CN</button>'
-        + (trackLink ? '<a href="' + trackLink + '" target="_blank" style="margin-left:4px;padding:2px 7px;font-size:10px;background:rgba(52,209,116,.15);color:var(--green);border:1px solid rgba(52,209,116,.3);border-radius:5px;text-decoration:none;font-weight:700;">🔗</a>' : ''))
-      : '<span style="color:var(--text3);font-size:11px;">—</span>';
+    // CN# এবং Consignment ID আলাদাভাবে দেখাও
+    const rawCN = r.cnCode || r.tracking || '';
+    const rawCID = (r.consignmentId && r.consignmentId !== rawCN) ? r.consignmentId : '';
+
+    // Copy button helper
+    const copyBtn = (val, label, color) =>
+      `<button onclick="(function(){var v=${JSON.stringify(val)};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(function(){showToast('✅ ${label} কপি হয়েছে!','success');}).catch(function(){var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('✅ কপি!','success');});}else{var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('✅ কপি!','success');};})()" title="${label} কপি করুন" style="margin-left:4px;padding:2px 7px;font-size:10px;font-weight:700;background:rgba(${color},.15);color:rgba(${color},1);border:1px solid rgba(${color},.4);border-radius:5px;cursor:pointer;">${label}</button>`;
+
+    const trackLink2 = (rawCN && cfg[r.courier]?.trackUrl)
+      ? cfg[r.courier].trackUrl.replace('{code}', encodeURIComponent(rawCN))
+      : '';
+
+    let trackCell = '';
+    if (rawCID) {
+      trackCell += `<div style="margin-bottom:3px;">`;
+      trackCell += `<span style="font-size:9px;color:var(--text3);letter-spacing:.4px;">Consignment ID</span><br>`;
+      trackCell += `<span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:var(--gold);">#${rawCID}</span>`;
+      trackCell += copyBtn(rawCID, '#CID', '212,160,23');
+      trackCell += `</div>`;
+    }
+    if (rawCN) {
+      trackCell += `<div style="margin-top:${rawCID?'2px':'0'};">`;
+      trackCell += rawCID ? `<span style="font-size:9px;color:var(--text3);">CN#</span><br>` : '';
+      trackCell += `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--blue);letter-spacing:.3px;">${rawCN}</span>`;
+      trackCell += copyBtn(rawCN, 'CN', '77,158,255');
+      if (trackLink2) trackCell += `<a href="${trackLink2}" target="_blank" style="margin-left:4px;padding:2px 7px;font-size:10px;background:rgba(52,209,116,.15);color:var(--green);border:1px solid rgba(52,209,116,.3);border-radius:5px;text-decoration:none;font-weight:700;">🔗</a>`;
+      trackCell += `</div>`;
+    }
+    if (!rawCN && !rawCID) {
+      trackCell = `<span style="color:var(--text3);font-size:11px;">—</span>`;
+    }
 
     // Feature 5: 🚀 Book Courier বাটন — tracking নেই এমন orders-এ দেখাবে
     const notBooked = !rawCN && (r.courier === 'Steadfast' || r.courier === 'Pathao');
@@ -11284,7 +11620,39 @@ function renderCourierHub() {
   renderCourierTable(data);
 }
 
-// ── সিঙ্ক বাটন
+// ── লাইভ রিফ্রেশ — GAS থেকে fresh data টানে
+async function liveSyncCourierData() {
+  const btn = document.getElementById('courier-sync-btn');
+  if (btn) {
+    btn.innerHTML = '⏳ লোড হচ্ছে...';
+    btn.disabled = true;
+  }
+  try {
+    await loadLiveSales();           // GAS থেকে fresh orders
+    renderCourierHub();              // নতুন data দিয়ে render
+    updateCourierBadge_();
+    if (btn) {
+      btn.innerHTML = '✅ আপডেট হয়েছে!';
+      btn.style.color = 'var(--green)';
+      btn.style.borderColor = 'rgba(52,209,116,.5)';
+      setTimeout(() => {
+        if (btn) {
+          btn.innerHTML = '🔄 লাইভ রিফ্রেশ';
+          btn.disabled = false;
+          btn.style.color = '';
+          btn.style.borderColor = '';
+        }
+      }, 2000);
+    }
+  } catch(e) {
+    if (btn) {
+      btn.innerHTML = '❌ সমস্যা হয়েছে';
+      setTimeout(() => { btn.innerHTML='🔄 লাইভ রিফ্রেশ'; btn.disabled=false; }, 2000);
+    }
+  }
+}
+
+// ── সিঙ্ক বাটন (local re-render, GAS call ছাড়া)
 function syncCourierData() {
   const btn = document.querySelector('#page-courier-hub .btn');
   if (btn) {
@@ -11478,8 +11846,8 @@ async function dispatchCourierBooking(order) {
     result = await bookWithSteadfast(order);
 
     if (result) {
-      showToast(`✅ Steadfast বুকিং সম্পন্ন! Tracking: ${result.tracking_code}`, "success");
-      _updateOSTracking(order.orderId, result.tracking_code, result.status, "Steadfast");
+      showToast(`✅ Steadfast বুকিং সম্পন্ন! Tracking: ${result.tracking_code}${result.consignment_id?' | CID: #'+result.consignment_id:''}`, "success");
+      _updateOSTracking(order.orderId, result.tracking_code, result.status, "Steadfast", false, result.consignment_id||'');
     }
 
   } else if (courierName === "Pathao") {
@@ -11488,7 +11856,7 @@ async function dispatchCourierBooking(order) {
 
     if (result) {
       showToast(`✅ Pathao বুকিং সম্পন্ন! Consignment: ${result.tracking_code}`, "success");
-      _updateOSTracking(order.orderId, result.tracking_code, result.status, "Pathao");
+      _updateOSTracking(order.orderId, result.tracking_code, result.status, "Pathao", false, result.consignment_id||'');
     }
 
   } else {
@@ -11501,9 +11869,8 @@ async function dispatchCourierBooking(order) {
  * কুরিয়ারের সার্ভার থেকে আসা tracking_code ও status
  * OS-এর কুরিয়ার ম্যানেজার টেবিলে এবং Google Sheet-এ আপডেট করো।
  */
-function _updateOSTracking(orderId, trackingCode, liveStatus, courierName, skipSheetWrite) {
+function _updateOSTracking(orderId, trackingCode, liveStatus, courierName, skipSheetWrite, consignmentId) {
   // ── ১. salesData array আপডেট (in-memory)
-  // liveSalesData ও salesData দুটোই আপডেট করো
   const _sArr = (typeof liveSalesData !== "undefined" && liveSalesData.length) ? liveSalesData
                : (typeof salesData !== "undefined" ? salesData : []);
   if (_sArr.length) {
@@ -11514,6 +11881,14 @@ function _updateOSTracking(orderId, trackingCode, liveStatus, courierName, skipS
       _sArr[idx].tracking  = trackingCode;
       _sArr[idx].delStatus = "Sent";
       _sArr[idx].status    = _mapCourierStatus(liveStatus, courierName);
+      // Consignment ID — Notes-এ [CID:XXX] tag update
+      if (consignmentId) {
+        const cidTag = `[CID:${consignmentId}]`;
+        const oldNotes = String(_sArr[idx].notes || '');
+        if (!oldNotes.includes(cidTag)) {
+          _sArr[idx].notes = (oldNotes.replace(/\[CID:[^\]]+\]/g,'').trim() + ' ' + cidTag).trim();
+        }
+      }
     }
   }
 

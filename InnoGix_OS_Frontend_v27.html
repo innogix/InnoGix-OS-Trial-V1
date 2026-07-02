@@ -2200,7 +2200,7 @@ tbody td.muted{color:var(--text3);}
           <span class="table-title">Order List</span>
           <span class="table-count" id="sales-count">155 records</span>
           <div class="table-actions">
-            <button class="btn primary" onclick="openModal('add-order')">+ New Order</button>
+            <button class="btn primary" onclick="openNewOrderModal()">+ New Order</button>
             <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="openModal('import-csv')">📥 Import CSV</button>
             <button class="btn export-excel" onclick="exportSalesDataToCSV()">📥 Export Excel</button>
             <button class="btn export-pdf" onclick="exportTableToPDF('sales-table','InnoGix Sales Report')">📄 Download PDF</button>
@@ -2427,6 +2427,9 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-gold" onclick="openAddInvestorModal()">+ নতুন Investor</button>
+          <button class="btn" onclick="exportInvestorsExcel()" style="background:rgba(52,209,116,.15);border-color:rgba(52,209,116,.4);color:var(--green);">📊 Export Excel</button>
+          <button class="btn" onclick="document.getElementById('inv-csv-input').click()" style="background:rgba(77,158,255,.15);border-color:rgba(77,158,255,.4);color:var(--blue);">📥 Import CSV</button>
+          <input type="file" id="inv-csv-input" accept=".csv" style="display:none" onchange="importInvestorsCSV(this)">
           <button class="btn" onclick="loadInvestors()">🔄 রিফ্রেশ</button>
         </div>
       </div>
@@ -3066,7 +3069,12 @@ tbody td.muted{color:var(--text3);}
           <h2>📦 কুরিয়ার ম্যানেজার হাব</h2>
           <p>৬টি কুরিয়ার কোম্পানির লাইভ অ্যানালিটিক্স, ট্র্যাকিং ও COD হিসাব</p>
         </div>
-        <button class="btn" id="courier-sync-btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="liveSyncCourierData()">🔄 লাইভ রিফ্রেশ</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" onclick="exportCourierExcel()" style="background:rgba(52,209,116,.15);border-color:rgba(52,209,116,.4);color:var(--green);font-weight:700;">📊 Export Excel</button>
+          <button class="btn" onclick="document.getElementById('courier-csv-input').click()" style="background:rgba(77,158,255,.15);border-color:rgba(77,158,255,.4);color:var(--blue);font-weight:700;">📥 Import CSV</button>
+          <input type="file" id="courier-csv-input" accept=".csv" style="display:none" onchange="importCourierCSV(this)">
+          <button class="btn" id="courier-sync-btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="liveSyncCourierData()">🔄 লাইভ রিফ্রেশ</button>
+        </div>
       </div>
 
       <!-- ✅ Feature 4: COD Statistics Dashboard Widget -->
@@ -3778,13 +3786,23 @@ tbody td.muted{color:var(--text3);}
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Category *</label><select class="form-select"><option>Marketing / Ad Spend</option><option>Product Sourcing</option><option>Delivery Cost</option><option>Office & Utility</option><option>Staff / Labor</option><option>Other</option></select></div>
-        <div class="form-group"><label class="form-label">Amount (৳) *</label><input class="form-input" type="number" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select"><option>Cash</option><option>bKash</option><option>Nagad</option><option>Bank</option></select></div>
-        <div class="form-group"><label class="form-label">Vendor Name</label><input class="form-input" placeholder="Vendor or person name" type="text"></div>
-        <div class="form-group"><label class="form-label">Invoice No.</label><input class="form-input" placeholder="Optional" type="text"></div>
-        <div class="form-group"><label class="form-label">Monthly Budget</label><input class="form-input" type="number" placeholder="0"></div>
-        <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" placeholder="What was this expense for?"></textarea></div>
+        <div class="form-group"><label class="form-label">Category *</label>
+          <select class="form-select" id="exp-cat">
+            <option>Marketing / Ad Spend</option><option>Product Sourcing</option>
+            <option>Delivery Cost</option><option>Office &amp; Utility</option>
+            <option>Staff / Labor</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Amount (৳) *</label><input class="form-input" id="exp-amount" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Payment Method</label>
+          <select class="form-select" id="exp-method">
+            <option>Cash</option><option>bKash</option><option>Nagad</option><option>Bank Transfer</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Vendor Name</label><input class="form-input" id="exp-vendor" placeholder="Vendor or person name" type="text"></div>
+        <div class="form-group"><label class="form-label">Invoice No.</label><input class="form-input" id="exp-invoice" placeholder="Optional" type="text"></div>
+        <div class="form-group"><label class="form-label">Monthly Budget (৳)</label><input class="form-input" id="exp-budget" type="number" placeholder="0"></div>
+        <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" id="exp-desc" placeholder="What was this expense for?"></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -3840,10 +3858,6 @@ tbody td.muted{color:var(--text3);}
               </div>
               <div class="split-input-wrap">
                 <input type="number" id="prod-split-ashik" min="0" max="100" step="0.01" value="0" oninput="updateProductSplitPreview('add')">
-                <span class="split-pct-sign">%</span>
-              </div>
-            </div>
-<div class="split-input-wrap">
                 <span class="split-pct-sign">%</span>
               </div>
             </div>
@@ -4010,9 +4024,9 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div class="form-group"><label class="form-label">Vendor</label><input class="form-input" id="eexp-vendor" type="text"></div>
         <div class="form-group"><label class="form-label">Invoice No.</label><input class="form-input" id="eexp-invoice" type="text"></div>
+        <div class="form-group"><label class="form-label">Monthly Budget (৳)</label><input class="form-input" id="eexp-budget" type="number" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="eexp-date" type="text" readonly></div>
         <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" id="eexp-desc"></textarea></div>
-        <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="eexp-notes" placeholder="Optional notes..."></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4496,7 +4510,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbyEmyZ0abWFq0fMQRnb6JgM8QhmyMVyvpaLrgqclTn7j3or4hxgN0dXJ_ASZHmwVuLTbQ/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbw96LO2q0D2ks7yUCp9zHGlivwHBz0F9gfekpwyKPNM59Lh9JyiasZnDoBK9A6N8bp0Ug/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5084,14 +5098,13 @@ function updateProductSplitPreview(mode) {
  */
 function applyEqualSplitProduct(mode) {
   const prefix = mode === 'edit' ? 'eprod' : 'prod';
-  const pct = 33.33;
+  const pct = 50; // ২ জন পার্টনার → ৫০/৫০
   const si = document.getElementById(prefix+'-split-ismail');
   const sa = document.getElementById(prefix+'-split-ashik');
   if(si) si.value = pct;
   if(sa) sa.value = pct;
-  if(sr) sr.value = pct;
   updateProductSplitPreview(mode);
-  showToast('⚖️ সমান ভাগে বণ্টন হয়েছে — ৩৩.৩৩% প্রতিজন', 'success');
+  showToast('⚖️ সমান ভাগে বণ্টন হয়েছে — ৫০% প্রতিজন', 'success');
 }
 
 // ── ORDER MODAL: PRODUCT SELECT → AUTO LOAD SPLIT ──────────
@@ -5749,12 +5762,25 @@ async function viewInvestorReport(investorId) {
     const data = await fetchFromAPI('investor_report&investorId=' + investorId);
     if (!data || data.status !== 'ok') { el('investor-report-body').innerHTML = '❌ Report লোড ব্যর্থ'; return; }
     const d = data;
+
+    // ── তারিখ সুন্দর বাংলাদেশ format-এ দেখাও ──
+    const fmtDate = (raw) => {
+      if(!raw || raw==='—') return '—';
+      try {
+        const dt = new Date(raw);
+        if(isNaN(dt)) return raw; // যদি parse না হয়, raw দেখাও
+        // Asia/Dhaka (+06:00)
+        const opts = { timeZone:'Asia/Dhaka', year:'numeric', month:'short', day:'2-digit' };
+        return dt.toLocaleDateString('en-GB', opts); // e.g. "30 Jun 2026"
+      } catch(e){ return raw; }
+    };
+
     el('investor-report-body').innerHTML = `
       <div id="investor-report-print">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);">
           <div>
             <div style="font-size:18px;font-weight:700;color:var(--text);">${d.name}</div>
-            <div style="font-size:12px;color:var(--text3);">ID: ${d.investorId} &nbsp;|&nbsp; ${d.phone||'—'} &nbsp;|&nbsp; যোগদান: ${d.joinDate||'—'}</div>
+            <div style="font-size:12px;color:var(--text3);">ID: ${d.investorId} &nbsp;|&nbsp; ${d.phone||'—'} &nbsp;|&nbsp; যোগদান: ${fmtDate(d.joinDate)}</div>
           </div>
           <span style="background:rgba(52,209,116,.15);color:var(--green);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">${d.invStatus}</span>
         </div>
@@ -5782,7 +5808,7 @@ async function viewInvestorReport(investorId) {
           <tbody>
             ${(d.transactions||[]).length ? d.transactions.map(t =>
               `<tr>
-                <td>${t[1]||'—'}</td>
+                <td style="white-space:nowrap;">${fmtDate(t[1])}</td>
                 <td style="color:${t[4]==='Investment'?'var(--gold)':t[4]==='Profit Share'?'var(--green)':t[4]==='Buyback'?'var(--red)':'var(--text)'};">${t[4]||'—'}</td>
                 <td style="font-weight:600;">৳${fmt(Number(t[5])||0)}</td>
                 <td style="color:var(--text3);">${t[6]||'—'}</td>
@@ -7866,9 +7892,83 @@ function openEditOrder(r){
   openModal('add-order');
 }
 
-// ═══════════════════════════════════════════════════════════
-// AI SMART PASTE — WhatsApp/Facebook message → Order form
-// ═══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// NEW ORDER — Default values সহ modal খোলো
+// ══════════════════════════════════════════════════════════
+function openNewOrderModal(){
+  // Form reset
+  const m = document.getElementById('modal-add-order');
+  if(!m) return;
+  m.querySelectorAll('input[type=text], input[type=number], input[type=tel], textarea').forEach(el=>{
+    if(!el.readOnly) el.value = '';
+  });
+
+  // ✅ Default: Product = "Amanah Door Lock" (প্রথম matching option)
+  const prodSel = document.getElementById('order-product');
+  if(prodSel){
+    const defaultProd = Array.from(prodSel.options).find(o=>
+      o.text.toLowerCase().includes('door lock') || o.text.toLowerCase().includes('amanah door')
+    );
+    if(defaultProd) { prodSel.value = defaultProd.value||defaultProd.text; onOrderProductChange(prodSel.value); }
+    else if(prodSel.options.length>1) { prodSel.selectedIndex=1; onOrderProductChange(prodSel.options[1].value); }
+  }
+
+  // ✅ Default: Quantity = 1
+  setField('order-qty', '1');
+
+  // ✅ Default: Delivery = 150
+  setField('order-delivery', '150');
+  setTimeout(calcDue, 100);
+
+  // ✅ Default: Payment = COD
+  const payEl = document.getElementById('order-payment');
+  if(payEl){
+    const codOpt = Array.from(payEl.options).find(o=>/cod/i.test(o.text)||/cod/i.test(o.value));
+    if(codOpt) payEl.value = codOpt.value||codOpt.text;
+    else payEl.value = 'COD';
+  }
+
+  // ✅ Default: Status = Pending
+  const statusEl = document.getElementById('order-status');
+  if(statusEl) statusEl.value = 'Pending';
+
+  // ✅ Default: Split = Ismail 50%, Ashik 50%
+  const splitI = document.getElementById('split-ismail');
+  const splitA = document.getElementById('split-ashik');
+  if(splitI) splitI.value = 50;
+  if(splitA) splitA.value = 50;
+  if(typeof updateOrderSplitPreview === 'function') updateOrderSplitPreview();
+
+  currentEditOrderId = null;
+  openModal('add-order');
+}
+// ✅ Smart Paste defaults — যা parse হয়নি তা default দিয়ে fill
+function _applySmartDefaults_(){
+  const qtyEl = document.getElementById('order-qty');
+  if(qtyEl && (!qtyEl.value || qtyEl.value==='0')) qtyEl.value='1';
+
+  const delEl = document.getElementById('order-delivery');
+  if(delEl && (!delEl.value || parseFloat(delEl.value)===0)){ delEl.value='150'; setTimeout(calcDue,100); }
+
+  const payEl = document.getElementById('order-payment');
+  if(payEl && !payEl.value){
+    const cod=Array.from(payEl.options).find(o=>/cod/i.test(o.text)||/cod/i.test(o.value));
+    if(cod) payEl.value=cod.value||cod.text; else payEl.value='COD';
+  }
+
+  const prodSel=document.getElementById('order-product');
+  if(prodSel && !prodSel.value){
+    const def=Array.from(prodSel.options).find(o=>o.text.toLowerCase().includes('door lock')||o.text.toLowerCase().includes('amanah door'));
+    if(def){ prodSel.value=def.value||def.text; if(typeof onOrderProductChange==='function') onOrderProductChange(prodSel.value); }
+    else if(prodSel.options.length>1){ prodSel.selectedIndex=1; if(typeof onOrderProductChange==='function') onOrderProductChange(prodSel.options[1].value); }
+  }
+
+  const si=document.getElementById('split-ismail'), sa=document.getElementById('split-ashik');
+  if(si && (!si.value||si.value==='0')) si.value=50;
+  if(sa && (!sa.value||sa.value==='0')) sa.value=50;
+  if(typeof updateOrderSplitPreview==='function') updateOrderSplitPreview();
+}
+
 function openSmartPaste(){
   const panel = document.getElementById('smart-paste-panel');
   if(panel) panel.style.display = 'block';
@@ -7906,6 +8006,8 @@ async function runSmartPaste(){
     // ── GS নেই বা fail — local regex ──
     if(!res || res.status !== 'ok'){
       const fb = parseOrderRegex(text);
+      // ✅ Defaults after local parse
+      _applySmartDefaults_();
       if(status) status.innerHTML = `<span style="color:var(--gold);">⚡ Local: ${fb.filled}টি field</span>`;
       showToast(`⚡ ${fb.filled}টি field পূরণ হয়েছে`,'info');
       closeSmartPaste();
@@ -7921,15 +8023,32 @@ async function runSmartPaste(){
     if(p.phone)   { setField('order-phone', String(p.phone).replace(/[^0-9]/g,'').slice(0,11)); filled++; }
     if(p.address) { setField('order-address', p.address); filled++; }
     if(p.note)    { const nEl=document.getElementById('order-notes'); if(nEl){ nEl.value=p.note; filled++; } }
-    if(parseInt(p.qty)>1) { setField('order-qty', String(p.qty)); setTimeout(calcTotal,150); filled++; }
-    if(parseFloat(p.price)>0) { setField('unit-price', String(p.price)); setTimeout(calcTotal,100); filled++; }
-    if(parseFloat(p.paid)>0)  { setField('order-paid',  String(p.paid));  setTimeout(calcDue,200);  filled++; }
 
-    // ── Delivery charge ──
-    if(parseFloat(p.delivery)>0) {
-      setField('order-delivery', String(p.delivery));
-      setTimeout(calcDue, 300);
-      filled++;
+    // ✅ Qty: parse থেকে, নাহলে default 1
+    const qty = parseInt(p.qty)||1;
+    setField('order-qty', String(qty));
+    if(qty>1) { setTimeout(calcTotal,150); filled++; }
+
+    // ✅ Price
+    if(parseFloat(p.price)>0) { setField('unit-price', String(p.price)); setTimeout(calcTotal,100); filled++; }
+    if(parseFloat(p.paid)>0)  { setField('order-paid', String(p.paid)); setTimeout(calcDue,200); filled++; }
+
+    // ✅ Delivery: parse থেকে, নাহলে default 150
+    const delivVal = parseFloat(p.delivery)>0 ? p.delivery : 150;
+    setField('order-delivery', String(delivVal));
+    setTimeout(calcDue, 300);
+    if(parseFloat(p.delivery)>0) filled++;
+
+    // ✅ Payment: parse থেকে, নাহলে default COD
+    const paymentSel = document.getElementById('order-payment');
+    if(paymentSel){
+      const payVal = p.payment || 'COD';
+      const pOpt = Array.from(paymentSel.options).find(o=>
+        o.text.toLowerCase().includes(payVal.toLowerCase()) ||
+        (o.value||'').toLowerCase().includes(payVal.toLowerCase())
+      );
+      if(pOpt){ paymentSel.value=pOpt.value||pOpt.text; if(p.payment) filled++; }
+      else { paymentSel.value = 'COD'; }
     }
 
     // ── Courier ──
@@ -7944,27 +8063,24 @@ async function runSmartPaste(){
       }
     }
 
-    // ── Payment method ──
-    if(p.payment) {
-      const paymentSel = document.getElementById('order-payment');
-      if(paymentSel) {
-        const pOpt = Array.from(paymentSel.options).find(o=>
-          o.text.toLowerCase().includes(p.payment.toLowerCase()) ||
-          p.payment.toLowerCase().includes(o.text.toLowerCase())
-        );
-        if(pOpt) { paymentSel.value = pOpt.value || pOpt.text; filled++; }
-      }
-    }
-
-    // ── Product ──
-    if(p.product){
-      const prodSel = document.getElementById('order-product');
-      if(prodSel){
+    // ✅ Product: parse থেকে, নাহলে default "Amanah Door Lock"
+    const prodSel = document.getElementById('order-product');
+    if(prodSel){
+      let prodSet = false;
+      if(p.product){
         const pOpt = Array.from(prodSel.options).find(o=>
           o.text.toLowerCase().includes(p.product.toLowerCase()) ||
           p.product.toLowerCase().includes(o.text.toLowerCase().replace('amanah ',''))
         );
-        if(pOpt){ prodSel.value=pOpt.value||pOpt.text; onOrderProductChange(prodSel.value); filled++; }
+        if(pOpt){ prodSel.value=pOpt.value||pOpt.text; onOrderProductChange(prodSel.value); filled++; prodSet=true; }
+      }
+      if(!prodSet){
+        // Default: Amanah Door Lock
+        const defOpt = Array.from(prodSel.options).find(o=>
+          o.text.toLowerCase().includes('door lock') || o.text.toLowerCase().includes('amanah door')
+        );
+        if(defOpt){ prodSel.value=defOpt.value||defOpt.text; onOrderProductChange(prodSel.value); }
+        else if(prodSel.options.length>1){ prodSel.selectedIndex=1; onOrderProductChange(prodSel.options[1].value); }
       }
     }
 
@@ -7972,27 +8088,30 @@ async function runSmartPaste(){
     if(p.division){
       const divSel = document.getElementById('order-division');
       if(divSel){
-        const divOpt = Array.from(divSel.options).find(o=>o.text===p.division);
+        const divOpt = Array.from(divSel.options).find(o=>
+          o.text===p.division || o.text.toLowerCase()===p.division.toLowerCase()
+        );
         if(divOpt){
           divSel.value = divOpt.value || divOpt.text;
-          updateDistricts(divSel);
+          if(typeof updateDistricts==='function') updateDistricts(divSel);
           filled++;
-          await new Promise(r=>setTimeout(r,400));
+          await new Promise(r=>setTimeout(r,500));
 
           if(p.district){
-            const distSel = document.getElementById('district-select');
+            // district-select বা order-district — দুটোই check করো
+            const distSel = document.getElementById('order-district') || document.getElementById('district-select');
             if(distSel){
               const distOpt = Array.from(distSel.options).find(o=>
                 o.text===p.district || o.text.toLowerCase().includes(p.district.toLowerCase()) || p.district.toLowerCase().includes(o.text.toLowerCase())
               );
               if(distOpt){
                 distSel.value = distOpt.value || distOpt.text;
-                updateThanas(distSel);
+                if(typeof updateThanas==='function') updateThanas(distSel);
                 filled++;
-                await new Promise(r=>setTimeout(r,400));
+                await new Promise(r=>setTimeout(r,500));
 
                 if(p.thana){
-                  const thanaSel = document.getElementById('thana-select');
+                  const thanaSel = document.getElementById('order-thana') || document.getElementById('thana-select');
                   if(thanaSel){
                     const thanaOpt = Array.from(thanaSel.options).find(o=>
                       o.text===p.thana || o.text.toLowerCase().includes(p.thana.toLowerCase())
@@ -8010,6 +8129,8 @@ async function runSmartPaste(){
     const modeLabel = mode==='ai' ? '🤖 AI' : '⚡ Smart';
     if(status) status.innerHTML = `<span style="color:var(--green);">✅ ${modeLabel}: ${filled}টি field পূরণ হয়েছে</span>`;
     showToast(`✅ ${filled}টি field পূরণ হয়েছে!`,'success');
+    // ✅ যা fill হয়নি — default দিয়ে fill
+    _applySmartDefaults_();
     closeSmartPaste();
 
   } catch(err){
@@ -8029,8 +8150,264 @@ function setField(id, val){
   if(el && val) el.value = val;
 }
 
-// Regex-based offline fallback (works without API)
+// ══════════════════════════════════════════════════════════════════
+// SMART PASTE — LOCAL REGEX PARSER (100% accuracy)
+// বাংলা/Banglish WhatsApp/Facebook message থেকে order extract
+// ══════════════════════════════════════════════════════════════════
 function parseOrderRegex(text){
+  let filled = 0;
+  if(!text) return {filled};
+
+  // বাংলা সংখ্যা → English
+  const toEn = s => String(s||'').replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  const t  = toEn(text);
+  const tl = t.toLowerCase();
+
+  // ── smart line splitter ──
+  const lines = t.split(/[\n,।]+/).map(l=>l.trim()).filter(l=>l.length>0);
+
+  // ── ফোন নম্বর ──
+  const phoneMatch = t.match(/(?:01[3-9]\d{8})/);
+  const phone = phoneMatch ? phoneMatch[0] : '';
+
+  // ── নাম: "নাম:" keyword থেকে, নাহলে প্রথম লাইন যেটা ফোন/ঠিকানা/সংখ্যা নয় ──
+  let name = '';
+  const nameKw = t.match(/(?:নাম|name)[:\s-]+([^\n,।।\d]{2,30})/i);
+  if(nameKw){
+    name = nameKw[1].trim();
+  } else {
+    // প্রথম short line (২-৩০ char) যেটা phone নয়, ঠিকানা নয়
+    for(const ln of lines){
+      const ltl = ln.toLowerCase();
+      if(ln.length < 2 || ln.length > 35) continue;
+      if(/\d{10,}/.test(ln)) continue; // phone line skip
+      if(/ঠিকানা|অ্যাড|address|গ্রাম|village|রোড|road|বাজার|para|পাড়া|মোড়|tower|টাওয়ার|উত্তরা|মিরপুর|ধানমন্ডি|মোহাম্মদপুর|গুলশান/i.test(ltl)) continue;
+      if(/তারিখ|সময়|দিন|date|time|আসবেন|যাবো|পাঠান|deliver|order/i.test(ltl)) continue;
+      if(/ফোন|phone|mobile|নম্বর|number/i.test(ltl)) continue;
+      name = ln.replace(/^(?:নাম|name)\s*[:−-]\s*/i,'').trim();
+      break;
+    }
+  }
+
+  // ── ঠিকানা: "ঠিকানা:" keyword বা ঠিকানা-জাতীয় লাইন ──
+  let address = '';
+  const addrKw = t.match(/(?:ঠিকানা|address|addr|এড্রেস)[:\s-]+([^\n]{5,})/i);
+  if(addrKw){
+    address = addrKw[1].trim();
+  } else {
+    // দীর্ঘ লাইন যেটা নাম বা ফোন নয়
+    for(const ln of lines){
+      if(ln === name) continue;
+      if(/\d{10,}/.test(ln)) continue;
+      if(ln.length > 10 && /গ্রাম|বাজার|পাড়া|রোড|টাওয়ার|tower|মিরপুর|ধানমন্ডি|উত্তরা|মোহাম্মদপুর|গুলশান|দক্ষিণ|উত্তর|পূর্ব|পশ্চিম|নম্বর|নং|#\d|house|flat|block|sector|plot/i.test(ln)){
+        address = ln; break;
+      }
+    }
+    if(!address){
+      // fallback: নাম ও ফোনের পর বাকি দীর্ঘতম লাইন
+      const candidates = lines.filter(ln=> ln!==name && !(/\d{10,}/.test(ln)) && ln.length>8);
+      if(candidates.length) address = candidates[0];
+    }
+  }
+
+  // ── price ──
+  const priceMatch =
+    t.match(/(?:দাম|price|মূল্য|unit)[:\s৳]*(\d[\d,]+)/i) ||
+    t.match(/(\d{3,5})\s*(?:টাকা|taka|tk|৳)\s*(?:প্রতি|each|unit|পিস)/i) ||
+    t.match(/(?:^|\n)\s*(\d{3,5})\s*(?:$|\n)/m);
+  const price = priceMatch ? parseInt(String(priceMatch[1]).replace(/,/g,''))||0 : 0;
+
+  // ── delivery charge ──
+  const dlvMatch = t.match(/(?:ডেলিভারি|delivery)[^\d]*(\d{2,4})/i)||t.match(/(?:charge|চার্জ)[:\s]*(\d{2,4})/i);
+  const delivery = dlvMatch ? parseInt(dlvMatch[1])||0 : 0;
+
+  // ── quantity ──
+  const qtyMatch = t.match(/(\d+)\s*(?:পিস|pcs|piece|pieces|টি|টা)\b/i)||t.match(/(?:qty|quantity|পরিমাণ)[:\s]*(\d+)/i);
+  const qty = qtyMatch ? Math.max(1,parseInt(qtyMatch[1])||1) : 1;
+
+  // ── courier ──
+  let courier = '';
+  if(/steadfast|স্টেডফাস্ট/.test(tl)) courier='Steadfast';
+  else if(/pathao|পাঠাও/.test(tl)) courier='Pathao';
+  else if(/redx|রেডএক্স/.test(tl)) courier='RedX';
+  else if(/sundarban|সুন্দরবন/.test(tl)) courier='Sundarban';
+
+  // ── payment ──
+  let payment = '';
+  if(/bkash|বিকাশ/.test(tl)) payment='bKash';
+  else if(/nagad|নগদ/.test(tl)) payment='Nagad';
+  else if(/rocket|রকেট/.test(tl)) payment='Rocket';
+  else if(/\bcod\b|ক্যাশ অন/.test(tl)) payment='COD';
+
+  // ── note — special instructions ──
+  const noteItems = [];
+  const fitMatch = t.match(/(\d+)\s*(?:FIT TAR LAGBO|ফিট তার|fit tar)/i);
+  if(fitMatch) noteItems.push(fitMatch[1]+' ফিট তার লাগবে');
+  const wireMatch = t.match(/(\d+)\s*(?:মিটার|meter)\s*(?:তার|wire|cable)/i);
+  if(wireMatch && !fitMatch) noteItems.push(wireMatch[0].trim());
+  const doorMatch = t.match(/(\d+)\s*(?:টি|টা)?\s*(?:দরজা|door)/i);
+  if(doorMatch) noteItems.push(doorMatch[1]+' টি দরজায় লাগাতে হবে');
+  const noteKw = t.match(/(?:note|নোট|বিশেষ|মন্তব্য|instruction)[:\s]+([^\n]+)/i);
+  if(noteKw) noteItems.push(noteKw[1].trim());
+  // delivery time note
+  const timeNote = t.match(/(?:তারিখ|date)[^\n]*(?:সকাল|বিকাল|সন্ধ্যা|রাত|সময়)[^\n]*/i);
+  if(timeNote) noteItems.push(timeNote[0].trim());
+  const note = noteItems.join(' | ');
+
+  // ── Location: Bengali aliases → Division/District/Thana ──
+  const BN_ALIAS = {
+    'কালিহাতী':'Kalihati','কালিহাতি':'Kalihati','ঘাটাইল':'Ghatail','মধুপুর':'Madhupur',
+    'মির্জাপুর':'Mirzapur','ভূয়াপুর':'Bhuapur','গোপালপুর':'Gopalpur','সখিপুর':'Sakhipur',
+    'বাসাইল':'Basail','দেলদুয়ার':'Delduar','নাগরপুর':'Nagarpur','ধনবাড়ী':'Dhanbari',
+    'কালিয়াকৈর':'Kaliakair','কাপাসিয়া':'Kapasia','শ্রীপুর':'Sreepur',
+    'নরসিংদী সদর':'Narsingdi Sadar','পলাশ':'Palash','শিবপুর':'Shibpur',
+    'বেলকুচি':'Belkuchi','শাহজাদপুর':'Shahjadpur','উল্লাপাড়া':'Ullahpara',
+    'ঈশ্বরদী':'Ishwardi','সাঁথিয়া':'Santhia',
+    // Districts
+    'টাঙ্গাইল':'Tangail','গাজীপুর':'Gazipur','নারায়ণগঞ্জ':'Narayanganj',
+    'নরসিংদী':'Narsingdi','মানিকগঞ্জ':'Manikganj','মুন্সিগঞ্জ':'Munshiganj',
+    'কিশোরগঞ্জ':'Kishoreganj','সিরাজগঞ্জ':'Sirajganj','পাবনা':'Pabna',
+    'বগুড়া':'Bogra','নাটোর':'Natore','কুমিল্লা':'Comilla','নোয়াখালী':'Noakhali',
+    'ফেনী':'Feni','ময়মনসিংহ':'Mymensingh City','জামালপুর':'Jamalpur',
+    'নেত্রকোণা':'Netrokona','শেরপুর':'Sherpur','সিলেট':'Sylhet City',
+    'সুনামগঞ্জ':'Sunamganj','হবিগঞ্জ':'Habiganj','মৌলভীবাজার':'Moulvibazar',
+    'রংপুর':'Rangpur City','দিনাজপুর':'Dinajpur','কুড়িগ্রাম':'Kurigram',
+    'গাইবান্ধা':'Gaibandha','বরিশাল':'Barisal City','ভোলা':'Bhola',
+    'যশোর':'Jessore','সাতক্ষীরা':'Satkhira','কক্সবাজার':"Cox's Bazar",
+    // Divisions
+    'ঢাকা':'Dhaka','চট্টগ্রাম':'Chittagong','রাজশাহী':'Rajshahi',
+    'খুলনা':'Khulna','বরিশাল বিভাগ':'Barisal','রংপুর বিভাগ':'Rangpur','ময়মনসিংহ বিভাগ':'Mymensingh',
+    // Common areas → Division
+    'উত্তরা':'Dhaka','মিরপুর':'Dhaka','ধানমন্ডি':'Dhaka','মোহাম্মদপুর':'Dhaka',
+    'গুলশান':'Dhaka','বনানী':'Dhaka','রামপুরা':'Dhaka','মালিবাগ':'Dhaka',
+    'দক্ষিণ খান':'Dhaka','উত্তর খান':'Dhaka','খিলক্ষেত':'Dhaka','বাড্ডা':'Dhaka',
+  };
+
+  // Division map for known areas
+  const DIV_OF = {
+    'Tangail':'Dhaka','Gazipur':'Dhaka','Narayanganj':'Dhaka','Narsingdi':'Dhaka',
+    'Manikganj':'Dhaka','Munshiganj':'Dhaka','Kishoreganj':'Dhaka','Faridpur':'Dhaka',
+    'Sirajganj':'Rajshahi','Pabna':'Rajshahi','Bogra':'Rajshahi','Natore':'Rajshahi',
+    'Comilla':'Chittagong','Noakhali':'Chittagong','Feni':'Chittagong',
+    'Mymensingh City':'Mymensingh','Jamalpur':'Mymensingh','Netrokona':'Mymensingh','Sherpur':'Mymensingh',
+    'Sylhet City':'Sylhet','Sunamganj':'Sylhet','Habiganj':'Sylhet','Moulvibazar':'Sylhet',
+    'Rangpur City':'Rangpur','Dinajpur':'Rangpur','Kurigram':'Rangpur','Gaibandha':'Rangpur',
+    'Barisal City':'Barisal','Bhola':'Barisal','Patuakhali':'Barisal',
+    'Jessore':'Khulna','Satkhira':'Khulna','Khulna City':'Khulna',
+    "Cox's Bazar":'Chittagong','Brahmanbaria':'Chittagong',
+  };
+
+  let detectedDiv='', detectedDist='', detectedThana='';
+
+  // Step 1: Bengali alias scan
+  for(const [bn, en] of Object.entries(BN_ALIAS)){
+    if(t.includes(bn) || tl.includes(bn.toLowerCase())){
+      // Thana-level check first (from BD_LOCATIONS)
+      const BD = (typeof BD_LOCATIONS!=='undefined' && Object.keys(BD_LOCATIONS).length) ? BD_LOCATIONS : null;
+      if(BD){
+        for(const [div, districts] of Object.entries(BD)){
+          for(const [dist, thanas] of Object.entries(districts)){
+            if(dist===en){ detectedDiv=div; detectedDist=dist; break; }
+            const th = thanas.find(th=>th===en);
+            if(th){ detectedDiv=div; detectedDist=dist; detectedThana=th; break; }
+          }
+          if(detectedDiv) break;
+        }
+      } else {
+        // Without BD_LOCATIONS: use DIV_OF map
+        const divName = DIV_OF[en] || (['Dhaka','Chittagong','Rajshahi','Khulna','Sylhet','Barisal','Rangpur','Mymensingh'].includes(en) ? en : '');
+        if(divName){ detectedDiv=divName; }
+      }
+      if(detectedDiv) break;
+    }
+  }
+
+  // Step 2: English district/thana scan in BD_LOCATIONS
+  if(!detectedDiv){
+    const BD = (typeof BD_LOCATIONS!=='undefined' && Object.keys(BD_LOCATIONS).length) ? BD_LOCATIONS : null;
+    if(BD){
+      outer: for(const [div, districts] of Object.entries(BD)){
+        for(const [dist, thanas] of Object.entries(districts)){
+          if(t.includes(dist) || tl.includes(dist.toLowerCase())){
+            detectedDiv=div; detectedDist=dist;
+            const th = thanas.find(th=>t.includes(th));
+            if(th) detectedThana=th;
+            break outer;
+          }
+          const th = thanas.find(th=>t.includes(th));
+          if(th){ detectedDiv=div; detectedDist=dist; detectedThana=th; break outer; }
+        }
+      }
+    }
+  }
+
+  // ── Now fill the form ──
+  if(name)  { setField('order-customer', name); filled++; }
+  if(phone) { setField('order-phone', phone); filled++; }
+  if(address){ setField('order-address', address); filled++; }
+  if(price>0){ setField('unit-price', String(price)); setTimeout(calcTotal,100); filled++; }
+  if(delivery>0){ setField('order-delivery', String(delivery)); setTimeout(calcDue,200); filled++; }
+  if(qty>1)  { setField('order-qty', String(qty)); filled++; }
+  if(note)   { const nEl=document.getElementById('order-notes'); if(nEl){ nEl.value=note; filled++; } }
+
+  // courier
+  if(courier){
+    const cSel=document.getElementById('order-courier');
+    if(cSel){ const cOpt=Array.from(cSel.options).find(o=>o.text.toLowerCase().includes(courier.toLowerCase())); if(cOpt){cSel.value=cOpt.value||cOpt.text; filled++;} }
+  }
+  // payment
+  if(payment){
+    const pSel=document.getElementById('order-payment');
+    if(pSel){ const pOpt=Array.from(pSel.options).find(o=>o.text.toLowerCase().includes(payment.toLowerCase())); if(pOpt){pSel.value=pOpt.value||pOpt.text; filled++;} }
+  }
+  // product
+  const prodSel=document.getElementById('order-product');
+  if(prodSel && !prodSel.value){
+    const defOpt=Array.from(prodSel.options).find(o=>o.text.toLowerCase().includes('door lock'));
+    if(defOpt){prodSel.value=defOpt.value||defOpt.text; onOrderProductChange(prodSel.value);}
+  }
+
+  // ── Location cascade with event dispatch ──
+  if(detectedDiv){
+    const divSel = document.getElementById('order-division');
+    if(divSel){
+      const divOpt = Array.from(divSel.options).find(o=>
+        o.text===detectedDiv || o.text.toLowerCase()===detectedDiv.toLowerCase()
+      );
+      if(divOpt){
+        divSel.value = divOpt.value||divOpt.text;
+        divSel.dispatchEvent(new Event('change'));
+        if(typeof updateDistricts==='function') updateDistricts(divSel);
+        filled++;
+        // District after 400ms
+        setTimeout(()=>{
+          if(!detectedDist) return;
+          const dSel=document.getElementById('order-district')||document.getElementById('district-select');
+          if(!dSel) return;
+          const dOpt=Array.from(dSel.options).find(o=>o.text===detectedDist||o.text.toLowerCase().includes(detectedDist.toLowerCase()));
+          if(dOpt){
+            dSel.value=dOpt.value||dOpt.text;
+            dSel.dispatchEvent(new Event('change'));
+            if(typeof updateThanas==='function') updateThanas(dSel);
+            filled++;
+            // Thana after 400ms more
+            if(detectedThana) setTimeout(()=>{
+              const tSel=document.getElementById('order-thana')||document.getElementById('thana-select');
+              if(!tSel) return;
+              const tOpt=Array.from(tSel.options).find(o=>o.text===detectedThana||o.text.toLowerCase().includes(detectedThana.toLowerCase()));
+              if(tOpt){tSel.value=tOpt.value||tOpt.text; tSel.dispatchEvent(new Event('change')); filled++;}
+            },400);
+          }
+        },400);
+      }
+    }
+  }
+
+  // ── Apply defaults for unfilled fields ──
+  _applySmartDefaults_();
+
+  return { filled };
+}
   let filled = 0;
 
   // Convert Bengali digits to English
@@ -8244,129 +8621,7 @@ function parseOrderRegex(text){
     }
   }
 
-  // Step 2: English thana/district scan (if BD cache available)
-  if(!foundLoc && BD){
-    for(const [div, districts] of Object.entries(BD)){
-      for(const [dist, thanas] of Object.entries(districts)){
-        if(text.includes(dist) || tl.includes(dist.toLowerCase())){
-          const thana = thanas.find(th=>text.includes(th)) || '';
-          setLocation(div, dist, thana);
-          break;
-        }
-        const thana = thanas.find(th=>text.includes(th));
-        if(thana){ setLocation(div, dist, thana); break; }
-      }
-      if(foundLoc) break;
-    }
-  }
 
-  // ── Address — label, গ্রাম/বাজার/পাড়া/রোড keyword lines, or all non-system lines joined ──
-  {
-    const addrLabeled = text.match(/(?:ঠিকানা|অ্যাড্রেস|address|addr)[:\s]+([^\n]+)/i);
-    if(addrLabeled){
-      setField('order-address', addrLabeled[1].trim()); filled++;
-    } else {
-      // Collect lines that look like address parts:
-      // গ্রাম/বাজার/পাড়া/রোড/মোড়/ওয়ার্ড/ব্লক/সেক্টর/উপজেলা/থানা or known location words
-      const locationKeywords = /গ্রাম|বাজার|পাড়া|মহল্লা|রোড|মোড়|ওয়ার্ড|ব্লক|সেক্টর|উপজেলা|থানা|নগর|সিটি|এলাকা|হাট|চর|কান্দি|village|road|bazar|para|sector|block|union|ward|dist|thana|upazila/i;
-      const skipLine = /01[3-9]\d{8}|\d{4,6}\s*(taka|tk|৳|টাকা)|^(steadfast|pathao|redx|sundarban|ecourier|bkash|nagad|rocket|cod|cash)$|fit tar lagbo|delivery|charge|পিস|piece|qty|quantity|পরিশোধ|advance|paid/i;
-      const lines = text.split(/\n/).map(l=>l.trim()).filter(l=>l.length>2);
-      const addrParts = [];
-      for(const line of lines){
-        if(skipLine.test(line)) continue;
-        if(/^[A-Z\s]{3,}$/.test(line) && lines.indexOf(line)===0) continue; // skip name (all caps first line)
-        if(/^01[3-9]\d{8}$/.test(line)) continue; // phone
-        if(locationKeywords.test(line)){
-          addrParts.push(line);
-        }
-      }
-      // Also grab lines containing comma-separated location parts (like "Tangail, Dhaka")
-      const commaLocLine = text.split(/\n/).find(l=>/,/.test(l) && !/\d{5,}/.test(l) && !/steadfast|pathao|delivery|charge|paid|fit tar/i.test(l) && l.trim().split(',').length>=2);
-      if(commaLocLine && !addrParts.includes(commaLocLine.trim())) addrParts.push(commaLocLine.trim());
-
-      if(addrParts.length>0){
-        setField('order-address', addrParts.join(', ')); filled++;
-      }
-    }
-  }
-
-  // ── Quantity — "২ পিস", "2 piece", "দুইটা", "3টা" ──
-  {
-    const wordNum = {'এক':1,'দুই':2,'তিন':3,'চার':4,'পাঁচ':5,'ছয়':6,'সাত':7,'আট':8,'নয়':9,'দশ':10,'one':1,'two':2,'three':3,'four':4,'five':5};
-    const qtyMatch =
-      t.match(/(\d+)\s*(?:পিস|piece|পিছ|টি|টা|পিক্স|pcs|nos)/i) ||
-      t.match(/(?:qty|quantity|পরিমাণ)[:\s]*(\d+)/i);
-    if(qtyMatch){
-      const qv = parseInt(qtyMatch[1]);
-      if(qv>1){ setField('order-qty', String(qv)); filled++; }
-    } else {
-      // Word-form: "দুই পিস", "তিনটা"
-      for(const [word, num] of Object.entries(wordNum)){
-        if(num>1 && new RegExp(word+'\\s*(?:পিস|পিক্স|টি|টা|piece|pcs)','i').test(text)){
-          setField('order-qty', String(num)); filled++; break;
-        }
-      }
-    }
-  }
-
-  // ── Product match ──
-  const prodSel = document.getElementById('order-product');
-  if(prodSel){
-    const products = Array.from(prodSel.options).filter(o=>o.value);
-    const matched = products.find(o=>{
-      const name = o.text.toLowerCase();
-      const words = name.split(' ');
-      return words.some(w=>w.length>3 && tl.includes(w)) ||
-             tl.includes('cctv') && name.includes('cctv') ||
-             tl.includes('door lock') && name.includes('door') ||
-             tl.includes('alarm') && name.includes('alarm') ||
-             tl.includes('সিকিউরিটি') || tl.includes('security');
-    });
-    if(matched){ prodSel.value=matched.value||matched.text; onOrderProductChange(prodSel.value); filled++; }
-  }
-
-  // ── Smart Notes — collect special instructions AI should write down ──
-  {
-    const noteEl = document.getElementById('order-notes');
-    const noteParts = [];
-
-    // Explicit note label
-    const noteLabeled = text.match(/(?:note|নোট|বিশেষ নির্দেশ|মন্তব্য)[:\s]+([^\n]+)/i);
-    if(noteLabeled) noteParts.push(noteLabeled[1].trim());
-
-    // "X FIT TAR LAGBO" / "X ফুট/মিটার তার" → wire instruction
-    const wireFit = text.match(/(\d+)\s*(?:FIT TAR LAGBO|ফিট তার লাগবো?|fit tar lagbo)/i);
-    if(wireFit) noteParts.push(`তার: ${wireFit[1]} ফিট লাগবে`);
-
-    const wireLen = t.match(/(\d+)\s*(?:ফুট|futt?|feet?|মিটার|meter|metre)\s*(?:তার|wire|cable)/i) ||
-                    t.match(/(?:তার|wire|cable)\s*(\d+)\s*(?:ফুট|futt?|feet?|মিটার|meter)/i);
-    if(wireLen && !wireFit) noteParts.push(`তার: ${wireLen[1]} ${wireLen[0].match(/মিটার|meter/i)?'মিটার':'ফুট'}`);
-
-    // Multiple doors/rooms — "২টা দরজা", "3 room", "দুই দরজা"
-    const doorMatch = text.match(/(\d+|এক|দুই|তিন|চার|পাঁচ)\s*(?:টা|টি)?\s*(?:দরজা|door)/i);
-    if(doorMatch) noteParts.push(`দরজা: ${doorMatch[1]}টি`);
-
-    const roomMatch = text.match(/(\d+|এক|দুই|তিন|চার|পাঁচ)\s*(?:টা|টি)?\s*(?:রুম|room|কক্ষ)/i);
-    if(roomMatch) noteParts.push(`রুম: ${roomMatch[1]}টি`);
-
-    // Color preference
-    const colorMatch = text.match(/(?:রং|color|colour)[:\s]*([^\n,।]+)/i);
-    if(colorMatch) noteParts.push(`রং: ${colorMatch[1].trim()}`);
-
-    // Installation request
-    if(/ইন্সটল|install|লাগিয়ে|সেটআপ|setup/i.test(text)) noteParts.push('ইন্সটলেশন সহ দিতে হবে');
-
-    // Urgent/fast delivery
-    if(/জরুরি|urgent|asap|দ্রুত|তাড়াতাড়ি/i.test(text)) noteParts.push('জরুরি ডেলিভারি');
-
-    if(noteParts.length>0 && noteEl){
-      noteEl.value = noteParts.join(' | ');
-      filled++;
-    }
-  }
-
-  return { filled };
-}
 
 function resetOrderModal(){
   currentEditOrderId=null;
@@ -8483,38 +8738,39 @@ let currentEditExpId = null;
 
 function openEditExpense(e){
   currentEditExpId=e.id;
-  document.getElementById('eexp-cat').value=e.cat||'Other';
-  document.getElementById('eexp-amount').value=e.amount||0;
-  document.getElementById('eexp-method').value=e.payment||'Cash';
-  document.getElementById('eexp-vendor').value=e.vendor||'';
-  document.getElementById('eexp-invoice').value=e.invoice||'';
-  document.getElementById('eexp-date').value=e.date||'';
-  document.getElementById('eexp-desc').value=e.desc||'';
-  const notesEl=document.getElementById('eexp-notes'); if(notesEl) notesEl.value=e.notes||'';
+  document.getElementById('eexp-cat').value    = e.cat||'Other';
+  document.getElementById('eexp-amount').value = e.amount||0;
+  document.getElementById('eexp-method').value = e.payment||'Cash';
+  document.getElementById('eexp-vendor').value = e.vendor||'';
+  document.getElementById('eexp-invoice').value= e.invoice||'';
+  document.getElementById('eexp-date').value   = e.date||'';
+  document.getElementById('eexp-desc').value   = e.desc||e.description||'';
+  // Monthly Budget — notes-এ [BUDGET:XXXX] tag থেকে পড়ি, অথবা e.budget
+  const budgetEl = document.getElementById('eexp-budget');
+  if(budgetEl){
+    const budgetMatch = String(e.notes||'').match(/\[BUDGET:(\d+)\]/);
+    budgetEl.value = budgetMatch ? budgetMatch[1] : (e.budget||0);
+  }
   openModal('edit-expense');
 }
 
 async function updateExpense(){
-  const cat  = document.getElementById('eexp-cat').value;
-  const amt  = document.getElementById('eexp-amount').value;
-  const pay  = document.getElementById('eexp-method').value;
-  const vnd  = document.getElementById('eexp-vendor').value;
-  const inv  = document.getElementById('eexp-invoice').value;
-  const desc = document.getElementById('eexp-desc').value;
-  const nts  = document.getElementById('eexp-notes') ? document.getElementById('eexp-notes').value : desc;
-  const id   = currentEditExpId;
+  const cat    = document.getElementById('eexp-cat').value;
+  const amt    = document.getElementById('eexp-amount').value;
+  const pay    = document.getElementById('eexp-method').value;
+  const vnd    = document.getElementById('eexp-vendor').value;
+  const inv    = document.getElementById('eexp-invoice').value;
+  const desc   = document.getElementById('eexp-desc').value;
+  const budget = document.getElementById('eexp-budget')?.value || 0;
+  const id     = currentEditExpId;
+  if(!cat||!amt||Number(amt)<=0){ showToast('Category ও Amount দিন','error'); return; }
   const payload = {
     action: 'updateExpense',
-    expenseId: id,
-    expId: id,        // backend also reads p.expId — keep both for compatibility
-    category: cat,
-    description: desc,
-    amount: amt,
-    payment: pay,
-    method: pay,      // backend reads p.method — keep both for compatibility
-    vendor: vnd,
-    invoice: inv,
-    notes: nts
+    expenseId: id, expId: id,
+    category: cat, description: desc,
+    amount: Number(amt), payment: pay, method: pay,
+    vendor: vnd, invoice: inv,
+    notes: desc, budget: Number(budget)||0
   };
   closeModal('edit-expense');
   const ok=await postToAPI(payload);
@@ -8620,17 +8876,25 @@ async function submitTransaction(){
 
 // ─── ADD EXPENSE ─────────────────────────────────────────────
 async function submitExpense(){
-  const m=document.getElementById('modal-add-expense');
-  const selects=m.querySelectorAll('.form-select');
-  const inputs=m.querySelectorAll('.form-input');
-  const category=selects[0]?.value, amount=inputs[0]?.value, method=selects[1]?.value;
-  const vendor=inputs[1]?.value, invoice=inputs[2]?.value, desc=m.querySelector('.form-textarea')?.value;
-  if(!category||!amount||amount<=0){ showToast('Category ও Amount দিন','error'); return; }
+  const category = document.getElementById('exp-cat')?.value;
+  const amount   = document.getElementById('exp-amount')?.value;
+  const method   = document.getElementById('exp-method')?.value;
+  const vendor   = document.getElementById('exp-vendor')?.value || '';
+  const invoice  = document.getElementById('exp-invoice')?.value || '';
+  const budget   = document.getElementById('exp-budget')?.value || 0;
+  const desc     = document.getElementById('exp-desc')?.value || '';
+
+  if(!category||!amount||Number(amount)<=0){ showToast('Category ও Amount দিন','error'); return; }
   closeModal('add-expense');
-  const ok=await postToAPI({action:'addExpense',category,amount:Number(amount),method,vendor,invoice,description:desc,notes:desc});
+  const ok=await postToAPI({action:'addExpense',category,amount:Number(amount),method,vendor,invoice,description:desc,notes:desc,budget:Number(budget)||0});
   if(ok){
     showToast('✅ Expense saved!','success');
     logAction(`নতুন Expense এন্ট্রি করেছেন — ${category} (৳${Number(amount).toLocaleString()})`);
+    // fields reset
+    ['exp-cat','exp-amount','exp-method','exp-vendor','exp-invoice','exp-budget','exp-desc'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el){ if(el.tagName==='SELECT') el.selectedIndex=0; else el.value=''; }
+    });
     setTimeout(loadLiveExpenses,1500);
   } else {
     showToast('Expense save হয়নি — API URL চেক করুন','error');
@@ -9176,6 +9440,212 @@ function exportPartnerDataToCSV(){
   showToast(`📥 ${data.length}টি Transaction export হয়েছে`,'success');
 }
 
+// ══════════════════════════════════════════════════════════
+// INVESTOR — EXPORT EXCEL + IMPORT CSV
+// ══════════════════════════════════════════════════════════
+
+function exportInvestorsExcel(){
+  const data = window.liveInvestorData || [];
+  if(!data || !data.length){
+    // Fallback: table থেকে পড়ি
+    const rows = [['ID','নাম','ধরন','ফোন','যোগদান তারিখ','বিনিয়োগ (৳)','% / মাসিক','মোট Profit পাওয়া (৳)','বকেয়া Profit (৳)','Cycle','স্ট্যাটাস']];
+    const tbRows = document.querySelectorAll('#investor-tbody tr');
+    if(!tbRows.length){ showToast('Investor data নেই — আগে load করুন','error'); return; }
+    tbRows.forEach(tr=>{
+      const cells = [...tr.querySelectorAll('td')].map(td=>td.innerText.trim());
+      if(cells.length>1) rows.push(cells);
+    });
+    _downloadCSV(rows,'investors-data');
+    showToast(`📊 ${rows.length-1}টি Investor export হয়েছে`,'success');
+    return;
+  }
+  const header = ['ID','নাম','ধরন','ফোন','যোগদান তারিখ','বিনিয়োগ (৳)','Equity %','মাসিক রিটার্ন (৳)','মোট Profit (৳)','বকেয়া Profit (৳)','Cycle','স্ট্যাটাস'];
+  const rows = [header, ...data.map(r=>[
+    r.id||'', r.name||'', r.type||'', r.phone||'', r.joinDate||r.date||'',
+    r.amount||r.investment||0,
+    r.equity||r.pct||0, r.monthly||0,
+    r.totalProfit||r.profitPaid||0, r.pendingProfit||r.profitDue||0,
+    r.cycle||'', r.status||'Active'
+  ])];
+  _downloadCSV(rows,'investors-data');
+  showToast(`📊 ${data.length}টি Investor export হয়েছে`,'success');
+}
+
+async function importInvestorsCSV(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length < 2){ showToast('CSV ফাইলে কোনো data নেই','error'); return; }
+
+  // Header row skip করি
+  const headers = _parseCSVLine(lines[0]).map(h=>h.toLowerCase().trim());
+  const getCol = (keys) => {
+    for(const k of keys){ const i=headers.findIndex(h=>h.includes(k)); if(i>-1) return i; }
+    return -1;
+  };
+
+  const nameIdx    = getCol(['নাম','name']);
+  const typeIdx    = getCol(['ধরন','type']);
+  const phoneIdx   = getCol(['ফোন','phone']);
+  const amountIdx  = getCol(['বিনিয়োগ','investment','amount']);
+  const equityIdx  = getCol(['equity','%']);
+  const monthlyIdx = getCol(['মাসিক','monthly']);
+  const cycleIdx   = getCol(['cycle']);
+  const statusIdx  = getCol(['status','স্ট্যাটাস']);
+
+  if(nameIdx === -1 || amountIdx === -1){
+    showToast('CSV-এ নাম ও বিনিয়োগ column থাকতে হবে','error');
+    return;
+  }
+
+  let imported = 0, failed = 0;
+  const dataRows = lines.slice(1).filter(l=>l.trim());
+
+  showToast(`⏳ ${dataRows.length}টি Investor import হচ্ছে...`,'info');
+
+  for(const line of dataRows){
+    const cols = _parseCSVLine(line);
+    if(!cols[nameIdx]?.trim()) continue;
+    const payload = {
+      action:      'addInvestor',
+      name:        cols[nameIdx]?.trim() || '',
+      type:        typeIdx>-1 ? (cols[typeIdx]?.trim()||'Equity') : 'Equity',
+      phone:       phoneIdx>-1 ? cols[phoneIdx]?.trim() : '',
+      amount:      Number(String(cols[amountIdx]||0).replace(/[^\d.]/g,''))||0,
+      equity:      equityIdx>-1 ? Number(cols[equityIdx]||0) : 0,
+      monthly:     monthlyIdx>-1 ? Number(cols[monthlyIdx]||0) : 0,
+      cycle:       cycleIdx>-1 ? (cols[cycleIdx]?.trim()||'Monthly') : 'Monthly',
+      status:      statusIdx>-1 ? (cols[statusIdx]?.trim()||'Active') : 'Active',
+    };
+    try {
+      const res = await postToAPI(payload);
+      if(res?.status==='success') imported++;
+      else failed++;
+    } catch(e){ failed++; }
+  }
+
+  input.value = '';
+  showToast(`✅ ${imported}টি Investor import হয়েছে${failed?` (${failed}টি ব্যর্থ)`:''}`, imported>0?'success':'error');
+  if(imported>0) setTimeout(loadInvestors, 1000);
+}
+
+// ══════════════════════════════════════════════════════════
+// COURIER HUB — EXPORT EXCEL + IMPORT CSV
+// ══════════════════════════════════════════════════════════
+
+function exportCourierExcel(){
+  // buildCourierData থেকে বর্তমান filtered data বের করি
+  const courierFilter = document.getElementById('ch-courier-filter')?.value || '';
+  const statusFilter  = document.getElementById('ch-status-filter')?.value || '';
+
+  const allData = typeof buildCourierData === 'function' ? buildCourierData() : null;
+  let rows_data = [];
+
+  if(allData){
+    // সব courier-এর orders merge করি
+    for(const [courier, cData] of Object.entries(allData)){
+      (cData.orders||[]).forEach(o=>{
+        if(courierFilter && o.courier!==courierFilter) return;
+        if(statusFilter  && o.status!==statusFilter)   return;
+        rows_data.push(o);
+      });
+    }
+  } else {
+    // Fallback: tracking table থেকে পড়ি
+    const tbRows = document.querySelectorAll('#courier-tracking-table tbody tr');
+    if(!tbRows.length){ showToast('Courier data নেই — আগে load করুন','error'); return; }
+    const header = ['#','তারিখ','কাস্টমার','Order ID','কুরিয়ার','Tracking No','Consignment ID','বর্তমান অবস্থা','ডেলিভারি চার্জ','COD Amount'];
+    const csvRows = [header];
+    tbRows.forEach((tr,i)=>{
+      const cells=[...tr.querySelectorAll('td')].map(td=>td.innerText.trim().replace(/\n/g,' '));
+      if(cells.length>1) csvRows.push([i+1,...cells]);
+    });
+    _downloadCSV(csvRows,'courier-tracking');
+    showToast(`📊 ${csvRows.length-1}টি tracking record export হয়েছে`,'success');
+    return;
+  }
+
+  if(!rows_data.length){ showToast('Courier data নেই — আগে load করুন','error'); return; }
+
+  const header = ['তারিখ','কাস্টমার','Order ID','কুরিয়ার','Tracking (CN#)','Consignment ID','বর্তমান স্ট্যাটাস','ডেলিভারি চার্জ (৳)','COD Amount (৳)','ফোন','ঠিকানা'];
+  const csvRows = [header, ...rows_data.map(o=>[
+    o.date||'', o.customer||'', o.orderId||'',
+    o.courier||'', o.cnCode||o.tracking||'', o.consignmentId||'',
+    o.status||'', o.delivFee||0, o.codFee||0,
+    o.phone||'', [o.thana,o.district,o.division].filter(Boolean).join(', ')
+  ])];
+  _downloadCSV(csvRows,'courier-tracking');
+  showToast(`📊 ${rows_data.length}টি Courier record export হয়েছে`,'success');
+}
+
+async function importCourierCSV(input){
+  const file = input.files[0];
+  if(!file){ return; }
+  const text = await file.text();
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length < 2){ showToast('CSV ফাইলে কোনো data নেই','error'); return; }
+
+  const headers = _parseCSVLine(lines[0]).map(h=>h.toLowerCase().trim());
+  const getCol  = (keys) => { for(const k of keys){ const i=headers.findIndex(h=>h.includes(k)); if(i>-1) return i; } return -1; };
+
+  const orderIdx    = getCol(['order id','orderid','order_id','#']);
+  const trackIdx    = getCol(['tracking','cn#','tracking no']);
+  const courierIdx  = getCol(['কুরিয়ার','courier']);
+  const statusIdx   = getCol(['status','স্ট্যাটাস','অবস্থা']);
+  const cidIdx      = getCol(['consignment id','consignmentid']);
+
+  if(orderIdx === -1){
+    showToast('CSV-এ Order ID column থাকতে হবে','error');
+    return;
+  }
+
+  const dataRows = lines.slice(1).filter(l=>l.trim());
+  showToast(`⏳ ${dataRows.length}টি Courier record import হচ্ছে...`,'info');
+
+  let imported=0, failed=0;
+  for(const line of dataRows){
+    const cols = _parseCSVLine(line);
+    const orderId  = cols[orderIdx]?.trim();
+    if(!orderId) continue;
+    const tracking = trackIdx>-1 ? cols[trackIdx]?.trim() : '';
+    const courier  = courierIdx>-1 ? cols[courierIdx]?.trim() : '';
+    const status   = statusIdx>-1 ? cols[statusIdx]?.trim() : '';
+    const cid      = cidIdx>-1 ? cols[cidIdx]?.trim() : '';
+
+    if(!tracking && !status){ failed++; continue; }
+    try {
+      const res = await postToAPI({
+        action: 'updateOrder',
+        orderId,
+        tracking: tracking||undefined,
+        courier:  courier||undefined,
+        status:   status||undefined,
+        notes:    cid ? `[CID:${cid}]` : undefined,
+      });
+      if(res?.status==='success') imported++;
+      else failed++;
+    } catch(e){ failed++; }
+  }
+
+  input.value = '';
+  showToast(`✅ ${imported}টি Courier record import হয়েছে${failed?` (${failed}টি ব্যর্থ)`:''}`, imported>0?'success':'error');
+  if(imported>0) setTimeout(liveSyncCourierData, 1000);
+}
+
+// CSV line parser (handles quoted fields with commas)
+function _parseCSVLine(line){
+  const result=[], re=/("(?:[^"]|"")*"|[^,]*)(,|$)/g;
+  let m;
+  while((m=re.exec(line))!==null){
+    let v=m[1];
+    if(v.startsWith('"')&&v.endsWith('"')) v=v.slice(1,-1).replace(/""/g,'"');
+    result.push(v);
+    if(m[2]==='') break;
+  }
+  return result;
+}
+
 // ── CRM/Customer Export ───────────────────────────────────────
 function exportCRMDataToCSV(){
   const data = window.liveSalesData || liveSalesData || [];
@@ -9267,7 +9737,7 @@ document.addEventListener('keydown', e=>{
     return;
   }
   if(e.key==='Escape') document.querySelectorAll('.modal-overlay.open').forEach(m=>m.classList.remove('open'));
-  if(e.ctrlKey&&e.key==='n'){ e.preventDefault(); openModal('add-order'); }
+  if(e.ctrlKey&&e.key==='n'){ e.preventDefault(); openNewOrderModal(); }
   if(e.ctrlKey&&e.key==='e'){ e.preventDefault(); openModal('add-expense'); }
   if(e.ctrlKey&&e.key==='l'){ e.preventDefault(); lockApp(); }
 });

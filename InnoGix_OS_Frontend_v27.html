@@ -3784,13 +3784,14 @@ tbody td.muted{color:var(--text3);}
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Category *</label><select class="form-select"><option>Marketing / Ad Spend</option><option>Product Sourcing</option><option>Delivery Cost</option><option>Office & Utility</option><option>Staff / Labor</option><option>Other</option></select></div>
-        <div class="form-group"><label class="form-label">Amount (৳) *</label><input class="form-input" type="number" placeholder="0"></div>
-        <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select"><option>Cash</option><option>bKash</option><option>Nagad</option><option>Bank</option></select></div>
-        <div class="form-group"><label class="form-label">Vendor Name</label><input class="form-input" placeholder="Vendor or person name" type="text"></div>
-        <div class="form-group"><label class="form-label">Invoice No.</label><input class="form-input" placeholder="Optional" type="text"></div>
-        <div class="form-group"><label class="form-label">Monthly Budget</label><input class="form-input" type="number" placeholder="0"></div>
-        <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" placeholder="What was this expense for?"></textarea></div>
+        <div class="form-group"><label class="form-label">Category *</label><select class="form-select" id="exp-cat"><option>Marketing / Ad Spend</option><option>Product Sourcing</option><option>Delivery Cost</option><option>Office & Utility</option><option>Staff / Labor</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Amount (৳) *</label><input class="form-input" id="exp-amount" type="number" placeholder="0"></div>
+        <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select" id="exp-method"><option>Cash</option><option>bKash</option><option>Nagad</option><option>Bank</option></select></div>
+        <div class="form-group"><label class="form-label">Vendor Name</label><input class="form-input" id="exp-vendor" placeholder="Vendor or person name" type="text"></div>
+        <div class="form-group"><label class="form-label">Invoice No.</label><input class="form-input" id="exp-invoice" placeholder="Optional" type="text"></div>
+        <div class="form-group"><label class="form-label">Monthly Budget</label><input class="form-input" id="exp-budget" type="number" placeholder="0"></div>
+        <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" id="exp-desc" placeholder="What was this expense for?"></textarea></div>
+        <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="exp-notes" placeholder="Optional notes..."></textarea></div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4008,6 +4009,7 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div class="form-group"><label class="form-label">Vendor</label><input class="form-input" id="eexp-vendor" type="text"></div>
         <div class="form-group"><label class="form-label">Invoice No.</label><input class="form-input" id="eexp-invoice" type="text"></div>
+        <div class="form-group"><label class="form-label">Monthly Budget</label><input class="form-input" id="eexp-budget" type="number" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Date</label><input class="form-input" id="eexp-date" type="text" readonly></div>
         <div class="form-group full"><label class="form-label">Description</label><textarea class="form-textarea" id="eexp-desc"></textarea></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="eexp-notes" placeholder="Optional notes..."></textarea></div>
@@ -4596,7 +4598,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbxoREqevHFPQE-h2hHw5oevVvEMl5eXgybK-htt0qbw_5379bBwdrtbKnRwvkICvYDc/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbx34_NMvpOgt25amS3xk6xBy3Tc87aR9agMNqoeTAzWjM5Sv9Jo_H41LWtozuexxm1TRQ/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -7403,6 +7405,7 @@ async function loadLiveExpenses(){
     vendor: String(r[6]||''),
     invoice: String(r[7]||''),
     notes: String(r[8]||''),
+    budget: Number(String(r[9]||'0').replace(/[,৳]/g,''))||0,
   })).filter(r=>r.cat && String(r.cat).trim() && Number(r.amount)>=0);
   liveExpenseData = rows; // cache so filter works on live data
   window.liveExpenseData = rows; // global for export
@@ -8587,6 +8590,7 @@ function openEditExpense(e){
   document.getElementById('eexp-method').value=e.payment||'Cash';
   document.getElementById('eexp-vendor').value=e.vendor||'';
   document.getElementById('eexp-invoice').value=e.invoice||'';
+  document.getElementById('eexp-budget').value=e.budget||0;
   document.getElementById('eexp-date').value=e.date||'';
   document.getElementById('eexp-desc').value=e.desc||'';
   const notesEl=document.getElementById('eexp-notes'); if(notesEl) notesEl.value=e.notes||'';
@@ -8599,6 +8603,7 @@ async function updateExpense(){
   const pay  = document.getElementById('eexp-method').value;
   const vnd  = document.getElementById('eexp-vendor').value;
   const inv  = document.getElementById('eexp-invoice').value;
+  const bdg  = document.getElementById('eexp-budget').value;
   const desc = document.getElementById('eexp-desc').value;
   const nts  = document.getElementById('eexp-notes') ? document.getElementById('eexp-notes').value : desc;
   const id   = currentEditExpId;
@@ -8613,6 +8618,7 @@ async function updateExpense(){
     method: pay,      // backend reads p.method — keep both for compatibility
     vendor: vnd,
     invoice: inv,
+    monthlyBudget: Number(bdg)||0,
     notes: nts
   };
   closeModal('edit-expense');
@@ -8719,14 +8725,17 @@ async function submitTransaction(){
 
 // ─── ADD EXPENSE ─────────────────────────────────────────────
 async function submitExpense(){
-  const m=document.getElementById('modal-add-expense');
-  const selects=m.querySelectorAll('.form-select');
-  const inputs=m.querySelectorAll('.form-input');
-  const category=selects[0]?.value, amount=inputs[0]?.value, method=selects[1]?.value;
-  const vendor=inputs[1]?.value, invoice=inputs[2]?.value, desc=m.querySelector('.form-textarea')?.value;
+  const category=document.getElementById('exp-cat').value;
+  const amount=document.getElementById('exp-amount').value;
+  const method=document.getElementById('exp-method').value;
+  const vendor=document.getElementById('exp-vendor').value;
+  const invoice=document.getElementById('exp-invoice').value;
+  const budget=document.getElementById('exp-budget').value;
+  const desc=document.getElementById('exp-desc').value;
+  const notes=document.getElementById('exp-notes').value;
   if(!category||!amount||amount<=0){ showToast('Category ও Amount দিন','error'); return; }
   closeModal('add-expense');
-  const ok=await postToAPI({action:'addExpense',category,amount:Number(amount),method,vendor,invoice,description:desc,notes:desc});
+  const ok=await postToAPI({action:'addExpense',category,amount:Number(amount),method,vendor,invoice,monthlyBudget:Number(budget)||0,description:desc,notes:notes});
   if(ok){
     showToast('✅ Expense saved!','success');
     logAction(`নতুন Expense এন্ট্রি করেছেন — ${category} (৳${Number(amount).toLocaleString()})`);
@@ -9240,10 +9249,10 @@ function exportInventoryDataToCSV(){
 function exportExpenseDataToCSV(){
   const data = window.liveExpenseData || liveExpenseData || [];
   if(!data.length){ showToast('কোনো Expense data নেই — আগে load করুন','error'); return; }
-  const header = ['#','Date','Category','Description','Amount','Payment Method','Vendor','Invoice','Notes'];
+  const header = ['#','Date','Category','Description','Amount','Payment Method','Vendor','Invoice','Notes','Monthly Budget'];
   const rows = [header, ...data.map(r=>[
     r.id, r.date, r.cat||r.category, r.desc||r.description,
-    r.amount, r.payment||r.method, r.vendor, r.invoice, r.notes
+    r.amount, r.payment||r.method, r.vendor, r.invoice, r.notes, r.budget||0
   ])];
   _downloadCSV(rows,'expenses-data');
   showToast(`📥 ${data.length}টি Expense export হয়েছে`,'success');
@@ -10541,6 +10550,7 @@ const EXP_IMP_FIELDS = {
   vendor:      ['vendor','supplier','দোকান','সরবরাহকারী','shop'],
   invoice:     ['invoice','invoice no','ইনভয়েস','receipt'],
   notes:       ['notes','note','মন্তব্য','remarks'],
+  monthlyBudget: ['monthly budget','budget','মান্থলি বাজেট'],
 };
 
 let expImpRawRows=[], expImpHeaders=[], expImpColMap={};
@@ -10591,7 +10601,7 @@ async function expImpSubmit(){
   const cleanNum=v=>{let s=String(v||'').replace(/[০১২৩৪৫৬৭৮৯]/g,d=>'০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[৳,\s]/g,'').replace(/[^0-9.-]/g,'');const n=parseFloat(s);return isNaN(n)?0:n;};
   const payload_rows=rows.map(r=>{
     const g=(f)=>{const idx=expImpColMap[f];return idx!==undefined?String(r[idx]||'').trim():'';};
-    return { date:g('date'), time:g('time'), category:g('category')||'Other', description:g('description'), amount:cleanNum(g('amount')), method:g('method')||'Cash', vendor:g('vendor'), invoice:g('invoice'), notes:g('notes') };
+    return { date:g('date'), time:g('time'), category:g('category')||'Other', description:g('description'), amount:cleanNum(g('amount')), method:g('method')||'Cash', vendor:g('vendor'), invoice:g('invoice'), notes:g('notes'), monthlyBudget:cleanNum(g('monthlyBudget')) };
   }).filter(r=>r.description||r.amount>0);
   document.getElementById('exp-imp-progress-text').textContent=`${payload_rows.length}টি expense পাঠানো হচ্ছে...`;
   document.getElementById('exp-imp-progress-bar').style.width='30%';

@@ -2428,6 +2428,8 @@ tbody td.muted{color:var(--text3);}
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-gold" onclick="openAddInvestorModal()">+ নতুন Investor</button>
           <button class="btn" onclick="loadInvestors()">🔄 রিফ্রেশ</button>
+          <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="openModal('import-investor-csv')">📥 Import CSV</button>
+          <button class="btn export-excel" onclick="exportInvestorDataToCSV()">📥 Export Excel</button>
         </div>
       </div>
 
@@ -3066,7 +3068,11 @@ tbody td.muted{color:var(--text3);}
           <h2>📦 কুরিয়ার ম্যানেজার হাব</h2>
           <p>৬টি কুরিয়ার কোম্পানির লাইভ অ্যানালিটিক্স, ট্র্যাকিং ও COD হিসাব</p>
         </div>
-        <button class="btn" id="courier-sync-btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="liveSyncCourierData()">🔄 লাইভ রিফ্রেশ</button>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="openModal('import-courier-csv')">📥 Import CSV</button>
+          <button class="btn export-excel" onclick="exportCourierDataToCSV()">📥 Export Excel</button>
+          <button class="btn" id="courier-sync-btn" style="background:linear-gradient(135deg,rgba(212,160,23,.18),rgba(212,160,23,.08));border-color:rgba(212,160,23,.5);color:var(--gold);font-weight:700;padding:10px 20px;font-size:13px;" onclick="liveSyncCourierData()">🔄 লাইভ রিফ্রেশ</button>
+        </div>
       </div>
 
       <!-- ✅ Feature 4: COD Statistics Dashboard Widget -->
@@ -4306,6 +4312,108 @@ tbody td.muted{color:var(--text3);}
   </div>
 </div>
 
+<!-- MODAL: IMPORT INVESTOR CSV -->
+<div class="modal-overlay" id="modal-import-investor-csv" onclick="if(event.target===this)closeModal('import-investor-csv')">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-head">
+      <span class="modal-title">📥 CSV Import — Investors</span>
+      <button class="modal-close" onclick="closeModal('import-investor-csv');invsImpReset()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;">
+      <div style="background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.3);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.8;color:var(--text2);">
+        <strong style="color:#58a6ff;">📋 CSV Format:</strong><br>
+        <span style="color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:11px;">Name, Phone, Amount, Investment Type, Profit Rate, Duration, Payment Cycle, Notes</span><br>
+        <span style="color:var(--gold);">⚠️ Investment Type values: Equity / Fixed Return</span>
+      </div>
+      <div id="invs-imp-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:14px;"
+        onclick="document.getElementById('invs-imp-file-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="invsImpHandleDrop(event)">
+        <div style="font-size:32px;margin-bottom:8px;">📂</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text1);">CSV ফাইল drop করুন বা click করুন</div>
+        <input type="file" id="invs-imp-file-input" accept=".csv,.txt" style="display:none" onchange="invsImpReadFile(this.files[0])">
+      </div>
+      <div id="invs-imp-preview-wrap" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:13px;font-weight:600;color:var(--text1);">Preview — <span id="invs-imp-preview-count"></span></span>
+          <button class="btn" style="padding:4px 12px;font-size:12px;" onclick="invsImpReset()">🔄 Reset</button>
+        </div>
+        <div style="overflow-x:auto;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead id="invs-imp-thead" style="position:sticky;top:0;background:var(--card-bg2);"></thead>
+            <tbody id="invs-imp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="invs-imp-progress-wrap" style="display:none;margin-bottom:14px;">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;" id="invs-imp-progress-text">Importing...</div>
+        <div style="background:var(--bg);border-radius:8px;height:8px;overflow:hidden;">
+          <div id="invs-imp-progress-bar" style="height:100%;background:var(--green);width:0%;transition:width .3s;"></div>
+        </div>
+      </div>
+      <div id="invs-imp-result" style="display:none;"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn" onclick="closeModal('import-investor-csv');invsImpReset()">বাতিল</button>
+      <button class="btn primary" id="invs-imp-submit-btn" onclick="invsImpSubmit()" style="display:none;">
+        📥 <span id="invs-imp-submit-text">Import করুন</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: IMPORT COURIER TRACKING CSV -->
+<div class="modal-overlay" id="modal-import-courier-csv" onclick="if(event.target===this)closeModal('import-courier-csv')">
+  <div class="modal" style="max-width:580px;">
+    <div class="modal-head">
+      <span class="modal-title">📥 CSV Import — Courier Tracking</span>
+      <button class="modal-close" onclick="closeModal('import-courier-csv');chImpReset()">✕</button>
+    </div>
+    <div class="modal-body" style="padding:16px;">
+      <div style="background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.3);border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;line-height:1.8;color:var(--text2);">
+        <strong style="color:#58a6ff;">📋 CSV Format:</strong><br>
+        <span style="color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:11px;">Order ID, Courier, Tracking Number, Status, Consignment ID</span><br>
+        <span style="color:var(--gold);">⚠️ Order ID অবশ্যই বিদ্যমান একটা Sales অর্ডারের সাথে মিলতে হবে</span>
+      </div>
+      <div id="ch-imp-drop-zone" style="border:2px dashed var(--border);border-radius:12px;padding:32px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:14px;"
+        onclick="document.getElementById('ch-imp-file-input').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="chImpHandleDrop(event)">
+        <div style="font-size:32px;margin-bottom:8px;">📂</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text1);">CSV ফাইল drop করুন বা click করুন</div>
+        <input type="file" id="ch-imp-file-input" accept=".csv,.txt" style="display:none" onchange="chImpReadFile(this.files[0])">
+      </div>
+      <div id="ch-imp-preview-wrap" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:13px;font-weight:600;color:var(--text1);">Preview — <span id="ch-imp-preview-count"></span></span>
+          <button class="btn" style="padding:4px 12px;font-size:12px;" onclick="chImpReset()">🔄 Reset</button>
+        </div>
+        <div style="overflow-x:auto;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead id="ch-imp-thead" style="position:sticky;top:0;background:var(--card-bg2);"></thead>
+            <tbody id="ch-imp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="ch-imp-progress-wrap" style="display:none;margin-bottom:14px;">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:8px;" id="ch-imp-progress-text">Importing...</div>
+        <div style="background:var(--bg);border-radius:8px;height:8px;overflow:hidden;">
+          <div id="ch-imp-progress-bar" style="height:100%;background:var(--green);width:0%;transition:width .3s;"></div>
+        </div>
+      </div>
+      <div id="ch-imp-result" style="display:none;"></div>
+    </div>
+    <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn" onclick="closeModal('import-courier-csv');chImpReset()">বাতিল</button>
+      <button class="btn primary" id="ch-imp-submit-btn" onclick="chImpSubmit()" style="display:none;">
+        📥 <span id="ch-imp-submit-text">Import করুন</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-top-region">
   <div class="modal" style="max-width:860px;">
 
@@ -4488,7 +4596,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbyujRsA5NqhBpf_TlhqY2td8CM-ypitv8CDRzigcj6V6oA-mXMGQTdoUqlfNbv-VTAD/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbxoREqevHFPQE-h2hHw5oevVvEMl5eXgybK-htt0qbw_5379bBwdrtbKnRwvkICvYDc/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -9141,6 +9249,36 @@ function exportExpenseDataToCSV(){
   showToast(`📥 ${data.length}টি Expense export হয়েছে`,'success');
 }
 
+// ── Investor Export ────────────────────────────────────────────
+function exportInvestorDataToCSV(){
+  const data = window._investorData || _investorData || [];
+  if(!data.length){ showToast('কোনো Investor data নেই — আগে load করুন','error'); return; }
+  const header = ['ID','নাম','ফোন','যোগদান তারিখ','বিনিয়োগ (৳)','Equity %','Payment Cycle','Status','Notes','Investment Type','Profit Rate %','Duration (মাস)','মাস অতিবাহিত','বকেয়া Profit (৳)'];
+  const rows = [header, ...data.map(r=>[
+    r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9]||'Equity', r[10]||0, r[11]||0, r[12]||0, r[13]||0
+  ])];
+  _downloadCSV(rows,'investors-data');
+  showToast(`📥 ${data.length}জন Investor export হয়েছে`,'success');
+}
+
+// ── Courier Tracking Export ────────────────────────────────────
+function exportCourierDataToCSV(){
+  const data = window._lastCourierData || (typeof buildCourierData==='function' ? buildCourierData() : null);
+  if(!data){ showToast('কোনো Courier data নেই — আগে লাইভ রিফ্রেশ করুন','error'); return; }
+  let rows = [];
+  Object.entries(data).forEach(([cName, d]) => {
+    (d.orders||[]).forEach(o => rows.push({...o, courier:cName}));
+  });
+  if(!rows.length){ showToast('কোনো Courier data নেই — আগে লাইভ রিফ্রেশ করুন','error'); return; }
+  const header = ['#','তারিখ','কাস্টমার','অর্ডার ID','কুরিয়ার','ট্র্যাকিং নম্বর','Consignment ID','বর্তমান অবস্থান','ডেলিভারি চার্জ','COD চার্জ','নেট পাওনা','স্ট্যাটাস'];
+  const outRows = [header, ...rows.map((r,i)=>[
+    i+1, r.date, r.customer, r.orderId, r.courier, r.cnCode||r.tracking||'', r.consignmentId||'',
+    r.location||'', r.delivFee||0, r.codAmt||0, r.netPay||0, r.status||''
+  ])];
+  _downloadCSV(outRows,'courier-tracking-data');
+  showToast(`📥 ${rows.length}টি Order export হয়েছে`,'success');
+}
+
 // ── Partner Export ────────────────────────────────────────────
 function exportPartnerDataToCSV(){
   const data = window.livePartnerData || livePartnerData || [];
@@ -10545,6 +10683,162 @@ async function ptrImpSubmit(){
       setTimeout(()=>{ closeModal('import-partner-csv'); ptrImpReset(); loadLivePartners(); loadLiveDashboard(); showToast('✅ Partner import সম্পন্ন!','success'); },2000);
     } else { res.style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;'; res.innerHTML=`❌ Import failed<br><button class="btn" style="margin-top:8px;" onclick="ptrImpReset()">🔄 আবার চেষ্টা করুন</button>`; document.getElementById('ptr-imp-submit-btn').disabled=false; }
   } catch(e){ document.getElementById('ptr-imp-progress-wrap').style.display='none'; document.getElementById('ptr-imp-result').style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;'; document.getElementById('ptr-imp-result').innerHTML=`❌ Error: ${e.message}<br><button class="btn" style="margin-top:8px;" onclick="ptrImpReset()">🔄 আবার চেষ্টা করুন</button>`; document.getElementById('ptr-imp-submit-btn').disabled=false; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INVESTOR CSV IMPORT
+// ═══════════════════════════════════════════════════════════════
+const INVS_IMP_FIELDS = {
+  name:           ['name','investor name','নাম'],
+  phone:          ['phone','ফোন'],
+  amount:         ['amount','invested amount','বিনিয়োগ','taka'],
+  investmentType: ['investment type','type','ধরন'],
+  profitRate:     ['profit rate','profit rate %','rate'],
+  duration:       ['duration','duration (months)','মেয়াদ'],
+  paymentCycle:   ['payment cycle','cycle'],
+  notes:          ['notes','note','বিবরণ'],
+};
+let invsImpRawRows=[], invsImpHeaders=[], invsImpColMap={};
+
+function invsImpReset(){
+  invsImpRawRows=[]; invsImpHeaders=[]; invsImpColMap={};
+  ['invs-imp-preview-wrap','invs-imp-progress-wrap','invs-imp-result'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const btn=document.getElementById('invs-imp-submit-btn'); if(btn)btn.style.display='none';
+  const zone=document.getElementById('invs-imp-drop-zone'); if(zone)zone.style.display='block';
+  const fi=document.getElementById('invs-imp-file-input'); if(fi)fi.value='';
+}
+
+function invsImpReadFile(file){ if(!file)return; const r=new FileReader(); r.onload=e=>invsImpParseAndShow(e.target.result); r.readAsText(file,'UTF-8'); }
+function invsImpHandleDrop(e){ e.preventDefault(); document.getElementById('invs-imp-drop-zone').style.borderColor='var(--border)'; const f=e.dataTransfer.files[0]; if(f)invsImpReadFile(f); }
+
+function invsImpParseAndShow(text){
+  text=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines=text.split('\n').filter(l=>l.trim());
+  if(lines.length<2){showToast('CSV-এ কোনো data নেই','error');return;}
+  function parseLine(line){const result=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){inQ=!inQ;continue;}if(ch===','&&!inQ){result.push(cur.trim());cur='';continue;}cur+=ch;}result.push(cur.trim());return result;}
+  invsImpHeaders=parseLine(lines[0]).map(h=>h.replace(/^["'\s]+|["'\s]+$/g,'').trim());
+  invsImpRawRows=lines.slice(1).map(l=>parseLine(l));
+  invsImpColMap={};
+  Object.entries(INVS_IMP_FIELDS).forEach(([field,variants])=>{
+    let found=-1; const headers=invsImpHeaders.map(h=>h.toLowerCase().trim());
+    if(found<0) for(let i=0;i<headers.length;i++) if(variants.some(v=>v===headers[i])){found=i;break;}
+    if(found<0) for(let i=0;i<headers.length;i++) if(variants.some(v=>headers[i].startsWith(v)||v.startsWith(headers[i]))){found=i;break;}
+    if(found>=0) invsImpColMap[field]=found;
+  });
+  document.getElementById('invs-imp-drop-zone').style.display='none';
+  document.getElementById('invs-imp-preview-wrap').style.display='block';
+  const total=invsImpRawRows.filter(r=>r.some(c=>c.trim())).length;
+  const previewEl=document.getElementById('invs-imp-preview-count'); if(previewEl) previewEl.textContent=total+'টি row';
+  const thead=document.getElementById('invs-imp-thead'); const tbody=document.getElementById('invs-imp-tbody');
+  const cols=Math.min(invsImpHeaders.length,6);
+  if(thead) thead.innerHTML='<tr>'+invsImpHeaders.slice(0,cols).map(h=>`<th style="padding:6px 10px;background:var(--card-bg2);white-space:nowrap;">${h}</th>`).join('')+'</tr>';
+  if(tbody) tbody.innerHTML=invsImpRawRows.slice(0,4).map(r=>'<tr>'+r.slice(0,cols).map(c=>`<td style="padding:5px 10px;border-bottom:1px solid var(--border2);">${c||'—'}</td>`).join('')+'</tr>').join('');
+  const btn=document.getElementById('invs-imp-submit-btn'); if(btn){btn.style.display='inline-flex'; document.getElementById('invs-imp-submit-text').textContent=total+'জন Investor Import করুন';}
+}
+
+async function invsImpSubmit(){
+  const rows=invsImpRawRows.filter(r=>r.some(c=>String(c).trim()));
+  if(!rows.length){showToast('কোনো data নেই','error');return;}
+  document.getElementById('invs-imp-submit-btn').disabled=true;
+  document.getElementById('invs-imp-preview-wrap').style.display='none';
+  document.getElementById('invs-imp-progress-wrap').style.display='block';
+  const cleanNum=v=>{let s=String(v||'').replace(/[০১২৩৪৫৬৭৮৯]/g,d=>'০১২৩৪৫৬৭৮৯'.indexOf(d)).replace(/[৳,\s]/g,'').replace(/[^0-9.-]/g,'');const n=parseFloat(s);return isNaN(n)?0:n;};
+  const payload_rows=rows.map(r=>{
+    const g=(f)=>{const idx=invsImpColMap[f];return idx!==undefined?String(r[idx]||'').trim():'';};
+    const typeRaw=g('investmentType');
+    const invType=/fixed/i.test(typeRaw)?'Fixed Return':'Equity';
+    return {
+      name:g('name'), phone:g('phone'), amount:cleanNum(g('amount')),
+      investmentType:invType, profitRate:cleanNum(g('profitRate')), duration:cleanNum(g('duration')),
+      paymentCycle:g('paymentCycle')||'Quarterly', notes:g('notes')
+    };
+  }).filter(r=>r.name && r.amount>0);
+  document.getElementById('invs-imp-progress-text').textContent=`${payload_rows.length}জন Investor পাঠানো হচ্ছে...`;
+  document.getElementById('invs-imp-progress-bar').style.width='30%';
+  try{
+    const ok=await postToAPI({action:'bulkImportInvestors', rows:payload_rows});
+    document.getElementById('invs-imp-progress-bar').style.width='100%';
+    document.getElementById('invs-imp-progress-wrap').style.display='none';
+    const res=document.getElementById('invs-imp-result'); res.style.display='block';
+    if(ok){
+      res.style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(34,201,122,0.1);border:1px solid rgba(34,201,122,0.3);color:var(--green);font-size:13px;font-weight:600;text-align:center;';
+      res.textContent=`✅ ${payload_rows.length}জন Investor সফলভাবে import হয়েছে!`;
+      setTimeout(()=>{ closeModal('import-investor-csv'); invsImpReset(); loadInvestors(); showToast('✅ Investor import সম্পন্ন!','success'); },2000);
+    } else { res.style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;'; res.innerHTML=`❌ Import failed<br><button class="btn" style="margin-top:8px;" onclick="invsImpReset()">🔄 আবার চেষ্টা করুন</button>`; document.getElementById('invs-imp-submit-btn').disabled=false; }
+  } catch(e){ document.getElementById('invs-imp-progress-wrap').style.display='none'; document.getElementById('invs-imp-result').style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;'; document.getElementById('invs-imp-result').innerHTML=`❌ Error: ${e.message}<br><button class="btn" style="margin-top:8px;" onclick="invsImpReset()">🔄 আবার চেষ্টা করুন</button>`; document.getElementById('invs-imp-submit-btn').disabled=false; }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COURIER TRACKING CSV IMPORT
+// ═══════════════════════════════════════════════════════════════
+const CH_IMP_FIELDS = {
+  orderId:       ['order id','orderid','অর্ডার id','order'],
+  courier:       ['courier','কুরিয়ার'],
+  tracking:      ['tracking number','tracking','ট্র্যাকিং নম্বর','cn'],
+  status:        ['status','স্ট্যাটাস'],
+  consignmentId: ['consignment id','cid'],
+};
+let chImpRawRows=[], chImpHeaders=[], chImpColMap={};
+
+function chImpReset(){
+  chImpRawRows=[]; chImpHeaders=[]; chImpColMap={};
+  ['ch-imp-preview-wrap','ch-imp-progress-wrap','ch-imp-result'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const btn=document.getElementById('ch-imp-submit-btn'); if(btn)btn.style.display='none';
+  const zone=document.getElementById('ch-imp-drop-zone'); if(zone)zone.style.display='block';
+  const fi=document.getElementById('ch-imp-file-input'); if(fi)fi.value='';
+}
+
+function chImpReadFile(file){ if(!file)return; const r=new FileReader(); r.onload=e=>chImpParseAndShow(e.target.result); r.readAsText(file,'UTF-8'); }
+function chImpHandleDrop(e){ e.preventDefault(); document.getElementById('ch-imp-drop-zone').style.borderColor='var(--border)'; const f=e.dataTransfer.files[0]; if(f)chImpReadFile(f); }
+
+function chImpParseAndShow(text){
+  text=text.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const lines=text.split('\n').filter(l=>l.trim());
+  if(lines.length<2){showToast('CSV-এ কোনো data নেই','error');return;}
+  function parseLine(line){const result=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){inQ=!inQ;continue;}if(ch===','&&!inQ){result.push(cur.trim());cur='';continue;}cur+=ch;}result.push(cur.trim());return result;}
+  chImpHeaders=parseLine(lines[0]).map(h=>h.replace(/^["'\s]+|["'\s]+$/g,'').trim());
+  chImpRawRows=lines.slice(1).map(l=>parseLine(l));
+  chImpColMap={};
+  Object.entries(CH_IMP_FIELDS).forEach(([field,variants])=>{
+    let found=-1; const headers=chImpHeaders.map(h=>h.toLowerCase().trim());
+    if(found<0) for(let i=0;i<headers.length;i++) if(variants.some(v=>v===headers[i])){found=i;break;}
+    if(found<0) for(let i=0;i<headers.length;i++) if(variants.some(v=>headers[i].startsWith(v)||v.startsWith(headers[i]))){found=i;break;}
+    if(found>=0) chImpColMap[field]=found;
+  });
+  document.getElementById('ch-imp-drop-zone').style.display='none';
+  document.getElementById('ch-imp-preview-wrap').style.display='block';
+  const total=chImpRawRows.filter(r=>r.some(c=>c.trim())).length;
+  const previewEl=document.getElementById('ch-imp-preview-count'); if(previewEl) previewEl.textContent=total+'টি row';
+  const thead=document.getElementById('ch-imp-thead'); const tbody=document.getElementById('ch-imp-tbody');
+  const cols=Math.min(chImpHeaders.length,6);
+  if(thead) thead.innerHTML='<tr>'+chImpHeaders.slice(0,cols).map(h=>`<th style="padding:6px 10px;background:var(--card-bg2);white-space:nowrap;">${h}</th>`).join('')+'</tr>';
+  if(tbody) tbody.innerHTML=chImpRawRows.slice(0,4).map(r=>'<tr>'+r.slice(0,cols).map(c=>`<td style="padding:5px 10px;border-bottom:1px solid var(--border2);">${c||'—'}</td>`).join('')+'</tr>').join('');
+  const btn=document.getElementById('ch-imp-submit-btn'); if(btn){btn.style.display='inline-flex'; document.getElementById('ch-imp-submit-text').textContent=total+'টি Order Import করুন';}
+}
+
+async function chImpSubmit(){
+  const rows=chImpRawRows.filter(r=>r.some(c=>String(c).trim()));
+  if(!rows.length){showToast('কোনো data নেই','error');return;}
+  document.getElementById('ch-imp-submit-btn').disabled=true;
+  document.getElementById('ch-imp-preview-wrap').style.display='none';
+  document.getElementById('ch-imp-progress-wrap').style.display='block';
+  const payload_rows=rows.map(r=>{
+    const g=(f)=>{const idx=chImpColMap[f];return idx!==undefined?String(r[idx]||'').trim():'';};
+    return { orderId:g('orderId'), courier:g('courier'), tracking:g('tracking'), status:g('status'), consignmentId:g('consignmentId') };
+  }).filter(r=>r.orderId && (r.tracking||r.status));
+  document.getElementById('ch-imp-progress-text').textContent=`${payload_rows.length}টি Order আপডেট হচ্ছে...`;
+  document.getElementById('ch-imp-progress-bar').style.width='30%';
+  try{
+    const ok=await postToAPI({action:'bulkImportTracking', rows:payload_rows});
+    document.getElementById('ch-imp-progress-bar').style.width='100%';
+    document.getElementById('ch-imp-progress-wrap').style.display='none';
+    const res=document.getElementById('ch-imp-result'); res.style.display='block';
+    if(ok){
+      res.style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(34,201,122,0.1);border:1px solid rgba(34,201,122,0.3);color:var(--green);font-size:13px;font-weight:600;text-align:center;';
+      res.textContent=`✅ ${payload_rows.length}টি Order tracking সফলভাবে import হয়েছে!`;
+      setTimeout(()=>{ closeModal('import-courier-csv'); chImpReset(); liveSyncCourierData(); showToast('✅ Courier tracking import সম্পন্ন!','success'); },2000);
+    } else { res.style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;'; res.innerHTML=`❌ Import failed<br><button class="btn" style="margin-top:8px;" onclick="chImpReset()">🔄 আবার চেষ্টা করুন</button>`; document.getElementById('ch-imp-submit-btn').disabled=false; }
+  } catch(e){ document.getElementById('ch-imp-progress-wrap').style.display='none'; document.getElementById('ch-imp-result').style.cssText='display:block;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;'; document.getElementById('ch-imp-result').innerHTML=`❌ Error: ${e.message}<br><button class="btn" style="margin-top:8px;" onclick="chImpReset()">🔄 আবার চেষ্টা করুন</button>`; document.getElementById('ch-imp-submit-btn').disabled=false; }
 }
 
 // ═══════════════════════════════════════════════════════════════

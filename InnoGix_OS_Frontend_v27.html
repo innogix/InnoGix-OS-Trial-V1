@@ -4598,7 +4598,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbx34_NMvpOgt25amS3xk6xBy3Tc87aR9agMNqoeTAzWjM5Sv9Jo_H41LWtozuexxm1TRQ/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbxlrpJU3fRuqz4M0v3FpT6IsQuf_cNN-NZi4qxq5sIklXwtAGmi-Yvy82vxUOgeweMy/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5113,7 +5113,7 @@ function changePin() {
 
 // Project-wise default split percentages (multi-project ready)
 const PROJECT_SPLITS = {
-  'Amanah Security': { Ismail: 10, Ashik: 45 },
+  'Amanah Security': { Ismail: 50, Ashik: 50 },
   // ভবিষ্যতে নতুন project যোগ করতে এখানে এন্ট্রি দিন:
   // 'Project Beta': { Ismail: 20, Ashik: 30 },
 };
@@ -5293,7 +5293,7 @@ function resetProfitBalances() {
 
 function updateProfitDefaults() {
   const proj = document.getElementById('order-project')?.value || 'Amanah Security';
-  const def = PROJECT_SPLITS[proj] || { Ismail:0, Ashik:0 };
+  const def = PROJECT_SPLITS[proj] || { Ismail:50, Ashik:50 };
   const si = document.getElementById('split-ismail');
   const sa = document.getElementById('split-ashik');
   if(si) si.value = def.Ismail;
@@ -5339,7 +5339,7 @@ document.addEventListener('change', function(e) {
       opt.value = name.trim(); opt.textContent = name.trim();
       e.target.insertBefore(opt, document.getElementById('project-custom-opt'));
       e.target.value = name.trim();
-      PROJECT_SPLITS[name.trim()] = { Ismail:0, Ashik:0 };
+      PROJECT_SPLITS[name.trim()] = { Ismail:50, Ashik:50 };
       updateProfitDefaults();
     } else {
       e.target.value = 'Amanah Security';
@@ -5855,7 +5855,7 @@ async function viewInvestorReport(investorId) {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);">
           <div>
             <div style="font-size:18px;font-weight:700;color:var(--text);">${d.name}</div>
-            <div style="font-size:12px;color:var(--text3);">ID: ${d.investorId} &nbsp;|&nbsp; ${d.phone||'—'} &nbsp;|&nbsp; যোগদান: ${d.joinDate||'—'}</div>
+            <div style="font-size:12px;color:var(--text3);">ID: ${d.investorId} &nbsp;|&nbsp; ${d.phone||'—'} &nbsp;|&nbsp; যোগদান: ${formatBDDate(d.joinDate)||'—'}</div>
           </div>
           <span style="background:rgba(52,209,116,.15);color:var(--green);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">${d.invStatus}</span>
         </div>
@@ -5883,7 +5883,7 @@ async function viewInvestorReport(investorId) {
           <tbody>
             ${(d.transactions||[]).length ? d.transactions.map(t =>
               `<tr>
-                <td>${t[1]||'—'}</td>
+                <td>${formatBDDate(t[1])||'—'}</td>
                 <td style="color:${t[4]==='Investment'?'var(--gold)':t[4]==='Profit Share'?'var(--green)':t[4]==='Buyback'?'var(--red)':'var(--text)'};">${t[4]||'—'}</td>
                 <td style="font-weight:600;">৳${fmt(Number(t[5])||0)}</td>
                 <td style="color:var(--text3);">${t[6]||'—'}</td>
@@ -8074,9 +8074,12 @@ async function runSmartPaste(){
     if(p.division){
       const divSel = document.getElementById('order-division');
       if(divSel){
-        const divOpt = Array.from(divSel.options).find(o=>o.text===p.division);
+        const divOpt = Array.from(divSel.options).find(o=>
+          o.text.toLowerCase().trim()===String(p.division).toLowerCase().trim()
+        );
         if(divOpt){
           divSel.value = divOpt.value || divOpt.text;
+          divSel.dispatchEvent(new Event('change', {bubbles:true})); // ✅ ensures any listener also fires
           updateDistricts(divSel);
           filled++;
           await new Promise(r=>setTimeout(r,400));
@@ -8085,10 +8088,13 @@ async function runSmartPaste(){
             const distSel = document.getElementById('district-select');
             if(distSel){
               const distOpt = Array.from(distSel.options).find(o=>
-                o.text===p.district || o.text.toLowerCase().includes(p.district.toLowerCase()) || p.district.toLowerCase().includes(o.text.toLowerCase())
+                o.text.toLowerCase().trim()===String(p.district).toLowerCase().trim()
+              ) || Array.from(distSel.options).find(o=>
+                o.text.toLowerCase().includes(String(p.district).toLowerCase()) || String(p.district).toLowerCase().includes(o.text.toLowerCase())
               );
               if(distOpt){
                 distSel.value = distOpt.value || distOpt.text;
+                distSel.dispatchEvent(new Event('change', {bubbles:true}));
                 updateThanas(distSel);
                 filled++;
                 await new Promise(r=>setTimeout(r,400));
@@ -8097,9 +8103,15 @@ async function runSmartPaste(){
                   const thanaSel = document.getElementById('thana-select');
                   if(thanaSel){
                     const thanaOpt = Array.from(thanaSel.options).find(o=>
-                      o.text===p.thana || o.text.toLowerCase().includes(p.thana.toLowerCase())
+                      o.text.toLowerCase().trim()===String(p.thana).toLowerCase().trim()
+                    ) || Array.from(thanaSel.options).find(o=>
+                      o.text.toLowerCase().includes(String(p.thana).toLowerCase())
                     );
-                    if(thanaOpt){ thanaSel.value=thanaOpt.value||thanaOpt.text; filled++; }
+                    if(thanaOpt){
+                      thanaSel.value = thanaOpt.value || thanaOpt.text;
+                      thanaSel.dispatchEvent(new Event('change', {bubbles:true}));
+                      filled++;
+                    }
                   }
                 }
               }
@@ -8769,8 +8781,38 @@ function openModal(id){
   }
   // MODULE 1: Profit split defaults when opening order modal
   if (id === 'add-order') {
+    applyOrderFormDefaults();
     setTimeout(updateProfitDefaults, 50);
   }
+}
+
+// ── New Order Entry — default field values on form open ──────
+// Product: Amanah Door Lock | Quantity: 1 | Delivery: ৳150 | Payment: COD
+function applyOrderFormDefaults(){
+  const m = document.getElementById('modal-add-order');
+  if(!m) return;
+
+  const productSel = m.querySelector('#order-product');
+  if(productSel && !productSel.value){
+    const opt = Array.from(productSel.options).find(o=>
+      o.text.toLowerCase().includes('door lock')
+    );
+    if(opt){ productSel.value = opt.value || opt.text; onOrderProductChange(productSel.value); }
+  }
+
+  const qtyEl = m.querySelector('#order-qty');
+  if(qtyEl && !qtyEl.value){ qtyEl.value = 1; }
+
+  const deliveryEl = m.querySelector('#order-delivery');
+  if(deliveryEl && !deliveryEl.value){ deliveryEl.value = 150; }
+
+  const paymentSel = m.querySelector('#order-payment');
+  if(paymentSel){
+    const codOpt = Array.from(paymentSel.options).find(o=>o.text.toUpperCase().includes('COD'));
+    if(codOpt) paymentSel.value = codOpt.value || codOpt.text;
+  }
+
+  setTimeout(()=>{ calcTotal(); calcDue(); }, 60);
 }
 let liveInventoryData = [];
 

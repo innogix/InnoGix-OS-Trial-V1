@@ -2149,40 +2149,6 @@ tbody td.muted{color:var(--text3);}
       </div>
       <div class="alert-box warn" id="pending-alert">📋 <strong id="pending-alert-count">—</strong> orders are pending processing. Last update: <span id="pending-alert-time">checking...</span></div>
       <div class="alert-box success">✅ System is running correctly. All formulas are active.</div>
-
-      <!-- ═══ MODULE 1: Profit Split Balance Cards ═══ -->
-      <div style="margin-top:24px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--text);">💰 প্রফিট স্প্লিট ব্যালেন্স</div>
-            <div style="font-size:11px;color:var(--text3);margin-top:2px;">অর্ডার ভিত্তিক পার্টনার ও কোম্পানি ফান্ড বণ্টন</div>
-          </div>
-          <button onclick="resetProfitBalances()" style="padding:5px 12px;font-size:11px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text2);cursor:pointer;font-family:'IBM Plex Sans',sans-serif;" title="সব ব্যালেন্স রিসেট করুন">🔄 রিসেট</button>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;" id="profit-split-cards">
-          <!-- Ismail -->
-          <div class="kpi-card blue" style="border-color:rgba(56,139,253,.3);">
-            <div class="kpi-icon" style="font-size:22px;">👤</div>
-            <div class="kpi-label" style="color:var(--ismail);">Ismail — প্রফিট</div>
-            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-ismail">0</span></div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-ismail-orders">0 অর্ডার থেকে</div>
-          </div>
-          <!-- Ashik -->
-          <div class="kpi-card green" style="border-color:rgba(63,185,80,.3);">
-            <div class="kpi-icon" style="font-size:22px;">👤</div>
-            <div class="kpi-label" style="color:var(--ashik);">Ashik — প্রফিট</div>
-            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-ashik">0</span></div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-ashik-orders">0 অর্ডার থেকে</div>
-          </div>
-          <!-- Company Fund -->
-          <div class="kpi-card gold" style="border-color:rgba(212,160,23,.4);">
-            <div class="kpi-icon" style="font-size:22px;">🏢</div>
-            <div class="kpi-label" style="color:var(--gold);">Company Fund</div>
-            <div class="kpi-value" style="font-size:20px;"><span class="tk">৳</span><span id="ps-company">0</span></div>
-            <div style="font-size:10px;color:var(--text3);margin-top:4px;" id="ps-company-orders">0 অর্ডার থেকে</div>
-          </div>
-        </div>
-      </div>
     </div>
 
     <!-- ══════════════════════════════
@@ -5004,9 +4970,6 @@ function unlockApp(partnerKey) {
   // Topbar badge আপডেট
   updatePartnerBadge(partnerKey);
 
-  // MODULE 1: Profit balance cards render
-  setTimeout(renderProfitCards, 200);
-
   // লগ এন্ট্রি
   logAction(`লগইন করেছেন — ${PARTNER_FULL_NAMES[partnerKey]}`);
 }
@@ -5117,9 +5080,6 @@ const PROJECT_SPLITS = {
   // ভবিষ্যতে নতুন project যোগ করতে এখানে এন্ট্রি দিন:
   // 'Project Beta': { Ismail: 20, Ashik: 30 },
 };
-
-// In-memory profit balance (persistent via localStorage)
-const PS_KEY = 'innogix_profit_split';
 
 // ── PRODUCT-BASED SPLIT DATABASE (v31 NEW) ─────────────────
 const PROD_SPLIT_KEY = 'innogix_product_splits_v31';
@@ -5241,54 +5201,6 @@ function populateOrderProductDropdown() {
       sel.appendChild(opt);
     }
   });
-}
-
-function getProfitBalances() {
-  try {
-    const raw = localStorage.getItem(PS_KEY);
-    return raw ? JSON.parse(raw) : { Ismail:0, Ashik:0, Company:0, orders:0 };
-  } catch(e) {
-    return { Ismail:0, Ashik:0, Company:0, orders:0 };
-  }
-}
-
-function saveProfitBalances(bal) {
-  try { localStorage.setItem(PS_KEY, JSON.stringify(bal)); } catch(e) {}
-}
-
-function renderProfitCards() {
-  const bal = getProfitBalances();
-  const fmt = n => Number(n||0).toLocaleString('en-IN');
-  const el = id => document.getElementById(id);
-  if(el('ps-ismail'))  el('ps-ismail').textContent  = fmt(Math.round(bal.Ismail||0));
-  if(el('ps-ashik'))   el('ps-ashik').textContent   = fmt(Math.round(bal.Ashik||0));
-  
-  if(el('ps-company')) el('ps-company').textContent = fmt(Math.round(bal.Company||0));
-  const cnt = bal.orders || 0;
-  ['ismail','ashik','company'].forEach(k => {
-    const el2 = document.getElementById('ps-'+k+'-orders');
-    if(el2) el2.textContent = `${cnt} অর্ডার থেকে`;
-  });
-}
-
-function applyProfitSplit(netProfit, ismailPct, ashikPct) {
-  const total = (ismailPct||0) + (ashikPct||0);
-  const companyPct = Math.max(0, 100 - total);
-  const bal = getProfitBalances();
-  bal.Ismail  = (bal.Ismail  || 0) + netProfit * (ismailPct  / 100);
-  bal.Ashik   = (bal.Ashik   || 0) + netProfit * (ashikPct   / 100);
-  
-  bal.Company = (bal.Company || 0) + netProfit * (companyPct / 100);
-  bal.orders  = (bal.orders  || 0) + 1;
-  saveProfitBalances(bal);
-  renderProfitCards();
-}
-
-function resetProfitBalances() {
-  if (!confirm('⚠️ সব প্রফিট ব্যালেন্স রিসেট করবেন?')) return;
-  saveProfitBalances({ Ismail:0, Ashik:0, Company:0, orders:0 });
-  renderProfitCards();
-  showToast('✅ প্রফিট ব্যালেন্স রিসেট হয়েছে', 'success');
 }
 
 function updateProfitDefaults() {
@@ -7733,15 +7645,12 @@ async function submitOrder(){
       }, 1500);
     }
     logAction(currentEditOrderId ? `Order #${currentEditOrderId} আপডেট করেছেন` : `নতুন Order এন্ট্রি করেছেন — ${payload.customer} (${payload.product})`);
-    // MODULE 1: Profit Split — নতুন অর্ডারে প্রফিট বণ্টন করো
+    // এই অর্ডারের প্রফিট কীভাবে ভাগ হলো তার তথ্যমূলক নোটিফিকেশন
     if (!currentEditOrderId) {
       const totalSale = parseFloat(payload.price||0) * parseFloat(payload.qty||1);
       const delivery  = parseFloat(payload.delivery||0);
       const codChargeSplit = parseFloat(payload.codCharge||0);
-      // ✅ BUG #2 FIX: Net Profit = Customer Payable - COD Charge
-      // Customer Payable = totalSale + delivery (courier collects both from customer)
-      // Delivery is a pass-through — we receive it back, so it cancels out in profit.
-      // Final: Net Profit = totalSale - codChargeSplit
+      // Net Profit = Customer Payable - Delivery (pass-through) - COD Charge
       const customerPayable = totalSale + delivery;
       const netProfit = Math.max(0, customerPayable - delivery - codChargeSplit);
       if (netProfit > 0) {
@@ -7753,7 +7662,6 @@ async function submitOrder(){
           ? prodSplit.ismail : payload.splitIsmail;
         const autoAshik  = prodSplit.ismail > 0 || prodSplit.ashik > 0
           ? prodSplit.ashik  : payload.splitAshik;
-        applyProfitSplit(netProfit, autoIsmail, autoAshik);
         const compPct = Math.max(0, 100 - autoIsmail - autoAshik);
         const codNote = codChargeSplit > 0 ? ` (COD: ৳${Math.round(codChargeSplit).toLocaleString()} কাটা হয়েছে)` : '';
         showToast(`💰 প্রফিট বণ্টন: I:${autoIsmail}% | A:${autoAshik}% | C:${compPct.toFixed(0)}% — নেট প্রফিট ৳${Math.round(netProfit).toLocaleString()}${codNote}`, 'success');

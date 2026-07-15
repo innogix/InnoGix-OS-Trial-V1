@@ -2393,6 +2393,8 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-gold" onclick="openAddInvestorModal()">+ নতুন Investor</button>
+          <button class="btn" style="background:rgba(52,209,116,.15);border-color:rgba(52,209,116,.4);color:var(--green);" onclick="openDistributeProfitModal()">📊 Distribute Profit</button>
+          <button class="btn" style="background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.4);color:#8b5cf6;" onclick="openEquityHistoryModal()">📜 Equity History</button>
           <button class="btn" onclick="loadInvestors()">🔄 রিফ্রেশ</button>
           <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="openModal('import-investor-csv')">📥 Import CSV</button>
           <button class="btn export-excel" onclick="exportInvestorDataToCSV()">📥 Export Excel</button>
@@ -2419,11 +2421,18 @@ tbody td.muted{color:var(--text3);}
         </div>
       </div>
 
+      <!-- 🔔 Fixed Return Due-Payment / Duration Alert Panel -->
+      <div id="inv-alerts-panel" style="display:none;margin-bottom:16px;"></div>
+
       <!-- Investor Table -->
       <div class="card" style="padding:0;overflow:hidden;">
-        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
           <span style="font-weight:600;color:var(--text);">Investor তালিকা</span>
           <span style="font-size:12px;color:var(--text3);" id="inv-list-count"></span>
+        </div>
+        <div style="padding:8px 18px;border-bottom:1px solid var(--border);background:rgba(52,209,116,.05);font-size:12px;color:var(--text2);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+          <span>📊 <strong>Equity Pool (হর/denominator):</strong> ৳<span id="inv-equity-pool-total">0</span> — শুধু <strong>Active + Equity</strong> টাইপ investor-দের বিনিয়োগ যোগ করে এই পুল বানানো হয় (Fixed Return এখানে ধরা হয় না)। % কলামে মাউস রাখলে প্রতিটার হিসাব দেখতে পাবে।</span>
+          <span id="inv-sanity-check"></span>
         </div>
         <div class="table-wrap">
           <table class="data-table">
@@ -2577,6 +2586,75 @@ tbody td.muted{color:var(--text3);}
       </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════
+         📊 DISTRIBUTE PROFIT MODAL (Profit Distribution Calculator)
+    ═══════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-distribute-profit">
+      <div class="modal-box" style="max-width:640px;max-height:88vh;overflow-y:auto;">
+        <div class="modal-header">
+          <span class="modal-title">📊 Profit Distribution Calculator</span>
+          <button class="modal-close" onclick="closeModal('distribute-profit')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">এই মাসে/এই সময়ে মোট লাভ (৳) *</label>
+            <input class="form-input" id="dist-total-profit" type="number" placeholder="যেমন: 50000" min="0" oninput="recalcDistributeProfit()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">তারিখ</label>
+            <input class="form-input" id="dist-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">নোট</label>
+            <input class="form-input" id="dist-notes" placeholder="যেমন: জুলাই ২০২৬ মাসিক লাভ বণ্টন">
+          </div>
+
+          <div id="dist-preview-wrap" style="display:none;">
+            <div style="font-size:12px;color:var(--text3);margin:12px 0 6px;">
+              প্রতিটা Active Equity investor-এর ভাগ তার % অনুযায়ী নিচে স্বয়ংক্রিয় হিসাব হয়েছে। দরকার হলে amount বদলাতে পারো, বা checkbox আনচেক করে কাউকে বাদ দিতে পারো।
+            </div>
+            <div style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;">
+              <table class="data-table" style="margin:0;">
+                <thead><tr>
+                  <th style="width:28px;"></th>
+                  <th>Investor</th>
+                  <th>%</th>
+                  <th>ভাগ (৳)</th>
+                </tr></thead>
+                <tbody id="dist-preview-body"></tbody>
+              </table>
+            </div>
+            <div id="dist-sum-check" style="margin-top:10px;font-size:12px;padding:8px 12px;border-radius:6px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('distribute-profit')">বাতিল</button>
+          <button class="btn btn-green" id="dist-confirm-btn" disabled onclick="submitDistributeProfit()">✅ বণ্টন নিশ্চিত করুন</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         📜 EQUITY % HISTORY LOG MODAL
+    ═══════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-equity-history">
+      <div class="modal-box" style="max-width:600px;max-height:85vh;overflow-y:auto;">
+        <div class="modal-header">
+          <span class="modal-title" id="eqh-modal-title">📜 Equity % History Log</span>
+          <button class="modal-close" onclick="closeModal('equity-history')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">
+            যখনই কোনো investor-এর Equity % বদলায় (নতুন investor যোগ, Buyback, অতিরিক্ত বিনিয়োগ, Exit ইত্যাদি কারণে), তার একটা টাইমলাইন এখানে জমা থাকে — কেউ প্রশ্ন করলে দেখিয়ে দিতে পারবে ঠিক কবে, কেন, কার % কত থেকে কত হয়েছে।
+          </div>
+          <div id="eqh-body" style="display:flex;flex-direction:column;gap:8px;">লোড হচ্ছে...</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('equity-history')">বন্ধ করুন</button>
+        </div>
+      </div>
+    </div>
+
     <!-- INVESTOR REPORT MODAL -->
     <div class="modal-overlay" id="modal-investor-report">
       <div class="modal-box" style="max-width:560px;max-height:85vh;overflow-y:auto;">
@@ -2585,8 +2663,14 @@ tbody td.muted{color:var(--text3);}
           <button class="modal-close" onclick="closeModal('investor-report')">✕</button>
         </div>
         <div class="modal-body" id="investor-report-body">লোড হচ্ছে...</div>
+        <input type="hidden" id="investor-report-current-id">
         <div class="modal-footer">
           <button class="btn" onclick="closeModal('investor-report')">বন্ধ করুন</button>
+          <button class="btn" style="background:rgba(139,92,246,.15);border-color:rgba(139,92,246,.4);color:#8b5cf6;" onclick="openEquityHistoryModal(el('investor-report-current-id').value)">📜 এর History</button>
+          <button class="btn btn-gold" onclick="printInvestorReport()">📄 Statement PDF Export</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Edit Investor Modal -->
     <div class="modal-overlay" id="modal-edit-investor">
@@ -2647,10 +2731,6 @@ tbody td.muted{color:var(--text3);}
         <div class="modal-footer">
           <button class="btn" onclick="closeModal('edit-investor')">বাতিল</button>
           <button class="btn primary" onclick="submitEditInvestor()">✅ আপডেট করুন</button>
-        </div>
-      </div>
-    </div>
-          <button class="btn btn-gold" onclick="printInvestorReport()">🖨️ Print / PDF</button>
         </div>
       </div>
     </div>
@@ -4564,7 +4644,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbxlrpJU3fRuqz4M0v3FpT6IsQuf_cNN-NZi4qxq5sIklXwtAGmi-Yvy82vxUOgeweMy/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbxWWQc2AmZ3gAqUXjj9hnYiC37_TgvQyb1o6pX01qo1G0Nk4kQwCJtiD47fVbSCUtP_Bw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5481,16 +5561,57 @@ window.onDivisionChange = function(divVal, distSelId, thanaSelId) {
 // 📈 INVESTOR MODULE — Frontend JS
 // ═══════════════════════════════════════════════════════════════════
 let _investorData = [];
+let _equityPoolTotal = 0; // মোট Equity-type active investment — % হিসাবের হর (denominator)
 // Global DOM shorthand used throughout this module
 function el(id) { return document.getElementById(id); }
+
+// 📜 Equity % History Log — investorId দিলে শুধু সেই investor-এর, না দিলে সবার (global timeline)
+async function openEquityHistoryModal(investorId) {
+  const titleEl = el('eqh-modal-title');
+  const body = el('eqh-body');
+  body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">লোড হচ্ছে...</div>';
+  openModal('equity-history');
+
+  const oneInvestor = investorId && String(investorId).trim();
+  titleEl.textContent = oneInvestor ? '📜 Equity History — ' + (oneInvestor) : '📜 Equity % History Log (সবাই)';
+
+  try {
+    const url = 'equity_history' + (oneInvestor ? ('&investorId=' + encodeURIComponent(oneInvestor)) : '');
+    const data = await fetchFromAPI(url);
+    if (!data || data.status !== 'ok') { body.innerHTML = '❌ History লোড ব্যর্থ'; return; }
+    const rows = data.data || [];
+    if (!rows.length) {
+      body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3);">এখনো কোনো পরিবর্তনের রেকর্ড নেই।</div>';
+      return;
+    }
+    body.innerHTML = rows.map(r => {
+      const date = r[1], name = r[3], before = Number(r[4])||0, after = Number(r[5])||0, reason = r[6] || '';
+      const up = after > before;
+      const arrowColor = up ? 'var(--green)' : (after < before ? 'var(--red)' : 'var(--text3)');
+      const arrow = up ? '▲' : (after < before ? '▼' : '—');
+      let dateStr = date;
+      try { dateStr = new Intl.DateTimeFormat('bn-BD',{timeZone:'Asia/Dhaka',day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(date)); } catch(e){}
+      return `<div style="background:var(--bg2);border-radius:8px;padding:10px 14px;border-left:3px solid ${arrowColor};">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+          <div style="font-weight:600;color:var(--text);font-size:13px;">${name}</div>
+          <div style="font-size:12px;color:${arrowColor};font-weight:700;">${before.toFixed(2)}% → ${after.toFixed(2)}% ${arrow}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;">${reason}</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:2px;">${dateStr}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { body.innerHTML = '❌ Error: ' + e.message; }
+}
 
 async function loadInvestors() {
   try {
     const data = await fetchFromAPI('investors');
     if (!data || data.status !== 'ok') { showToast('Investor লোড ব্যর্থ', 'error'); return; }
     _investorData = data.data || [];
+    _equityPoolTotal = Number(data.equityPoolTotal) || 0;
     renderInvestors(_investorData);
     updateInvestorSummary(_investorData);
+    renderInvestorAlertsPanel(_investorData);
   } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
@@ -5500,8 +5621,93 @@ function updateInvestorSummary(rows) {
   el('inv-total-count') && (el('inv-total-count').textContent = rows.length);
   el('inv-active-count') && (el('inv-active-count').textContent = active.length);
   el('inv-total-amt') && (el('inv-total-amt').textContent = fmt(totalAmt));
+  el('inv-equity-pool-total') && (el('inv-equity-pool-total').textContent = fmt(_equityPoolTotal));
+  runInvestorSanityCheck(rows);
   // total profit paid: loaded from transactions separately
   loadInvestorTotalPaid();
+}
+
+// ✅ Sanity-Check Validator — Equity %-এর যোগফল ঠিক ১০০% হচ্ছে কিনা,
+// আর কোনো Fixed Return investor-এর গায়ে ভুলবশত Equity % বসে গেছে কিনা
+function runInvestorSanityCheck(rows) {
+  const box = el('inv-sanity-check');
+  if (!box) return;
+
+  const activeEquity = rows.filter(r => String(r[7]||'').trim()==='Active' && String(r[9]||'Equity')==='Equity');
+  const pctSum = activeEquity.reduce((s,r) => s + (Number(r[5])||0), 0);
+  const pctDiff = Math.round((pctSum - 100) * 100) / 100; // 2 decimal
+
+  const badFixed = rows.filter(r => String(r[7]||'').trim()==='Active' && String(r[9]||'')==='Fixed Return' && Math.abs(Number(r[5])||0) > 0.01);
+
+  const problems = [];
+  if (activeEquity.length > 0 && Math.abs(pctDiff) > 0.5) {
+    problems.push(`Equity %-এর যোগফল ${pctSum.toFixed(2)}% (হওয়া উচিত ১০০%, পার্থক্য ${pctDiff>0?'+':''}${pctDiff}%)`);
+  }
+  if (badFixed.length > 0) {
+    problems.push(`${badFixed.length} জন Fixed Return investor-এর গায়ে ভুলভাবে Equity % বসে আছে`);
+  }
+
+  if (!problems.length) {
+    box.innerHTML = `<span title="Equity %-এর যোগফল ঠিক ১০০% এবং কোনো টাইপ-মিশ্রণ নেই" style="cursor:help;background:rgba(52,209,116,.15);color:var(--green);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">✅ ১০০% ম্যাচ</span>`;
+  } else {
+    box.innerHTML = `<span title="${problems.join(' | ')}" style="cursor:help;background:rgba(248,81,73,.15);color:var(--red);border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;">⚠️ Mismatch — বিস্তারিত দেখতে হোভার করুন</span>`;
+  }
+}
+
+function _fmtShortDate(iso) {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    return new Intl.DateTimeFormat('en-BD',{timeZone:'Asia/Dhaka',day:'2-digit',month:'short'}).format(d);
+  } catch(e) { return String(iso); }
+}
+
+// 🔔 Fixed Return Due-Payment / Duration Alert Panel
+// r indices: 13=dueAmt, 14=nextDueDate, 15=isOverdue, 16=durationEndDate, 17=durationDaysLeft, 18=durationStatus
+function renderInvestorAlertsPanel(rows) {
+  const panel = el('inv-alerts-panel');
+  if (!panel) return;
+
+  const overdueList = rows.filter(r => r[15] === true);
+  const durEndingList = rows.filter(r => r[18] === 'ending_soon');
+  const durOverList = rows.filter(r => r[18] === 'overdue');
+
+  if (!overdueList.length && !durEndingList.length && !durOverList.length) {
+    panel.style.display = 'none';
+    panel.innerHTML = '';
+    return;
+  }
+  panel.style.display = 'block';
+
+  const section = (title, color, bg, list, renderItem) => {
+    if (!list.length) return '';
+    return `<div style="margin-bottom:8px;">
+      <div style="font-size:12px;font-weight:700;color:${color};margin-bottom:6px;">${title} (${list.length})</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${list.map(renderItem).join('')}
+      </div>
+    </div>`;
+  };
+
+  panel.innerHTML = `<div class="card" style="border-color:rgba(248,81,73,.35);background:rgba(248,81,73,.05);padding:14px 18px;">
+    <div style="font-weight:700;color:var(--red);margin-bottom:10px;font-size:14px;">🔔 Fixed Return — নজরে রাখা দরকার</div>
+    ${section('🔴 প্রফিট পেমেন্ট বকেয়া (সাইকেল পার হয়ে গেছে)', 'var(--red)', 'rgba(248,81,73,.1)', overdueList, r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:6px;padding:8px 12px;">
+        <div><strong>${r[1]}</strong> <span style="color:var(--text3);font-size:11px;">— বকেয়া ৳${fmt(Number(r[13])||0)}, পেমেন্ট ডেট ছিল ${_fmtShortDate(r[14])}</span></div>
+        <button class="btn btn-sm" style="font-size:11px;" onclick='openPayProfit(${JSON.stringify({id:r[0],name:r[1],amt:Number(r[4])||0,pct:Number(r[5])||0,invType:r[9],profitRate:Number(r[10])||0,dueAmt:Number(r[13])||0})})'>💰 এখনই পে করো</button>
+      </div>`)}
+    ${section('🔴 মেয়াদ শেষ — মূল টাকা ফেরত/রিনিউ দরকার', 'var(--red)', 'rgba(248,81,73,.1)', durOverList, r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:6px;padding:8px 12px;">
+        <div><strong>${r[1]}</strong> <span style="color:var(--text3);font-size:11px;">— মেয়াদ শেষ হয়েছে ${_fmtShortDate(r[16])} তারিখে, মূল বিনিয়োগ ৳${fmt(Number(r[4])||0)}</span></div>
+        <button class="btn btn-sm" style="font-size:11px;" onclick='openBuyback(${JSON.stringify({id:r[0],name:r[1],amt:Number(r[4])||0,pct:Number(r[5])||0})})'>🔄 Buyback করো</button>
+      </div>`)}
+    ${section('⚠️ মেয়াদ শেষ হচ্ছে (৭ দিনের মধ্যে)', 'var(--gold)', 'rgba(245,180,0,.1)', durEndingList, r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;background:var(--bg2);border-radius:6px;padding:8px 12px;">
+        <div><strong>${r[1]}</strong> <span style="color:var(--text3);font-size:11px;">— মেয়াদ শেষ হবে ${_fmtShortDate(r[16])} তারিখে (${r[17]} দিন বাকি)</span></div>
+        <button class="btn btn-sm" style="font-size:11px;" onclick="viewInvestorReport('${r[0]}')">📊 দেখো</button>
+      </div>`)}
+  </div>`;
 }
 
 async function loadInvestorTotalPaid() {
@@ -5542,6 +5748,10 @@ function renderInvestors(rows) {
     const profitRate = Number(r[10])||0;
     const duration   = Number(r[11])||0;
     const dueAmt     = Number(r[13])||0;
+    const nextDueDate     = r[14] || '';
+    const isOverdue       = r[15] === true;
+    const durationDaysLeft= r[17];
+    const durationStatus  = r[18] || '';
     const color = statusColor[status] || 'var(--text3)';
     const dateStr = fmtDate(rawDate);
 
@@ -5550,10 +5760,18 @@ function renderInvestors(rows) {
       : `<span style="background:rgba(52,209,116,.12);color:var(--green);border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700;">📊 Equity</span>`;
     const pctOrRate = invType === 'Fixed Return'
       ? `<span style="color:var(--gold);font-size:12px;">৳${fmt(Math.round(amt*profitRate/100))}/মাস</span>`
-      : `<span style="color:var(--green);font-weight:700;">${pct.toFixed(2)}%</span>`;
-    const dueCell = invType === 'Fixed Return' && dueAmt > 0
-      ? `<span style="color:var(--red);font-size:11px;font-weight:600;">⚠️ বকেয়া ৳${fmt(dueAmt)}</span>`
-      : `<span style="color:var(--text3);font-size:11px;">—</span>`;
+      : `<span style="color:var(--green);font-weight:700;cursor:help;" title="৳${fmt(amt)} ÷ ৳${fmt(_equityPoolTotal)} (মোট Equity Pool) × ১০০ = ${pct.toFixed(2)}%">${pct.toFixed(2)}% ℹ️</span>`;
+
+    let dueCell = `<span style="color:var(--text3);font-size:11px;">—</span>`;
+    if (invType === 'Fixed Return') {
+      const parts = [];
+      if (dueAmt > 0) parts.push(`<span style="color:var(--red);font-size:11px;font-weight:600;">⚠️ বকেয়া ৳${fmt(dueAmt)}</span>`);
+      if (isOverdue) parts.push(`<span title="পেমেন্ট সাইকেল অনুযায়ী ${fmtDate(nextDueDate)} তারিখেই দেওয়ার কথা ছিল" style="cursor:help;background:rgba(248,81,73,.15);color:var(--red);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;">🔔 Payment Overdue</span>`);
+      else if (nextDueDate) parts.push(`<span style="font-size:10px;color:var(--text3);">পরবর্তী: ${fmtDate(nextDueDate)}</span>`);
+      if (durationStatus === 'overdue') parts.push(`<span title="মেয়াদ ${fmtDate(r[16])} তারিখে শেষ হয়ে গেছে — মূল টাকা ফেরত/রিনিউ দরকার" style="cursor:help;background:rgba(248,81,73,.15);color:var(--red);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;">🔴 মেয়াদ শেষ</span>`);
+      else if (durationStatus === 'ending_soon') parts.push(`<span title="মেয়াদ শেষ হবে ${fmtDate(r[16])} তারিখে" style="cursor:help;background:rgba(245,180,0,.15);color:var(--gold);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;">⚠️ মেয়াদ শেষ হচ্ছে (${durationDaysLeft}দিন)</span>`);
+      if (parts.length) dueCell = `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">${parts.join('')}</div>`;
+    }
 
     // Data for edit/delete
     const invData = JSON.stringify({id,name,phone,date:dateStr,amt,pct,cycle,status,invType,profitRate,duration});
@@ -5755,8 +5973,115 @@ async function submitBuyback() {
   } else { showToast('❌ ' + (res?.message||'Error'), 'error'); }
 }
 
+// ═══════════════════════════════════════════════
+// 📊 PROFIT DISTRIBUTION CALCULATOR
+// ═══════════════════════════════════════════════
+function openDistributeProfitModal() {
+  el('dist-total-profit').value = '';
+  el('dist-date').value = new Date().toISOString().slice(0,10);
+  el('dist-notes').value = '';
+  el('dist-preview-wrap').style.display = 'none';
+  el('dist-confirm-btn').disabled = true;
+  openModal('distribute-profit');
+}
+
+function recalcDistributeProfit() {
+  const total = parseFloat(el('dist-total-profit')?.value || 0);
+  const wrap  = el('dist-preview-wrap');
+  const body  = el('dist-preview-body');
+  const btn   = el('dist-confirm-btn');
+  const sumBox = el('dist-sum-check');
+
+  if (!total || total <= 0) { wrap.style.display = 'none'; btn.disabled = true; return; }
+
+  // শুধু Active + Equity investor-রাই profit distribution-এ ঢুকবে (Fixed Return-এর নিজস্ব ফিক্সড রেট আছে)
+  const activeEquity = (_investorData || []).filter(r =>
+    String(r[7]||'').trim() === 'Active' && String(r[9]||'Equity') === 'Equity'
+  );
+
+  if (!activeEquity.length) {
+    wrap.style.display = 'block';
+    body.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:20px;">কোনো Active Equity investor নেই</td></tr>`;
+    btn.disabled = true;
+    return;
+  }
+
+  wrap.style.display = 'block';
+  body.innerHTML = activeEquity.map(r => {
+    const id = r[0], name = r[1], pct = Number(r[5]) || 0;
+    const share = Math.round(total * pct / 100);
+    return `<tr data-investor-id="${id}" data-investor-name="${name}">
+      <td><input type="checkbox" class="dist-include" checked onchange="recalcDistributeSum()"></td>
+      <td style="font-size:13px;">${name}</td>
+      <td style="font-size:12px;color:var(--green);">${pct.toFixed(2)}%</td>
+      <td><input type="number" class="form-input dist-amount" style="padding:4px 8px;font-size:13px;" value="${share}" oninput="recalcDistributeSum()"></td>
+    </tr>`;
+  }).join('');
+
+  recalcDistributeSum();
+}
+
+function recalcDistributeSum() {
+  const total = parseFloat(el('dist-total-profit')?.value || 0);
+  const rows = document.querySelectorAll('#dist-preview-body tr');
+  let sum = 0, includedCount = 0;
+  rows.forEach(tr => {
+    const checked = tr.querySelector('.dist-include')?.checked;
+    const amtInput = tr.querySelector('.dist-amount');
+    if (checked) { sum += parseFloat(amtInput?.value || 0); includedCount++; amtInput.disabled = false; }
+    else { amtInput.disabled = true; }
+  });
+  const diff = Math.round((sum - total) * 100) / 100;
+  const box = el('dist-sum-check');
+  if (Math.abs(diff) < 1) {
+    box.style.background = 'rgba(52,209,116,.1)'; box.style.color = 'var(--green)';
+    box.innerHTML = `✅ মোট বণ্টিত ৳${fmt(sum)} — ইনপুট করা ৳${fmt(total)}-এর সাথে মিলে গেছে (${includedCount} জন investor)।`;
+    el('dist-confirm-btn').disabled = includedCount === 0;
+  } else {
+    box.style.background = 'rgba(245,180,0,.1)'; box.style.color = 'var(--gold)';
+    box.innerHTML = `⚠️ মোট বণ্টিত ৳${fmt(sum)} — ইনপুট করা ৳${fmt(total)}-এর থেকে ${diff>0?'বেশি':'কম'} ৳${fmt(Math.abs(diff))}। এখনো কনফার্ম করতে পারবে, কিন্তু চাইলে amount ঠিক করে নাও।`;
+    el('dist-confirm-btn').disabled = includedCount === 0;
+  }
+}
+
+async function submitDistributeProfit() {
+  const total = parseFloat(el('dist-total-profit')?.value || 0);
+  const date  = el('dist-date')?.value || '';
+  const notes = el('dist-notes')?.value || `মাসিক লাভ বণ্টন — ${date}`;
+  if (!total || total <= 0) { showToast('মোট লাভের পরিমাণ দিন', 'warning'); return; }
+
+  const entries = [];
+  document.querySelectorAll('#dist-preview-body tr').forEach(tr => {
+    const checked = tr.querySelector('.dist-include')?.checked;
+    if (!checked) return;
+    const amt = parseFloat(tr.querySelector('.dist-amount')?.value || 0);
+    if (amt <= 0) return;
+    entries.push({
+      investorId: tr.dataset.investorId,
+      investorName: tr.dataset.investorName,
+      amount: amt,
+      notes: notes
+    });
+  });
+
+  if (!entries.length) { showToast('অন্তত একজন investor সিলেক্ট থাকতে হবে', 'warning'); return; }
+
+  el('dist-confirm-btn').disabled = true;
+  el('dist-confirm-btn').textContent = 'প্রসেসিং...';
+  const res = await postToAPI({ action: 'distributeProfit', totalProfit: total, date: date, notes: notes, entries: entries });
+  el('dist-confirm-btn').textContent = '✅ বণ্টন নিশ্চিত করুন';
+  el('dist-confirm-btn').disabled = false;
+
+  if (res?.status === 'success') {
+    showToast('✅ ' + (res.message || 'Profit বণ্টন সম্পন্ন হয়েছে'), 'success');
+    closeModal('distribute-profit');
+    loadInvestors();
+  } else { showToast('❌ ' + (res?.message||'Error'), 'error'); }
+}
+
 async function viewInvestorReport(investorId) {
   el('investor-report-body').innerHTML = '<div style="text-align:center;padding:40px;color:var(--text3);">লোড হচ্ছে...</div>';
+  el('investor-report-current-id') && (el('investor-report-current-id').value = investorId);
   openModal('investor-report');
   try {
     const data = await fetchFromAPI('investor_report&investorId=' + investorId);
@@ -5779,6 +6104,7 @@ async function viewInvestorReport(investorId) {
           <div style="background:var(--bg2);border-radius:8px;padding:14px;">
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">Equity %</div>
             <div style="font-size:22px;font-weight:700;color:var(--green);">${Number(d.equityPct).toFixed(2)}%</div>
+            ${d.investmentType === 'Equity' ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;">৳${fmt(d.registeredAmt)} ÷ ৳${fmt(d.equityPoolTotal)} (মোট Equity Pool) × ১০০</div>` : `<div style="font-size:11px;color:var(--gold);margin-top:4px;">Fixed Return — equity pool-এর অংশ না</div>`}
           </div>
           <div style="background:var(--bg2);border-radius:8px;padding:14px;">
             <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">মোট Profit দেওয়া হয়েছে</div>
@@ -5813,18 +6139,87 @@ async function viewInvestorReport(investorId) {
   } catch(e) { el('investor-report-body').innerHTML = '❌ Error: ' + e.message; }
 }
 
+const INNOGIX_LOGO_DATAURI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIcAAABaCAYAAACSR0X7AAASY0lEQVR42u2ae3RV1Z3HP799zj333tyb3DxIMFAaQaouqqKiIiCN+OhSrI/SiS611UpbqVbtY5xp17IzIZ06M9a1xj6mncrUTkcqo4lLnS6dvuxgahWxBVFrFEQFlGcC5Hkf57H3/HFuEgKobcco6v6w7rrhnH33OWfv3/7+HvuAxWKxWCwWi8VisVgsFovFYrFYLBaLxWKxWCwWi8VisVgsFovFYrFYLBaLxfLWI2//JY3QgmJG+dpdGDrQIMZOx/uZFuO87rlWo+wAvV+Vo9Uo2kRzSk8VR2bmKnE+hIpKOjDPseKWVdCmR9pY3kfG0dLu0HFxxKWFq8h53yCjPsCwToTAULSGnvwXua/qMWsg7yfjaDEOHRJxWeFqGlK34wMFvZwwfBQjHp5aSM5ZSEEX6C0u4O7M6pHfWN7DDMcRC/c0sSTM8wXTz8WFsw5od1npc3zZGBYHTzPrDwmMETt47zzqbem/tqKFKidNX/At2tMP02o8mo1La/mzIvnv9EYd5NzjmD7jVETMGwavlrcFd/zcVbPD6p870AyOmU0ADPX9khntHqu/K3TeB51A86ddZrQqCgPt1Fe34EWn0Ny8il0/cQENvE6K26rgkbJxd0av3+5QwAjNOJx+wAk9Jr6KlVbF6f37xa1+1tzBdWY3N5rDXrfN9eYEbjS7+Zy59p2vxbxN6fuIQRyablTGoT8DKBrOuRTlnYoOITVpEl5lFfmtr6CLpXjN6NFVpRxDIpsh3TiFYs8uwv5uIr2Onevuhs3FffotK0abpu7M08XLXmIwhsj/Ibt+8czIuUNFLYYLe2dvb2BS7Rk4aibiVqN1QBS9QuivZEV23Uj7i/0PU6uuYyB8krvSP8YYQd654uBb7FZaBdqUNJ7XbryqRYiAJEAXIBiEVAbIxvNs9jVNAaOhtA2cBLjVoEOYNHMJQ1UL6Xu2d9RAHlGAxvNOMenqz6M1DO1ZCTwDXXJoGUar4sqbbiLlXE9C1aOGn1mBVhA4EZ8N/5u+0g10yFYqwweocI7AdZdwSf5FRB59JzO3t9A4ml1oC6k/8wqTnrAIHUKY1wR7l2P0EOIo6NOIMSPZiDgGXQ5bDQolgkajpAIneR7p+lPR+mv0PfvVuP/OcNRbqzyRH2I0CKWDq1hr2VjazJvEJH9mWwRaX6dteXvgqQ0u86e1k3MuGLm7AAh0iBKXpIBSDlkWIanTaN76YYQ9KI4gAIwpghF2IWNUaIwBjtySOcSNozOW89DfTb7nFgRFFKxj169W/EVpzqQLr9VB6WZQJ5QHIhrrBY0g4g5bythAFWL30mbGHm+jHOTuk021CHREY9u2ODDDHOiiWpy4LabcV3mSLlbl49CCokMirij9K9XOBRQookiR1/dS0svJF18mkUyT5iMknS/hqQ8Q6js5alIfQ/lFJJIX02vW0p75fTyshAe4qYMay7unCOaW9UCgeawkzviCIv2wYc2y4E9MhfWBCtUZMnHh9aSrv4vRUOj7OLt+/gBcnYByv9nj60lkGhAx+IVdDK7p2a/P0Tgmd2wNbu1EjBGivTvoe3bvgdcfmRAhN7sJV6UouH3kH90+YnytS6FNNC1DpzChYjWGADEJ+sPPc5d3+wFPtyjfRNY5mzuTPwJglkmwBkPTJpfDDw/J9TSwJxkQibCqcteo4ophzkADjjFkii6/bNh+qMcc8UCmTmiievI6EhVpgvxGdjx4PHGRXGgxig7x4xVWnIHHdCJJQQRRBMox6CgeAOUYVDpAoiRb1/2GzpN64gk6fSQLPJBlAbWnzSBVezPKPQ2hFoAKeqia/CilnpvY/fj6EQWontNERf0/oNyzEKkHozATdpKZ+ggDva0M/PbFUSUSzWHnXIubXoKoI4AUafqpvugpgoFb6W77BV0tHuCTchfjAoYEA9G/cZd3O1ebBHvRzMDQhTADoU02Az+i1Xi0ic/Rwd9yqvN1ClMGeKHnCLLZa2lM3IjB5wj/m4h8C4DLi39P1v1rjCRVn/k7DbeOR2wyPnUOJ1GBm/SIgorRBb/SoUNCWgbOoCq1FEfNxVVxmncwgdRAGtgTdEHqoXjPZb+Wwx5fSTyBE047klT9b0lk6jAGtF++H68BkU8gMp/caXPom7GJipMPI9PQiVfVhNGgg/iiTrIRkUsRdSap5nl08zK0aRoX/oBkzTWIgIni9o5XgzhnkEidwcRzr6PjmO+DEdxoFgbwdUR/8Qe0GkUX+nUmT2gjVruEkySpUpTQTE5nCFI3E+mLyagPIXIzlxbvx5csle5SUkroix7TO6puK4/NW56lqXFyViFoU1aMOJfvXBBymX8DddnfkHbnU55PFOAc5OMB+Sig4C+i85hBujoO9LMy7BjLMUci9zUSmToiP6TUew8DO+cyuGM2fu8dRH6IV9lAuuomaNNka7+IV9mE9kNKfQ9S2Dmf/M5ZlPbcRljy8bINuJX/CG2a+jNaSOaugUhTGniRws5L6ds5i6HuTxMMvYZS4GW+R82cY8qWXY8AoelhS/AqbaJH3l+5vLSUJdEargpXc1W4lsXhWpawjo/1H402/WgMRgegPDqkwGDxMoraJ6Fc0u69VLs/JamEwWgP3f5ldEo4XkHp+CiHMQIiGATOcWiTkJahv6Im8R1CQgIEB4eSfopAryVSBUQrRBmMFgyapHIY8FfRkVt/cMncx67FicrfJwKGyN/O9ocuj4NYAJ5k8oXzcJNHIYkT4idPzgQMoT/I9meugC3DccZaJp1/Im7qIzjubEBw059CHE2Yz9O/40IGVz8/0nbC/FeQiQ/jphOkqheDfAWKJk7VxaVOOWCE7WXjcJ0TqVMnUiirYwAkgaSTxSFCyv9KJgQj3C1/4HL/61Srb+E5xwFQQjMYXcODFVtoMQ5t45Pqjlf5vDxpIlAZ0myyZKNvo9EIBq0D+sJruCv5n39SP2/qS0eieIUowZitsWG0urBd4PYQLtwK6mgEp2xbBlECphekAC0O0wdcNs4OME9uiY1bHCCL40xBlCIK1sSGcXUClmloFno6f8vkC19CMkehkseVXeKrQBOeqmNCZibISraUNyGL/nK2JZ7H1yEJmUNFYj5FFLhRvJjKVJSf62qTYJncylXh+aSdeQgwqO/j7mR7+VwwXtM3TsZR1ntx4sCv0V9I2ptMgE8Cj/7wM6xILh9RhEWFabiqkhIa1x8doDAw6ISmOLiJXzcOHZBdmYMZyXCVCYGlESyN3ZFcMKaMLdpgDIAo8ONUdHKrsLFNY851y/0IoDESAAaRyvjXjSYOaokAB5FU3KmK7y/wf4Uk5yMYUvIPYObzCynRYhzukQ6gA4h3oxMsICwryMFYJgEtxRkk5EgMgsaQUvO4pHgky2TDeL7/Mt67smUpZQFgcPDIh8+wIrmc602SDjSXFC+k3ltHpfckdc5aqtNrqa54iuqKp6mvfoa61NOk3Q+UY5exhR8p/3dYV4yWfa5qDghwx9iVSDmbNeDsX2Aql3CNCwwRldZhtKCSx1F/5iegLYQOHzoiJn70GhyvCRMJUWkNALtfu4N8uBfQpJ15XBU9wKLCtDEKOOsPCTw1kwgDRDj7GX4JRatRTDdJMu4KUmoiAT6h1iRpJOPeSfNKl67hItm7za2MTImeQoSggMispdUo9pQnOBl8mayqJA+Ukxc04GuNK4qQrXT9flNc19p3wrXBmDBe/sNuRaL42EEidyHCECJlUxIiMOE+pjW2LYQgAcxKUCp9h0T+Mzgpl1T1chrPPw8dvojjHIuT/gQqIYT5AuHe28v7Idu5ZGAJqWw7EYa0cwGuLGCx/zu0bERTgSsn4TrHEKJJ4aCI79sQ35MnQptoPlm6law3kwjo968mLYdh1C2kndl8cO43WS5fixWY6N1mHOWVXYIwFetUFGZp8zRXG805G5IM5bsIvN0YDCgQHaFkCsnEKWgDQfgKGxeWRuWzeVg40ijPBQ2ST5aP1eB4LkLuINsdORzPBVNTlo4cynMxUgvR/u6qCuW5iKmGQiV71zxH4uwrSaof41akSWSvGtkcMhGEpSKlgcvpfvwlZKmixSjukQ4uHryS6tT3SDhVKFWJUueO0YfhgHRv+H16vC6y4WUkccmrGnSxn8tKn2KCdz0CdAcP0p68E4BPBxdR486h1vsqn8w/y0/lrndPnWO0CBEPRVh4DZ0z+EMRSs7grJc+yDLZUm547QE//Xj3ElIT5sTrt7QBgEeGq5UNsUpE4bOU9vwXxghh4eXyde6h0PNBCfMvjUrM0rjUHeZ/RmH3RoLC5jguyD+E9GwlHNwNmXhQO7vKfRcepthTIBjaC/0FQNj165+6dXNfCL26G3DckzBUge4XHa12C3u/HfQ+9vTIrnBHW7xV3y53ct6O3zEhdw1u4gyBKQZJY/AR002kV5MPl9Fe8RgAk/Nr6FPtlKJB9g5kmFRxKkP6HvwoYM/evxnZpR0augKn4hsoHEHPNudsuJcO/EO5fD5aIa07/Hm8bBq/sImt907lYy9cQm7y3fh9RRLpFEFpA6XSLUT+i+CCYPAqFcXBzZw8dSvPdf+IityVGA2DPV/h/im30Wzc0Zx+XLcSzMGfbXgPZnhRNWVh8+BILScu6w+/dBSX5mfdnmDNktFQs7l/Apkww1BQovOB3VA+F7cL+YtfWBqfvZbxVQ6jI2h26dnzM4y/nmzDURS6SzipI0mn7iBSo20VEOTPpE028/FXphMI6Aj8/HoAGvYfuFZF8yOKzpFNPwPNDs1AZ4OBDn1gXrP/IMq+8zG2/5YWJ84pOqJYsTr2PRvC5t5Rozhdx0HqftcbNoxW49ImIZ1VPUDPPqk+aC1IOR2d0erRsjTkG0pjTFw8fOQRBadD59LRjcQ4MI/fGJuBGa9sRd7ivgzZ4+upnraBREU1paGNbFv/YejyOfX+Y6ltuguv4ljEGS5exePoJGFw2wD5oQa66zXT1EaS6SmE+ZDe3mPpnPfCn5myCZyaUjXqSgwJHfS34yQqSZZ20J3WUAhJyUQyuV5C/6MkzOP4hRJhxiP/+53Uzj4LoxR7V/0SWhxyrzTRN3UzmfV1pDK17F71ArnjpiqVPUtXJZazubOYyJ04KzKJ6bp/9T3Uza1k9y7fydXPizC9jvImRhLtZc/jTzDhtEbcTEhy4gA9XUcwNPQiVTUX4fCEG5mGsH/yU2Q2Hc2Q3gBrAt5B3LdYKoRB2U1u6qugqhBxwI9TrSfkWeA4zvnjafg9x4wkCSo7hIgi1K/SuaDI/M6p6EwDIZrS4Dbwy5nKyIoXwCQqpp8QoBuJdORgBAeiEOWIU4xK6jF4oqDV3PWYRMFJ5U4xUVSri84ulXMm6ii90UFfgA47jeEYHaltYtKfFCfaRM1JW0wkxxh4BYDazY2Odm4yNZsfRioqiKKJkjv5eYM+3ERRI35JQasK1a/OR5jk1py8ReuoSaprBo0xH3JQW6LITyqlTtG5eVkJgouk1L1BFwdfFtedY3LZ34A5EUe9ZMLiRFW9/VKMW6Erwx0MsJvU4U1oNQPxNTgCYpyyJ4uymcfZvX5gfwk8RN3K6Q4QoksrkNw/gdQwobGWHtnBxPM/I8mqS9Sqxf8c9T35w9E7mHoyE46/kWDoZ3FA1zsV7bkYraTUf7/pPLtI80qXzgXhvpId5E94Bl7+I/vlovHfa+Iv39+G8oNImSFM+ChOsgmtZ5JI/S966EkxelAoPqQiI1qSnULUG+FsVRLWmUh3ASQjEgG6S2O2JfxSTyChTjjZikCRUMb0mO3TSlT+T40S9ZhS3m5TijxUlAYpafQDjjJHJ3BfEHGe8kt5Rxz3cVGyi7DwmjGyyUunfD8Mf+76gYgTvRZovVNhjsLV8fMWT34NXt7GAc8IlNaEbxAnHXLvc5TfqPqJJx84/j7j1Z5LsXsx2x78DyZfFJGeqCj0bOWwj05l2jxhV7fmxe++QGbSERS6Da+1Kz7ywG3kpn+Jvs3P0b9jAesW94zXxpLlTTbX3/ouO4G+kP71d6t0Uz/GnJ/MND4W4RkRpqko/0Oz4V9Wkg4Vq24IVfaolIGZhP3LEhOv7DHp7PVS2NPOro2Lee66npHy9/+rjj/mo17n3MGO8yf8xuyTrckbXPfNrn+wa78nkTFpYN3cSoBcbmb1QVsPH5/RWguzEmNTNMt71ECa3TGp55jv/Y/vYwjNK11rGO9Lg3nD4+95SbVYLBaLxWKxWCwWi8VisVgsFovFYrFYLBaLxWKxWCwWi8VisVgsFovFYrFYLBaLxWKxWCwWi8VisVgs7w3+D4CeAEfqsXl/AAAAAElFTkSuQmCC";
+
+// 📄 Investor Statement PDF Export — ব্র্যান্ডেড, প্রিন্ট-অপ্টিমাইজড স্টেটমেন্ট
+// ব্রাউজারের Print ডায়ালগ থেকে "Save as PDF" বেছে নিলেই ডাউনলোড হয়ে যাবে — কোনো থার্ড-পার্টি লাইব্রেরি লাগে না।
 function printInvestorReport() {
   const content = el('investor-report-print');
   if (!content) return;
-  const win = window.open('','_blank');
-  win.document.write(`<html><head><title>Investor Report</title>
-    <style>body{font-family:sans-serif;padding:20px;color:#000;}
-    table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ccc;padding:8px;font-size:12px;}
-    th{background:#f5f5f5;}</style></head><body>`);
-  win.document.write(content.innerHTML);
-  win.document.write('</body></html>');
+
+  const now = new Date();
+  const genTime = new Intl.DateTimeFormat('bn-BD', {
+    timeZone: 'Asia/Dhaka', day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'
+  }).format(now);
+  const stmtNo = 'STMT-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
+
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Investor Statement — ${stmtNo}</title>
+    <style>
+      @page { size: A4; margin: 16mm 14mm; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: 'Noto Sans Bengali','IBM Plex Sans',sans-serif;
+        color: #1a1a1a; padding: 0; margin: 0; font-size: 13px; line-height: 1.5;
+      }
+      .stmt-header {
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 3px solid #B8860B; padding-bottom: 14px; margin-bottom: 18px;
+      }
+      .stmt-header .brand { display: flex; align-items: center; gap: 12px; }
+      .stmt-header .brand img { max-height: 50px; width: auto; }
+      .stmt-header .brand-text .name { font-size: 20px; font-weight: 700; color: #B8860B; }
+      .stmt-header .brand-text .tagline { font-size: 11px; color: #666; }
+      .stmt-header .meta { text-align: right; font-size: 11px; color: #555; }
+      .stmt-title {
+        text-align: center; font-size: 18px; font-weight: 700; margin: 6px 0 20px;
+        letter-spacing: 0.5px;
+      }
+      table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+      td, th { border: 1px solid #ddd; padding: 7px 10px; font-size: 12px; text-align: left; }
+      th { background: #faf5e6; color: #7a5c00; font-weight: 700; }
+      .stmt-footer {
+        margin-top: 28px; padding-top: 12px; border-top: 1px solid #ddd;
+        font-size: 10px; color: #888; display: flex; justify-content: space-between;
+      }
+      .disclaimer {
+        margin-top: 10px; font-size: 10px; color: #999; font-style: italic;
+      }
+      @media print {
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
+    </style></head><body>
+
+    <div class="stmt-header">
+      <div class="brand">
+        <img src="${INNOGIX_LOGO_DATAURI}" alt="InnoGix">
+        <div class="brand-text">
+          <div class="name">InnoGix</div>
+          <div class="tagline">Amanah Security Device — কালিয়াকৈর, গাজীপুর, ঢাকা</div>
+        </div>
+      </div>
+      <div class="meta">
+        স্টেটমেন্ট নং: <strong>${stmtNo}</strong><br>
+        জেনারেট করা হয়েছে: ${genTime}
+      </div>
+    </div>
+
+    <div class="stmt-title">📄 বিনিয়োগকারী স্টেটমেন্ট (Investor Statement)</div>
+
+    ${content.innerHTML}
+
+    <div class="disclaimer">
+      এই স্টেটমেন্টটি InnoGix Business OS থেকে স্বয়ংক্রিয়ভাবে জেনারেট করা হয়েছে এবং তথ্যগত উদ্দেশ্যে প্রদত্ত। কোনো আইনি বা স্বাক্ষরিত ডকুমেন্ট নয়।
+    </div>
+
+    <div class="stmt-footer">
+      <span>InnoGix Business OS</span>
+      <span>${genTime}</span>
+    </div>
+
+    <script>window.onload = () => { window.print(); };<\/script>
+  </body></html>`);
   win.document.close();
-  win.print();
 }
 
 // showPage-এ investor page লোড করো (নিচে মূল showPage ফাংশনে integrate করা আছে)

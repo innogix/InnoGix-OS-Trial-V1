@@ -2625,6 +2625,9 @@ tbody td.muted{color:var(--text3);}
               </table>
             </div>
             <div id="dist-sum-check" style="margin-top:10px;font-size:12px;padding:8px 12px;border-radius:6px;"></div>
+            <div style="margin-top:8px;font-size:11px;color:var(--text3);background:var(--bg2);border-radius:6px;padding:8px 12px;">
+              📒 নিশ্চিত করলে এই টাকাটা Expense_Tracker-এও স্বয়ংক্রিয়ভাবে "Other" ক্যাটাগরিতে একটা এন্ট্রি হিসেবে বসে যাবে — যাতে Dashboard-এর Net Profit থেকে এই টাকা বাদ যায় এবং Partner-দের ভাগ হিসাব করার সময় একই টাকা দুইবার গণনা না হয়ে যায়।
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -4644,7 +4647,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbxWWQc2AmZ3gAqUXjj9hnYiC37_TgvQyb1o6pX01qo1G0Nk4kQwCJtiD47fVbSCUtP_Bw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbw5ppzaQg9P23l0rzr1thWy42xgeqFPFhiCAvYfJWCtQntxp8LiRSJWCncw1FVJ0kBj/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;

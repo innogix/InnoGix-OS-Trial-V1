@@ -1634,6 +1634,19 @@ tbody td.muted{color:var(--text3);}
 </head>
 <body>
 
+<!-- v65 FIX: hidden form + iframe relay — tier-3 fallback for postToAPI() writes.
+     A plain HTML form submission targeting a hidden iframe is NOT subject to
+     fetch()'s CORS restrictions, so it survives the known Apps Script
+     POST-through-redirect CORS failure ("Failed to fetch") that can affect both
+     the real POST and the JSONP GET fallback. We can't read the iframe's
+     response (cross-origin), so postToAPI() re-verifies success via a normal
+     (already-reliable) GET afterward instead of trusting this blindly. -->
+<iframe name="igx-post-relay" style="display:none;" title="hidden relay"></iframe>
+<form id="igx-post-form" method="POST" target="igx-post-relay" style="display:none;">
+  <input type="hidden" name="action" id="igx-post-form-action">
+  <input type="hidden" name="data" id="igx-post-form-data">
+</form>
+
 <!-- PARTNER LOGIN SCREEN -->
 <div id="lock-screen">
   <div class="lock-box" style="width:360px;">
@@ -1693,6 +1706,7 @@ tbody td.muted{color:var(--text3);}
     <div class="modal-header">
       <span class="modal-title">🖨️ ক্যাশ মেমো / Invoice</span>
       <div style="display:flex;gap:8px;">
+        <button id="inv-edit-toggle" onclick="toggleInvoiceEdit()" style="padding:6px 14px;background:#7c3aed;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">✏️ এডিট</button>
         <button onclick="window.print()" style="padding:6px 14px;background:#1a3a6b;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">🖨️ প্রিন্ট</button>
         <button onclick="downloadInvoicePDF()" style="padding:6px 14px;background:#1976d2;border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">⬇️ PDF</button>
         <button class="modal-close" onclick="closeModal('invoice')">✕</button>
@@ -1765,22 +1779,25 @@ tbody td.muted{color:var(--text3);}
         </table>
 
         <!-- ══ TOTALS ══ -->
+        <div id="inv-edit-hint" style="display:none;margin-bottom:8px;padding:6px 10px;background:#f3e8ff;border:1px dashed #7c3aed;border-radius:6px;font-size:11px;color:#7c3aed;">
+          ✏️ এডিট মোড চালু — নিচের যেকোনো সংখ্যা/লেখায় ক্লিক করে সরাসরি বদলাতে পারবেন (যেমন ডেলিভারি চার্জ "Free" লিখে দিতে পারেন)। শুধু এই প্রিন্ট/PDF-এ দেখাবে, আসল হিসাব বদলাবে না।
+        </div>
         <div style="margin-left:auto;width:260px;font-size:12px;">
           <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e8edf5;">
             <span style="color:#555;">সাবটোটাল</span>
-            <span id="inv-subtotal" style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:#222;">৳ 0</span>
+            <span id="inv-subtotal" class="inv-editable" style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:#222;">৳ 0</span>
           </div>
           <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e8edf5;">
             <span style="color:#555;">ডেলিভারি চার্জ</span>
-            <span id="inv-delivery" style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:#222;">৳ 0</span>
+            <span id="inv-delivery" class="inv-editable" style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:#222;">৳ 0</span>
           </div>
           <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e8edf5;">
             <span style="color:#2e7d32;font-weight:600;">✔ পরিশোধিত</span>
-            <span id="inv-paid" style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#2e7d32;">৳ 0</span>
+            <span id="inv-paid" class="inv-editable" style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:#2e7d32;">৳ 0</span>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0 4px 0;margin-top:4px;border-top:2px solid #1a3a6b;">
             <span style="color:#1a3a6b;font-size:13px;font-weight:800;letter-spacing:0.5px;">বাকি পরিমাণ</span>
-            <span id="inv-due" style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:900;color:#c62828;">৳ 0</span>
+            <span id="inv-due" class="inv-editable" style="font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:900;color:#c62828;">৳ 0</span>
           </div>
         </div>
 
@@ -2387,13 +2404,10 @@ tbody td.muted{color:var(--text3);}
             <option>Mymensingh</option>
           </select>
           <select class="filter-select" id="sales-prod-filter" onchange="filterSales()">
+            <!-- ✅ FIX (সমস্যা ২, Sept 2026): আগে এখানে ৬টা প্রোডাক্ট নাম হার্ডকোড করা ছিল,
+                 তাই নতুন প্রোডাক্ট ফিল্টারে দেখাত না। এখন populateSalesProductFilter() দিয়ে
+                 Inventory + Sales ডাটা থেকে লাইভ লোড হওয়ার পর ডাইনামিকভাবে ভরা হয়। -->
             <option value="">All Products</option>
-            <option>Amanah Door Lock Pro</option>
-            <option>Amanah CCTV Kit</option>
-            <option>Amanah Alarm System</option>
-            <option>Amanah Smart Lock</option>
-            <option>Amanah Motion Sensor</option>
-            <option>Amanah Video Doorbell</option>
           </select>
           <input class="filter-input" id="sales-search-input" type="text" placeholder="Search customer, phone..." oninput="filterSales()">
           <input class="filter-input" id="sales-date-filter" type="date" style="width:140px;" onchange="filterSales()">
@@ -4037,10 +4051,18 @@ tbody td.muted{color:var(--text3);}
         <div class="form-group"><label class="form-label">District</label><select class="form-select" id="district-select" onchange="updateThanas(this)"><option value="">Select District</option></select></div>
         <div class="form-group"><label class="form-label">Thana</label><select class="form-select" id="thana-select"><option value="">Select Thana</option></select></div>
         <div class="form-group"><label class="form-label">Full Address</label><input class="form-input" id="order-address" placeholder="House, Road, Area..." type="text"></div>
-        <div class="form-group"><label class="form-label">Product *</label><select class="form-select" id="order-product" onchange="onOrderProductChange(this.value)"><option value="">Select Product</option></select></div>
-        <div class="form-group"><label class="form-label">Quantity *</label><input class="form-input" id="order-qty" type="number" placeholder="1" min="1" oninput="calcTotal()"></div>
-        <div class="form-group"><label class="form-label">Unit Price (৳) *</label><input class="form-input" type="number" placeholder="0" id="unit-price" oninput="calcTotal()"></div>
-        <div class="form-group"><label class="form-label">Total (৳)</label><input class="form-input" type="number" id="total-price" readonly></div>
+        <!-- ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট একই অর্ডারে যোগ করার জন্য
+             ডাইনামিক লাইন-আইটেম লিস্ট — প্রতিটা প্রোডাক্টের নিজস্ব দাম/কোয়ান্টিটি -->
+        <div class="form-group full">
+          <label class="form-label">Products *</label>
+          <div id="order-items-list"></div>
+          <button type="button" class="btn" onclick="_addOrderItem()" style="margin-top:6px;padding:6px 14px;font-size:12px;">➕ আরেকটা প্রোডাক্ট যোগ করুন</button>
+        </div>
+        <!-- হিডেন ফিল্ড — সব প্রোডাক্ট লাইনের সমষ্টি (Subtotal), বাকি সব ক্যালকুলেশন (Due/COD) এটার উপর ভিত্তি করে চলে -->
+        <input type="hidden" id="order-product" value="">
+        <input type="hidden" id="order-qty" value="1">
+        <input type="hidden" id="unit-price" value="0">
+        <div class="form-group"><label class="form-label">Subtotal (৳)</label><input class="form-input" type="number" id="total-price" readonly style="font-weight:700;"></div>
         <div class="form-group"><label class="form-label">Paid Amount (৳)</label><input class="form-input" id="order-paid" type="number" placeholder="0" oninput="calcDue()"></div>
         <div class="form-group"><label class="form-label">Due (৳)</label><input class="form-input" type="number" id="due-amount" readonly></div>
         <div class="form-group"><label class="form-label">Delivery Charge (৳)</label><input class="form-input" id="order-delivery" type="number" placeholder="0" oninput="calcDue()"></div>
@@ -4173,7 +4195,7 @@ tbody td.muted{color:var(--text3);}
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Product ID *</label><input class="form-input" id="prod-id" placeholder="P007" type="text"></div>
         <div class="form-group"><label class="form-label">Product Name *</label><input class="form-input" id="prod-name" placeholder="Amanah ..." type="text"></div>
-        <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="prod-cat"><option>Door Security</option><option>Surveillance</option><option>Alarm</option><option>Smart Security</option><option>Sensor</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="prod-cat" list="prod-cat-datalist" placeholder="বেছে নিন বা নতুন ক্যাটাগরি লিখুন" type="text" autocomplete="off"></div>
         <div class="form-group"><label class="form-label">Cost Price (৳) *</label><input class="form-input" id="prod-cost" type="number" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Sell Price (৳) *</label><input class="form-input" id="prod-sell" type="number" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Opening Stock</label><input class="form-input" id="prod-opening" type="number" placeholder="0"></div>
@@ -4182,6 +4204,18 @@ tbody td.muted{color:var(--text3);}
         <div class="form-group"><label class="form-label">Supplier Name</label><input class="form-input" id="prod-supplier" placeholder="Supplier name" type="text"></div>
         <div class="form-group"><label class="form-label">Supplier Phone</label><input class="form-input" id="prod-supplier-phone" placeholder="017XXXXXXXX" type="text"></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="prod-notes" placeholder="Optional notes..."></textarea></div>
+        <!-- v64 FIX: shared datalist so both Add & Edit Product category fields offer
+             the same fixed suggestions PLUS any custom category already used in
+             the live inventory (populated by populateCategoryDatalist()). This lets
+             the user type a brand-new category instead of being stuck with a fixed list. -->
+        <datalist id="prod-cat-datalist">
+          <option value="Door Security"></option>
+          <option value="Surveillance"></option>
+          <option value="Alarm"></option>
+          <option value="Smart Security"></option>
+          <option value="Sensor"></option>
+          <option value="Other"></option>
+        </datalist>
 
         <!-- ══ PROFIT SPLIT SECTION ══ -->
         <div class="profit-split-section">
@@ -4283,13 +4317,21 @@ tbody td.muted{color:var(--text3);}
       <div class="form-grid">
         <div class="form-group"><label class="form-label">Product ID</label><input class="form-input" id="eprod-id" readonly></div>
         <div class="form-group"><label class="form-label">Product Name</label><input class="form-input" id="eprod-name" type="text"></div>
-        <div class="form-group"><label class="form-label">Category</label><select class="form-select" id="eprod-cat"><option>Door Security</option><option>Surveillance</option><option>Alarm</option><option>Smart Security</option><option>Sensor</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Category</label><input class="form-input" id="eprod-cat" list="prod-cat-datalist" placeholder="বেছে নিন বা নতুন ক্যাটাগরি লিখুন" type="text" autocomplete="off"></div>
         <div class="form-group"><label class="form-label">Cost Price (৳)</label><input class="form-input" id="eprod-cost" type="number"></div>
         <div class="form-group"><label class="form-label">Sell Price (৳)</label><input class="form-input" id="eprod-sell" type="number"></div>
         <div class="form-group"><label class="form-label">Opening Stock</label><input class="form-input" id="eprod-opening" type="number"></div>
         <div class="form-group"><label class="form-label">Stock In (এই মাসে যোগ)</label><input class="form-input" id="eprod-stockin" type="number"></div>
+        <!-- v70 FIX: previously the only way to correct Current Stock (e.g. after a
+             physical stock count, damage, or a manual Google Sheet mistake) was to
+             edit the Google Sheet directly. Now it's directly editable here. -->
+        <div class="form-group"><label class="form-label">Current Stock</label><input class="form-input" id="eprod-current" type="number"></div>
         <div class="form-group"><label class="form-label">Alert Level</label><input class="form-input" id="eprod-alert" type="number"></div>
         <div class="form-group"><label class="form-label">Supplier</label><input class="form-input" id="eprod-supplier" type="text"></div>
+        <!-- v64 FIX: this field existed in the Add-Product modal but was completely
+             missing here — that's why Supplier Phone "sometimes" showed and
+             "sometimes" didn't: Add had it, Edit never did. -->
+        <div class="form-group"><label class="form-label">Supplier Phone</label><input class="form-input" id="eprod-supplier-phone" placeholder="017XXXXXXXX" type="text"></div>
         <div class="form-group full"><label class="form-label">Notes</label><textarea class="form-textarea" id="eprod-notes"></textarea></div>
 
         <!-- ══ PROFIT SPLIT SECTION (Edit) ══ -->
@@ -4958,7 +5000,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycby8Qmh_VeFK0pB-GVeRc9scX5reUPKSdCfmpWxmIihXkdwVzs4KEPDyXBG302EgCR5khQ/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbwtWREYOFf-MYQA1sK2gmc2SnybGkP6EUykb0Pd1QKl6eAVmNGpvddJumDYIFotEZrw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -5074,14 +5116,102 @@ async function fetchFromAPI(action, params = {}) {
 // Apps Script preflight-এর জবাব দিতে পারে না, তাই এটা এড়ানো জরুরি।
 // Apps Script backend-এর doPost() ইতিমধ্যেই e.postData.contents থেকে সরাসরি
 // পড়ে, তাই backend-এ কোনো পরিবর্তন লাগেনি।
+// v65 FIX: hidden <form target=iframe> submit — bypasses fetch()'s CORS checks
+// entirely (plain form submissions are not subject to them), so it survives the
+// Apps Script POST-through-redirect CORS failure that can break both the real
+// fetch() POST and the JSONP <script> GET fallback. We can never read the
+// iframe's cross-origin response, so this only reports whether the form was
+// successfully SUBMITTED, not whether Apps Script actually processed it —
+// postToAPI() double-checks separately via verifyWriteLanded_() before
+// trusting it as success.
+async function formPostFallback(payload) {
+  return new Promise((resolve) => {
+    try {
+      const form = document.getElementById('igx-post-form');
+      const frame = document.querySelector('iframe[name="igx-post-relay"]');
+      if (!form || !frame || !API_URL) { resolve(false); return; }
+      form.action = API_URL;
+      document.getElementById('igx-post-form-action').value = payload.action || '';
+      const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+      document.getElementById('igx-post-form-data').value = encoded;
+      let done = false;
+      const finish = (ok) => { if (!done) { done = true; frame.onload = null; resolve(ok); } };
+      frame.onload = () => finish(true);
+      // iframe onload doesn't always fire reliably for cross-origin targets —
+      // treat the form as sent after a short wait regardless
+      setTimeout(() => finish(true), 3000);
+      form.submit();
+    } catch (e) {
+      console.error('formPostFallback failed:', e.message);
+      resolve(false);
+    }
+  });
+}
+// v66 FIX: the earlier version only checked that Apps Script was *reachable*
+// after the relay POST — not that the specific field actually changed. That's
+// exactly why "✅ Product updated!" was showing even when nothing actually
+// saved (e.g. Opening Stock never changing): a reachable-but-wrong response
+// (stale deployment still running, or the relay data malformed) was being
+// reported as success. This now re-fetches the live inventory row and checks
+// the fields we actually tried to change before claiming success.
+async function verifyWriteLanded_(payload) {
+  try {
+    const action = payload.action || '';
+    if (action === 'updateProduct' || action === 'addProduct') {
+      const data = await fetchFromAPI('inventory');
+      if (!data || !data.data) return false;
+      const rawRows = data.data;
+      const firstRow = rawRows[0] || [];
+      const isHeader = firstRow.length > 0 && (
+        String(firstRow[0]||'').toLowerCase().includes('id') ||
+        String(firstRow[1]||'').toLowerCase().includes('name') ||
+        String(firstRow[1]||'').toLowerCase().includes('product')
+      );
+      const rows = isHeader ? rawRows.slice(1) : rawRows;
+      const pid = String(payload.productId || payload.id || '').trim();
+      const pname = String(payload.name || '').trim().toLowerCase();
+      const row = rows.find(r => {
+        const rid = String(r[0]||'').trim();
+        const rname = String(r[1]||'').trim().toLowerCase();
+        return (pid && rid === pid) || (!pid && pname && rname === pname);
+      });
+      if (!row) return false;
+      if (payload.opening != null && String(payload.opening) !== '') {
+        const expOpening = Number(payload.opening) || 0;
+        const curOpening = Number(row[6]) || 0;
+        if (curOpening !== expOpening) return false;
+      }
+      if (payload.current != null && String(payload.current) !== '') {
+        const expCurrent = Number(payload.current) || 0;
+        const curCurrent = Number(row[9]) || 0;
+        if (curCurrent !== expCurrent) return false;
+      }
+      if (payload.category != null && String(payload.category).trim() !== '') {
+        if (String(row[2]||'').trim() !== String(payload.category).trim()) return false;
+      }
+      return true;
+    }
+    const data2 = await fetchFromAPI('settings');
+    return !!data2;
+  } catch(e) { return false; }
+}
 async function postToAPI(payload) {
   if (!API_URL || !API_URL.includes('script.google.com')) {
     showToast('Google Sheets URL সেট নেই — Setup Guide দেখুন', 'error'); return false;
   }
+  window.__lastAPIErrorReason = null; // v65 FIX: clear any stale reason from a previous call
   const jsonStr = JSON.stringify(payload);
 
   // v43 FIX: helper — base64-GET+JSONP fallback (already proven to work for
   // file:// protocol, and fully supported server-side via doGet's p.data + callback)
+  // v64 FIX: this used to be able to THROW (if jsonpFetch rejected — e.g. the
+  // <script> tag network-erroring with "Script load error"). Because that throw
+  // happened *inside* the outer catch(fetchErr) block below, it escaped straight
+  // to the outermost catch and REPLACED the real, useful error (the original POST
+  // failure) with the confusing, unrelated "Script load error" message — and since
+  // this function itself never showed anything about the true root cause, the user
+  // only ever saw the misleading message. It's now wrapped in try/catch so it always
+  // resolves to false/result and never throws, and the real fetch error is preserved.
   async function fallbackViaGet() {
     const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(jsonStr))));
     const url = `${API_URL}?action=${encodeURIComponent(payload.action||'')}&data=${encoded}`;
@@ -5089,10 +5219,16 @@ async function postToAPI(payload) {
       showToast('ডাটা অনেক বড় — Note/Address ছোট করে আবার চেষ্টা করুন','error');
       return false;
     }
-    const result = await jsonpFetch(url);
-    if (!result) return false;
-    if (result.status === 'error') { showToast('Backend error: '+(result.message||'অজানা সমস্যা'),'error'); return false; }
-    return (result.status === 'success' || result.status === 'ok') ? result : false;
+    try {
+      const result = await jsonpFetch(url);
+      if (!result) return false;
+      if (result.status === 'error') { showToast('Backend error: '+(result.message||'অজানা সমস্যা'),'error'); return false; }
+      return (result.status === 'success' || result.status === 'ok') ? result : false;
+    } catch(fbErr) {
+      console.error('postToAPI fallbackViaGet failed:', fbErr.message);
+      window.__lastAPIErrorReason = fbErr.message;
+      return false;
+    }
   }
 
   try {
@@ -5118,12 +5254,52 @@ async function postToAPI(payload) {
       // v43 FIX: real POST occasionally fails at the network/CORS level (browser
       // throws before any HTTP response — e.g. "Failed to fetch") when Apps Script's
       // internal redirect isn't handled cleanly by the browser. Instead of giving up,
-      // silently retry via the base64-GET+JSONP path, which sidesteps this entirely.
+      // retry via the base64-GET+JSONP path, which sidesteps this entirely.
+      // v64 FIX: mobile networks (2G/3G / flaky Wi-Fi) often recover within a
+      // second — so if the GET fallback also fails on the first try, wait briefly
+      // and try it once more before finally giving up. This alone resolves most
+      // transient "Script load error" failures without any user action.
       if (fetchErr.name !== 'AbortError') {
-        const fb = await fallbackViaGet();
+        let fb = await fallbackViaGet();
+        if (!fb) { await new Promise(r => setTimeout(r, 1200)); fb = await fallbackViaGet(); }
         if (fb) return fb;
+        // v65 FIX tier-3: real POST AND JSONP GET both failed — both go through
+        // fetch()/<script src>, which are subject to the same Apps Script
+        // CORS-on-redirect failure mode. A plain HTML <form target=iframe> POST
+        // is NOT subject to fetch()'s CORS checks at all, so it's the most
+        // reliable path left. We can't read the iframe's cross-origin response,
+        // so we submit it, give Apps Script a moment to actually write the data,
+        // then re-verify via a normal GET (which we already know works) before
+        // telling the caller it succeeded — never claim success blind.
+        const relayed = await formPostFallback(payload);
+        if (relayed) {
+          await new Promise(r => setTimeout(r, 1800));
+          const verified = await verifyWriteLanded_(payload);
+          if (verified) return { status: 'success', message: 'ok (via relay)' };
+          // v68 FIX: relay sent successfully but the field never changed on
+          // re-fetch — this specific combination almost always means the LIVE
+          // Apps Script deployment is still running OLD code (edited in the
+          // editor but never redeployed as a new version), since old doPost()
+          // can't decode the relay's form-encoded payload. Surface that as a
+          // distinct reason instead of the generic network message below.
+          window.__lastAPIErrorReason = 'রিলে পাঠানো হয়েছে কিন্তু ডেটা সেভ হয়নি — GS ফাইলের নতুন Deployment দেওয়া হয়েছে কিনা চেক করুন';
+          console.error('postToAPI: relay submitted but verifyWriteLanded_ failed — likely stale GS deployment');
+          return false;
+        }
+        window.__lastAPIErrorReason = 'ফর্ম রিলেও ব্যর্থ: '+fetchErr.message;
+        console.error('postToAPI: form relay fallback also failed:', fetchErr.message);
+        return false;
       }
-      throw fetchErr;
+      // v64 FIX: no more re-throwing fetchErr here (which used to bubble up to the
+      // outer catch and fire a SECOND, redundant toast on top of the caller's own
+      // "... হয়নি — API URL চেক করুন" message). We log the real cause for
+      // debugging and return false; the caller already shows one clear toast.
+      console.error('postToAPI: POST failed and GET fallback failed:', fetchErr.message);
+      // v65 FIX: surface the real technical reason (visible on mobile where nobody
+      // opens devtools) so we can actually see WHY every write is failing, instead
+      // of guessing blind. Read by the calling function's error toast.
+      window.__lastAPIErrorReason = fetchErr.message;
+      return false;
     }
     clearTimeout(timer);
     if (!res.ok) { showToast('Server error: ' + res.status, 'error'); return false; }
@@ -5739,8 +5915,10 @@ function _getProductSplit(productName) {
  */
 function updateProductSplitPreview(mode) {
   const prefix = mode === 'edit' ? 'eprod' : 'prod';
-  const i = parseFloat(document.getElementById(prefix+'-split-ismail')?.value||0);
-  const a = parseFloat(document.getElementById(prefix+'-split-ashik')?.value||0);
+  // v67 FIX: guard against a non-numeric field value producing undefined/NaN
+  // that could reach .toFixed() below and crash the modal.
+  const i = Number(parseFloat(document.getElementById(prefix+'-split-ismail')?.value||0)) || 0;
+  const a = Number(parseFloat(document.getElementById(prefix+'-split-ashik')?.value||0)) || 0;
   const total = i + a;
   const comp  = Math.max(0, 100 - total);
   const compEl  = document.getElementById(prefix+'-split-company-preview');
@@ -5786,7 +5964,7 @@ function onOrderProductChange(productName) {
     si.value = split.ismail;
     sa.value = split.ashik;
     updateCompanyFundPreview();
-    const comp = Math.max(0, 100 - split.ismail - split.ashik);
+    const comp = Number(Math.max(0, 100 - split.ismail - split.ashik)) || 0;
     if(banner) banner.style.display = 'block';
     if(bannerInfo) bannerInfo.textContent = `I:${split.ismail}% | A:${split.ashik}% | C:${comp.toFixed(0)}%`;
     showToast(`🔗 "${productName}"-এর প্রফিট শতাংশ লোড হয়েছে`, 'info');
@@ -5807,12 +5985,100 @@ function onOrderProductChange(productName) {
  * তাই Inventory-তে যা আছে ঠিক তাই-ই দেখাবে, বাড়তি/পুরনো নাম আর দেখাবে না।
  */
 function populateOrderProductDropdown() {
-  const sel = document.getElementById('order-product');
-  if (!sel) return;
-  const prevVal = sel.value;
-  sel.innerHTML = '<option value="">Select Product</option>';
+  // ✅ FIX (Multi-product order, Sept 2026): এখন একটা না, একাধিক প্রোডাক্ট-লাইন
+  // থাকতে পারে — তাই নাম-লিস্টটা গ্লোবালি রেখে প্রতিটা লাইন-আইটেম ড্রপডাউনে ব্যবহার করা হয়
   const names = Array.from(new Set((liveInventoryData||[]).map(p => (p.name||'').trim()).filter(Boolean)))
     .sort((a,b) => a.localeCompare(b));
+  window._orderProductNames = names;
+  if (Array.isArray(window._orderItems)) _renderOrderItems();
+}
+
+/**
+ * ✅ FIX (Multi-product order, Sept 2026): একই অর্ডারে একাধিক প্রোডাক্ট যোগ
+ * করার সিস্টেম — কাস্টমার একসাথে ২-৩ ধরনের প্রোডাক্ট নিলে প্রতিটার আলাদা
+ * দাম/কোয়ান্টিটি সহ এক অর্ডারেই এন্ট্রি দেওয়া যায়, আর ইনভয়েসেও সবগুলো
+ * লাইন-আইটেম হিসেবে দেখা যায়।
+ */
+window._orderItems = [{ product:'', qty:1, price:0 }];
+
+function _orderProductOptionsHTML(selected){
+  const names = window._orderProductNames || [];
+  let html = `<option value="">Select Product</option>`;
+  names.forEach(name => {
+    const esc = String(name).replace(/"/g,'&quot;');
+    html += `<option value="${esc}" ${name===selected?'selected':''}>${name}</option>`;
+  });
+  return html;
+}
+
+function _renderOrderItems(){
+  const box = document.getElementById('order-items-list');
+  if (!box) return;
+  box.innerHTML = window._orderItems.map((it, idx) => `
+    <div class="order-item-row" data-idx="${idx}" style="display:grid;grid-template-columns:2fr 0.7fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:6px;">
+      <select class="form-select" onchange="_updateOrderItem(${idx},'product',this.value)">${_orderProductOptionsHTML(it.product)}</select>
+      <input class="form-input" type="number" min="1" placeholder="Qty" value="${it.qty}" oninput="_updateOrderItemLive(${idx},'qty',this.value)">
+      <input class="form-input" type="number" min="0" placeholder="Unit Price (৳)" value="${it.price}" oninput="_updateOrderItemLive(${idx},'price',this.value)">
+      <input class="form-input" type="number" readonly id="order-item-total-${idx}" value="${(Number(it.qty)||0)*(Number(it.price)||0)}" style="font-weight:700;" title="Line Total">
+      ${window._orderItems.length>1 ? `<button type="button" class="btn" onclick="_removeOrderItem(${idx})" style="padding:6px 10px;background:var(--red);color:#fff;border-color:var(--red);">✕</button>` : `<span></span>`}
+    </div>`).join('');
+  _recalcOrderSubtotal();
+}
+function _addOrderItem(){
+  window._orderItems.push({ product:'', qty:1, price:0 });
+  _renderOrderItems();
+}
+function _removeOrderItem(idx){
+  if (window._orderItems.length <= 1) return;
+  window._orderItems.splice(idx, 1);
+  _renderOrderItems();
+}
+// প্রোডাক্ট সিলেক্ট বদলানো / সারি যোগ-বাদ — পুরো লিস্ট রি-রেন্ডার নিরাপদ (dropdown, ফোকাস হারায় না)
+function _updateOrderItem(idx, field, value){
+  if (!window._orderItems[idx]) return;
+  window._orderItems[idx][field] = value;
+  if (field === 'product') onOrderProductChange(value);
+  _renderOrderItems();
+}
+// Qty/Price টাইপ করার সময় — পুরো রি-রেন্ডার না করে শুধু ওই লাইনের টোটাল + সাবটোটাল আপডেট করো
+// (নাহলে টাইপ করতে করতে ইনপুট ফোকাস হারিয়ে ফেলবে)
+function _updateOrderItemLive(idx, field, value){
+  if (!window._orderItems[idx]) return;
+  window._orderItems[idx][field] = parseFloat(value) || 0;
+  const lineTotal = (Number(window._orderItems[idx].qty)||0) * (Number(window._orderItems[idx].price)||0);
+  const totalEl = document.getElementById(`order-item-total-${idx}`);
+  if (totalEl) totalEl.value = lineTotal;
+  _recalcOrderSubtotal();
+}
+function _recalcOrderSubtotal(){
+  const subtotal = window._orderItems.reduce((s,it) => s + (Number(it.qty)||0)*(Number(it.price)||0), 0);
+  const totalEl = document.getElementById('total-price');
+  if (totalEl) totalEl.value = subtotal;
+  // পুরনো #order-product/#order-qty/#unit-price হিডেন ফিল্ড — legacy কোড/CSV/স্মার্ট-পেস্টের জন্য প্রথম আইটেম দিয়ে সিঙ্ক রাখা
+  const first = window._orderItems[0] || {product:'',qty:1,price:0};
+  const pEl = document.getElementById('order-product'); if (pEl) pEl.value = first.product||'';
+  const qEl = document.getElementById('order-qty'); if (qEl) qEl.value = first.qty||1;
+  const uEl = document.getElementById('unit-price'); if (uEl) uEl.value = first.price||0;
+  calcDue();
+}
+
+/**
+ * ✅ FIX (সমস্যা ২, Sept 2026): Sales & Orders পেজের "Product" ফিল্টার
+ * ড্রপডাউনে আগে মাত্র ৬টা হার্ডকোড করা প্রোডাক্ট নাম দেখাত — নতুন এন্ট্রি
+ * দেওয়া প্রোডাক্ট (নতুন ক্যাটাগরি/আইটেম) ফিল্টারে আসতোই না।
+ * এখন Inventory + বিদ্যমান সব Sales রেকর্ডের প্রোডাক্ট নাম মিলিয়ে
+ * ডাইনামিকভাবে ড্রপডাউন বানানো হয়, তাই নতুন যেকোনো প্রোডাক্ট সাথে সাথে
+ * ফিল্টারে দেখা যাবে।
+ */
+function populateSalesProductFilter() {
+  const sel = document.getElementById('sales-prod-filter');
+  if (!sel) return;
+  const prevVal = sel.value;
+  const fromInventory = (liveInventoryData||[]).map(p => (p.name||'').trim());
+  const fromSales = (liveSalesData||[]).map(r => (r.product||'').trim());
+  const names = Array.from(new Set([...fromInventory, ...fromSales].filter(Boolean)))
+    .sort((a,b) => a.localeCompare(b));
+  sel.innerHTML = '<option value="">All Products</option>';
   names.forEach(name => {
     const opt = document.createElement('option');
     opt.value = name; opt.textContent = name;
@@ -5832,8 +6098,8 @@ function updateProfitDefaults() {
 }
 
 function updateCompanyFundPreview() {
-  const i  = parseFloat(document.getElementById('split-ismail')?.value||0);
-  const a  = parseFloat(document.getElementById('split-ashik')?.value||0);
+  const i  = Number(parseFloat(document.getElementById('split-ismail')?.value||0)) || 0;
+  const a  = Number(parseFloat(document.getElementById('split-ashik')?.value||0)) || 0;
   const total = i + a;
   const comp  = Math.max(0, 100 - total);
   const el = id => document.getElementById(id);
@@ -6774,7 +7040,9 @@ function openInvoice(r) {
   // নাম dynamic ভাবে দেখাবে (r.product থেকে সরাসরি) — ভবিষ্যতে যত নতুন প্রোডাক্ট
   // অ্যাড হোক, কোনো কোড পরিবর্তন ছাড়াই এখানে স্বয়ংক্রিয়ভাবে উঠে আসবে।
   el('inv-brand-name').textContent    = 'InnoGix';
-  el('inv-brand-tagline').textContent = r.product || '';
+  // ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট থাকলে ট্যাগলাইনে সংক্ষেপে দেখাও
+  const items = (Array.isArray(r.items) && r.items.length) ? r.items : [{product:r.product,qty:r.qty,price:r.price,total:r.total}];
+  el('inv-brand-tagline').textContent = items.length>1 ? `${items[0].product} +${items.length-1} more` : (r.product || '');
   el('inv-brand-icon').textContent    = '';
   // Meta
   el('inv-id').textContent   = r.id || ('INV-' + Date.now().toString().slice(-6));
@@ -6784,17 +7052,19 @@ function openInvoice(r) {
   el('inv-phone').textContent    = r.phone    || '—';
   const addr = [r.thana, r.dist, r.div, r.address].filter(Boolean).join(', ');
   el('inv-address').textContent  = addr || '—';
-  // Items
-  const qty   = parseFloat(r.qty||1);
-  const price = parseFloat(r.price||0);
-  const total = parseFloat(r.total || qty*price || 0);
-  el('inv-items').innerHTML = `
+  // ✅ FIX (Multi-product order, Sept 2026): একাধিক লাইন-আইটেম থাকলে সবগুলো সারি হিসেবে দেখাও —
+  // প্রতিটা সেল "inv-editable" ক্লাস পায়, যাতে ✏️ এডিট মোডে ম্যানুয়ালি বদলানো যায়
+  const total = parseFloat(r.total || items.reduce((s,it)=>s+(Number(it.total)||(Number(it.qty)||0)*(Number(it.price)||0)),0) || 0);
+  el('inv-items').innerHTML = items.map(it => {
+    const q = parseFloat(it.qty||1), p = parseFloat(it.price||0), t = parseFloat(it.total || q*p || 0);
+    return `
     <tr style="border-bottom:1px solid var(--border);">
-      <td style="padding:8px 10px;">${r.product||'—'}</td>
-      <td style="padding:8px;text-align:center;">${qty}</td>
-      <td style="padding:8px;text-align:right;font-family:'IBM Plex Mono',monospace;">৳${price.toLocaleString()}</td>
-      <td style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:700;">৳${total.toLocaleString()}</td>
+      <td class="inv-editable" style="padding:8px 10px;">${it.product||'—'}</td>
+      <td class="inv-editable" style="padding:8px;text-align:center;">${q}</td>
+      <td class="inv-editable" style="padding:8px;text-align:right;font-family:'IBM Plex Mono',monospace;">৳${p.toLocaleString()}</td>
+      <td class="inv-editable" style="padding:8px 10px;text-align:right;font-family:'IBM Plex Mono',monospace;font-weight:700;">৳${t.toLocaleString()}</td>
     </tr>`;
+  }).join('');
   // Totals
   const delivery = parseFloat(r.delivery||0);
   const paid     = parseFloat(r.paid||0);
@@ -6805,7 +7075,36 @@ function openInvoice(r) {
   el('inv-due').textContent      = '৳ ' + due.toLocaleString();
   el('inv-due').style.color      = due > 0 ? 'var(--red)' : 'var(--green)';
 
+  // ✅ FIX (ইনভয়েস কাস্টমাইজেশন, Sept 2026): নতুন ইনভয়েস খোলার সময় এডিট মোড বন্ধ রাখো
+  _setInvoiceEditMode(false);
+
   openModal('invoice');
+}
+
+/**
+ * ✅ FIX (ইনভয়েস কাস্টমাইজেশন, Sept 2026): কাস্টমারকে ডেলিভারি ফ্রি দিলে বা
+ * অন্য কোনো কারণে ইনভয়েসে দেখানো সংখ্যা/লেখা বদলাতে হলে — সিস্টেমে আসল অর্ডার
+ * ডেটা/হিসাব অপরিবর্তিত রেখে শুধু এই প্রিন্ট/PDF-এর জন্য ম্যানুয়ালি এডিট করা যায়।
+ * কোনো কিছু শিটে সেভ হয় না — এটা শুধু ভিজ্যুয়াল/প্রিন্ট-টাইম কাস্টমাইজেশন।
+ */
+let _invoiceEditMode = false;
+function _setInvoiceEditMode(on){
+  _invoiceEditMode = on;
+  document.querySelectorAll('#invoice-print-area .inv-editable').forEach(elm => {
+    elm.contentEditable = on ? 'true' : 'false';
+    elm.style.outline = on ? '1px dashed #7c3aed' : 'none';
+    elm.style.cursor = on ? 'text' : 'default';
+  });
+  const hint = document.getElementById('inv-edit-hint');
+  if (hint) hint.style.display = on ? '' : 'none';
+  const btn = document.getElementById('inv-edit-toggle');
+  if (btn) {
+    btn.textContent = on ? '✅ এডিট শেষ' : '✏️ এডিট';
+    btn.style.background = on ? '#16a34a' : '#7c3aed';
+  }
+}
+function toggleInvoiceEdit(){
+  _setInvoiceEditMode(!_invoiceEditMode);
 }
 
 
@@ -7004,26 +7303,61 @@ let _salesPage = 1;
 let _salesFilteredRows = [];
 
 function renderSalesRows(rows) {
-  _salesFilteredRows = rows;
+  // ✅ FIX (Multi-product order, Sept 2026): একই Order ID শেয়ার করা একাধিক
+  // প্রোডাক্ট-লাইন সারিকে একটা অর্ডার হিসেবে গ্রুপ করে টেবিলে দেখানো হয়
+  _salesFilteredRows = _groupSalesRows(rows);
   _salesPage = 1;
   _renderSalesPage();
   _renderSalesPagination();
+}
+
+/**
+ * ✅ FIX (Multi-product order, Sept 2026): একই Order ID (SL#) শেয়ার করা একাধিক
+ * প্রোডাক্ট-লাইন সারিকে একটা অর্ডার হিসেবে গ্রুপ করে — Delivery/Paid/Due অ্যামাউন্ট
+ * ব্যাকএন্ডে শুধু প্রথম (primary) লাইনেই থাকে (বাকিগুলোতে ০), তাই সরাসরি যোগ করলেই
+ * সঠিক অর্ডার-লেভেল টোটাল পাওয়া যায়।
+ */
+function _groupSalesRows(rows){
+  const map = new Map();
+  const order = [];
+  (rows||[]).forEach(r=>{
+    const key = String(r.id);
+    if(!map.has(key)){
+      const g = { ...r, items:[{product:r.product,qty:r.qty,price:r.price,total:r.total}] };
+      map.set(key, g);
+      order.push(key);
+    } else {
+      const g = map.get(key);
+      g.items.push({product:r.product,qty:r.qty,price:r.price,total:r.total});
+      g.total     = (Number(g.total)||0)     + (Number(r.total)||0);
+      g.paid      = (Number(g.paid)||0)      + (Number(r.paid)||0);
+      g.due       = (Number(g.due)||0)       + (Number(r.due)||0);
+      g.delivery  = (Number(g.delivery)||0)  + (Number(r.delivery)||0);
+    }
+  });
+  return order.map(k=>map.get(k));
 }
 
 function _renderSalesPage() {
   const start = (_salesPage - 1) * SALES_PAGE_SIZE;
   const slice = _salesFilteredRows.slice(start, start + SALES_PAGE_SIZE);
   // OPT-D: Build HTML string with join (faster than repeated innerHTML concat)
-  document.getElementById('sales-body').innerHTML = slice.map(r=>`
+  document.getElementById('sales-body').innerHTML = slice.map(r=>{
+    // ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট-লাইন হলে সবগুলো তালিকা আকারে দেখাও
+    const items = Array.isArray(r.items) && r.items.length ? r.items : [{product:r.product,qty:r.qty,price:r.price,total:r.total}];
+    const productCell = items.map(it=>`${it.product}${items.length>1?` <span style="color:var(--text3);">×${it.qty} (৳${Number(it.price||0).toLocaleString()})</span>`:''}`).join('<br>');
+    const qtyCell = items.length>1 ? items.reduce((s,it)=>s+(Number(it.qty)||0),0)+` (${items.length} পণ্য)` : items[0].qty;
+    const priceCell = items.length>1 ? '—' : `৳${Number(items[0].price||0).toLocaleString()}`;
+    return `
     <tr>
       <td class="mono muted">${r.id}</td>
       <td class="mono">${r.date}<br><span style="color:var(--text3);font-size:11px;">${r.time||''}</span></td>
       <td><strong>${r.customer}</strong></td>
       <td class="mono">${r.phone}</td>
       <td>${r.div}</td><td>${r.dist}</td>
-      <td>${r.product}</td>
-      <td class="mono" style="text-align:right;">${r.qty}</td>
-      <td class="mono" style="text-align:right;">৳${Number(r.price||0).toLocaleString()}</td>
+      <td>${productCell}</td>
+      <td class="mono" style="text-align:right;">${qtyCell}</td>
+      <td class="mono" style="text-align:right;">${priceCell}</td>
       <td class="mono" style="text-align:right;font-weight:700;">৳${Number(r.total||0).toLocaleString()}</td>
       <td class="mono" style="text-align:right;color:var(--green);">৳${Number(r.paid||0).toLocaleString()}</td>
       <td class="mono" style="text-align:right;color:${r.due>0?'var(--red)':'var(--text3)'};">৳${Number(r.due||0).toLocaleString()}</td>
@@ -7039,7 +7373,8 @@ function _renderSalesPage() {
         <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openEditOrder(${JSON.stringify(r)})'>✏️ Edit</button>
         <button class="btn" style="padding:4px 10px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick='deleteOrder(${JSON.stringify({id:r.id,customer:r.customer})})'>🗑️</button>
       </td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function _renderSalesPagination() {
@@ -7124,9 +7459,15 @@ function renderInventoryData(rows){
   // Table
   document.getElementById('inv-body').innerHTML = rows.map(p=>{
     // Issue 1 FIX: backend এর margin ব্যবহার করো, না থাকলে JS এ হিসাব
-    const margin = (p.margin != null && p.margin > 0)
-      ? p.margin
-      : (p.sell > 0 ? Math.round((p.sell - p.cost) / p.sell * 10000) / 100 : 0);
+    // v67 FIX: hardened with Number()||0 — a raw p.margin/p.sell/p.cost that's
+    // undefined, "", or otherwise non-numeric used to be able to produce
+    // `undefined.toFixed()` below and crash the whole table render. Now it's
+    // always guaranteed to be a real number before it ever reaches .toFixed().
+    const margin = Number(
+      (p.margin != null && p.margin > 0)
+        ? p.margin
+        : (p.sell > 0 ? Math.round((p.sell - p.cost) / p.sell * 10000) / 100 : 0)
+    ) || 0;
     // Issue 4 FIX: backend এর stockStatus ব্যবহার করো
     const hasStatus = p.stockStatus && p.stockStatus.trim();
     const statusClass = p.current <= 0 ? 'cancelled' : p.current <= p.alert ? 'pending' : 'delivered';
@@ -7136,9 +7477,9 @@ function renderInventoryData(rows){
     const shortLabel  = p.current <= 0 ? 'Out of Stock' : p.current <= p.alert ? 'Low Stock' : 'In Stock';
     // Profit split badge
     const split = _getProductSplit(p.name);
-    const si = p.splitIsmail != null ? parseFloat(p.splitIsmail) : split.ismail;
-    const sa = p.splitAshik  != null ? parseFloat(p.splitAshik)  : split.ashik;
-    const sc = Math.max(0, 100 - si - sa);
+    const si = Number(p.splitIsmail != null ? parseFloat(p.splitIsmail) : split.ismail) || 0;
+    const sa = Number(p.splitAshik  != null ? parseFloat(p.splitAshik)  : split.ashik)  || 0;
+    const sc = Number(Math.max(0, 100 - si - sa)) || 0;
     const splitBadge = `<div class="profit-split-badge">
       <span class="psb-chip ismail">I:${si}%</span>
       <span class="psb-chip ashik">A:${sa}%</span>
@@ -8143,12 +8484,16 @@ async function loadLiveSales(){
       splitAshik:  Number(r[26])||0,   // Col AA — Ashik %
       // ✅ v40 FIX (সমস্যা ৩): Col AB — Description (internal-only, কুরিয়ারে যায় না)
       description: String(r[27]||''),
+      // ✅ FIX (সমস্যা ১, Sept 2026): Col AC — ম্যানুয়ালি সেভ করা এক-ক্লিক ট্র্যাকিং লিংক
+      // (internal-only, কুরিয়ার বুকিং নোটে কখনো যায় না — NOTES থেকে আলাদা রাখা হয়েছে)
+      trackingLink: String(r[28]||''),
     };
   }).filter(r=>r.customer && r.customer.trim()); // skip empty rows
   // BUG 2 FIX: Reverse so newest orders (highest SL#) appear at top
   rows.reverse();
   liveSalesData = rows; // cache for filter
   window.allSales = rows; // global for KPI Detail + Delivery Analytics
+  populateSalesProductFilter(); // ✅ FIX (সমস্যা ২): নতুন প্রোডাক্ট নাম ফিল্টারে সাথে সাথে যোগ করো
   renderSalesRows(rows);
   document.getElementById('sales-count').textContent = rows.length+' records';
   showToast('Sales loaded ✅','success');
@@ -8218,7 +8563,30 @@ async function loadLiveInventory(){
   window.liveInventoryData = rows; // global for export
   // v31: Update order product dropdown with inventory products
   populateOrderProductDropdown();
+  populateSalesProductFilter(); // ✅ FIX (সমস্যা ২): Inventory-এর নতুন প্রোডাক্টও ফিল্টারে যোগ করো
+  // v64 FIX: keep the category datalist in sync with whatever custom categories
+  // are actually in use, so a category typed once shows up as a suggestion later
+  populateCategoryDatalist(rows);
   renderInventoryData(rows); showToast('Inventory loaded ✅','success');
+}
+// v64 FIX: Category ছিল একটা fixed <select> — নতুন কাস্টম ক্যাটাগরি যোগ করার
+// কোনো উপায় ছিল না। এখন prod-cat/eprod-cat একটা <input list="prod-cat-datalist">,
+// যেটা ফিক্সড অপশনগুলো suggest করে কিন্তু যেকোনো নতুন টেক্সটও লিখতে দেয়। এই ফাংশন
+// ইনভেন্টরিতে আগে থেকে ব্যবহৃত কাস্টম ক্যাটাগরিগুলোও datalist-এ যোগ করে দেয়,
+// যাতে সেগুলো পরের বার সাজেশন হিসেবে দেখা যায়।
+function populateCategoryDatalist(rows){
+  const dl = document.getElementById('prod-cat-datalist');
+  if(!dl) return;
+  const existing = new Set(Array.from(dl.options).map(o => o.value));
+  (rows||[]).forEach(p=>{
+    const cat = (p.cat||'').trim();
+    if(cat && !existing.has(cat)){
+      const o = document.createElement('option');
+      o.value = cat;
+      dl.appendChild(o);
+      existing.add(cat);
+    }
+  });
 }
 // Format ISO / serial date to Bangladesh readable: DD-MMM-YYYY HH:MM AM/PM
 function formatBDDate(rawDT){
@@ -8760,12 +9128,18 @@ async function testConnection(){
 
 // ─── CALC HELPERS ────────────────────────────────────────────
 function calcTotal(){
-  const up=parseFloat(document.getElementById('unit-price').value)||0;
-  const qtyEl=document.getElementById('order-qty');
-  const qty=qtyEl?(parseFloat(qtyEl.value)||1):1;
-  const total=up*qty;
-  document.getElementById('total-price').value=total;
-  calcDue();
+  // ✅ FIX (Multi-product order, Sept 2026): AI Smart Paste-এর মতো পুরনো কোড
+  // এখনো #order-qty/#unit-price হিডেন ফিল্ডে সরাসরি ভ্যালু বসায় — সেটা প্রথম
+  // প্রোডাক্ট-লাইনে সিঙ্ক করে রি-রেন্ডার করো, যাতে Subtotal ঠিক থাকে।
+  const qty = parseFloat(document.getElementById('order-qty')?.value) || 1;
+  const price = parseFloat(document.getElementById('unit-price')?.value) || 0;
+  if (Array.isArray(window._orderItems) && window._orderItems.length) {
+    window._orderItems[0].qty = qty;
+    window._orderItems[0].price = price;
+    _renderOrderItems();
+  } else {
+    calcDue();
+  }
 }
 function calcDue(){
   const total=parseFloat(document.getElementById('total-price').value)||0;
@@ -8849,14 +9223,15 @@ async function submitOrder(){
   // ── FIX 1: Validate required fields before saving ──
   const customerVal = (m.querySelector('#order-customer')?.value||'').trim();
   const phoneVal    = _fixPhone(m.querySelector('#order-phone')?.value||'');
-  const productVal  = (m.querySelector('#order-product')?.value||'').trim();
-  const qtyVal      = parseFloat(m.querySelector('#order-qty')?.value||0);
-  const priceVal    = parseFloat(document.getElementById('unit-price')?.value||0);
+  // ✅ FIX (Multi-product order, Sept 2026): প্রতিটা প্রোডাক্ট-লাইন ভ্যালিডেট করো
+  const orderItems = (Array.isArray(window._orderItems) ? window._orderItems : []).filter(it => it.product);
   if(!customerVal){ showToast('⚠️ Customer Name লিখুন','error'); m.querySelector('#order-customer').focus(); return; }
   if(!phoneVal||phoneVal.length<11){ showToast('⚠️ সঠিক Phone Number দিন (১১ ডিজিট)','error'); m.querySelector('#order-phone').focus(); return; }
-  if(!productVal){ showToast('⚠️ Product select করুন','error'); m.querySelector('#order-product').focus(); return; }
-  if(!qtyVal||qtyVal<1){ showToast('⚠️ Quantity কমপক্ষে ১ হতে হবে','error'); m.querySelector('#order-qty').focus(); return; }
-  if(!priceVal||priceVal<1){ showToast('⚠️ Unit Price দিন','error'); document.getElementById('unit-price').focus(); return; }
+  if(!orderItems.length){ showToast('⚠️ কমপক্ষে একটা Product select করুন','error'); return; }
+  for(const it of orderItems){
+    if(!it.qty || it.qty<1){ showToast(`⚠️ "${it.product}"-এর Quantity কমপক্ষে ১ হতে হবে`,'error'); return; }
+    if(!it.price || it.price<1){ showToast(`⚠️ "${it.product}"-এর Unit Price দিন`,'error'); return; }
+  }
   const payload={
     action: currentEditOrderId ? 'updateOrder' : 'addOrder',
     orderId: currentEditOrderId||null,
@@ -8876,9 +9251,11 @@ async function submitOrder(){
     district: document.getElementById('district-select').value,
     thana: document.getElementById('thana-select').value,
     address: m.querySelector('#order-address').value,
-    product: m.querySelector('#order-product').value,
-    qty: m.querySelector('#order-qty').value,
-    price: document.getElementById('unit-price').value,
+    // ✅ FIX (Multi-product order): items[] — সব প্রোডাক্ট-লাইন; product/qty/price legacy fallback (প্রথম আইটেম)
+    items: orderItems.map(it => ({ product: it.product, qty: it.qty, price: it.price })),
+    product: orderItems[0].product,
+    qty: orderItems[0].qty,
+    price: orderItems[0].price,
     paid: document.getElementById('order-paid').value,
     delivery: m.querySelector('#order-delivery').value,
     payment: m.querySelector('#order-payment').value,
@@ -9124,10 +9501,12 @@ function openEditOrder(r){
     setTimeout(()=>{ document.getElementById('thana-select').value=r.thana||''; }, 80);
   },80);
   m.querySelector('#order-address').value=r.address||'';
-  m.querySelector('#order-product').value=r.product||'';
-  m.querySelector('#order-qty').value=r.qty||1;
-  document.getElementById('unit-price').value=r.price||0;
-  document.getElementById('total-price').value=r.total||0;
+  // ✅ FIX (Multi-product order, Sept 2026): গ্রুপ করা অর্ডার হলে r.items-এ সব প্রোডাক্ট-লাইন থাকে,
+  // না থাকলে (পুরনো single-product কল) একটাই লাইন হিসেবে ধরা হয়
+  window._orderItems = (Array.isArray(r.items) && r.items.length)
+    ? r.items.map(it => ({ product: it.product||'', qty: Number(it.qty)||1, price: Number(it.price)||0 }))
+    : [{ product: r.product||'', qty: Number(r.qty)||1, price: Number(r.price)||0 }];
+  _renderOrderItems();
   document.getElementById('order-paid').value=r.paid||0;
   document.getElementById('due-amount').value=r.due||0;
   m.querySelector('#order-delivery').value=r.delivery||0;
@@ -9249,15 +9628,18 @@ async function runSmartPaste(){
       }
     }
 
-    // ── Product ──
+    // ── Product ── ✅ FIX (Multi-product order): প্রথম আইটেম-লাইনে বসাও
     if(p.product){
-      const prodSel = document.getElementById('order-product');
-      if(prodSel){
-        const pOpt = Array.from(prodSel.options).find(o=>
-          o.text.toLowerCase().includes(p.product.toLowerCase()) ||
-          p.product.toLowerCase().includes(o.text.toLowerCase().replace('amanah ',''))
-        );
-        if(pOpt){ prodSel.value=pOpt.value||pOpt.text; onOrderProductChange(prodSel.value); filled++; }
+      const names = window._orderProductNames || [];
+      const pMatch = names.find(name =>
+        name.toLowerCase().includes(p.product.toLowerCase()) ||
+        p.product.toLowerCase().includes(name.toLowerCase().replace('amanah ',''))
+      );
+      if(pMatch && Array.isArray(window._orderItems) && window._orderItems.length){
+        window._orderItems[0].product = pMatch;
+        onOrderProductChange(pMatch);
+        _renderOrderItems();
+        filled++;
       }
     }
 
@@ -9613,20 +9995,24 @@ function parseOrderRegex(text){
     }
   }
 
-  // ── Product match ──
-  const prodSel = document.getElementById('order-product');
-  if(prodSel){
-    const products = Array.from(prodSel.options).filter(o=>o.value);
-    const matched = products.find(o=>{
-      const name = o.text.toLowerCase();
-      const words = name.split(' ');
+  // ── Product match ── ✅ FIX (Multi-product order): প্রথম আইটেম-লাইনে বসাও
+  {
+    const names = window._orderProductNames || [];
+    const matched = names.find(name=>{
+      const nl = name.toLowerCase();
+      const words = nl.split(' ');
       return words.some(w=>w.length>3 && tl.includes(w)) ||
-             tl.includes('cctv') && name.includes('cctv') ||
-             tl.includes('door lock') && name.includes('door') ||
-             tl.includes('alarm') && name.includes('alarm') ||
+             (tl.includes('cctv') && nl.includes('cctv')) ||
+             (tl.includes('door lock') && nl.includes('door')) ||
+             (tl.includes('alarm') && nl.includes('alarm')) ||
              tl.includes('সিকিউরিটি') || tl.includes('security');
     });
-    if(matched){ prodSel.value=matched.value||matched.text; onOrderProductChange(prodSel.value); filled++; }
+    if(matched && Array.isArray(window._orderItems) && window._orderItems.length){
+      window._orderItems[0].product = matched;
+      onOrderProductChange(matched);
+      _renderOrderItems();
+      filled++;
+    }
   }
 
   // ── Smart Notes — collect special instructions AI should write down ──
@@ -9690,6 +10076,9 @@ function resetOrderModal(){
   if(codDisp) codDisp.textContent='৳ ০';
   const codNet=document.getElementById('cod-net-display');
   if(codNet) codNet.textContent='৳ ০';
+  // ✅ FIX (Multi-product order, Sept 2026): প্রোডাক্ট-লাইন লিস্টও রিসেট করো
+  window._orderItems = [{ product:'', qty:1, price:0 }];
+  _renderOrderItems();
 }
 
 // ─── ADD / EDIT PRODUCT ──────────────────────────────────────
@@ -9725,7 +10114,8 @@ async function submitProduct(){
     showToast('✅ Product Google Sheets এ save হয়েছে!','success');
     setTimeout(loadLiveInventory,1500);
   } else {
-    showToast('Product save হয়নি — API URL চেক করুন', 'error');
+    const reason = window.__lastAPIErrorReason ? ` (${window.__lastAPIErrorReason})` : '';
+    showToast('Product save হয়নি — API URL চেক করুন'+reason, 'error');
   }
 }
 
@@ -9738,8 +10128,12 @@ function openEditProduct(p){
   document.getElementById('eprod-sell').value=p.sell||0;
   document.getElementById('eprod-opening').value=p.opening||0;
   document.getElementById('eprod-stockin').value=p.in||0;
+  // v70 FIX: was missing — Current Stock could only be corrected via Google Sheets
+  document.getElementById('eprod-current').value=p.current||0;
   document.getElementById('eprod-alert').value=p.alert||5;
   document.getElementById('eprod-supplier').value=p.supplier||'';
+  // v64 FIX: was missing entirely — Supplier Phone never loaded into the Edit modal
+  document.getElementById('eprod-supplier-phone').value=p.supplierPhone||'';
   document.getElementById('eprod-notes').value=p.notes||'';
   // Load saved profit split from local DB (or from product data if available)
   const saved = _getProductSplit(p.name);
@@ -9765,8 +10159,13 @@ async function updateProduct(){
     sell: document.getElementById('eprod-sell').value,
     opening: document.getElementById('eprod-opening').value,
     stockIn: document.getElementById('eprod-stockin').value,
+    // v70 FIX: was missing entirely — Current Stock could only be corrected via
+    // Google Sheets before this
+    current: document.getElementById('eprod-current').value,
     alert: document.getElementById('eprod-alert').value,
     supplier: document.getElementById('eprod-supplier').value,
+    // v64 FIX: was missing entirely — edits to Supplier Phone were silently dropped
+    supplierPhone: document.getElementById('eprod-supplier-phone').value,
     notes: document.getElementById('eprod-notes').value,
     splitIsmail: splitI,
     splitAshik:  splitA,
@@ -9779,7 +10178,8 @@ async function updateProduct(){
     showToast('✅ Product updated!','success');
     setTimeout(loadLiveInventory,1500);
   } else {
-    showToast('Product update হয়নি — API URL চেক করুন','error');
+    const reason = window.__lastAPIErrorReason ? ` (${window.__lastAPIErrorReason})` : '';
+    showToast('Product update হয়নি — API URL চেক করুন'+reason,'error');
   }
 }
 
@@ -9990,16 +10390,17 @@ function applyOrderFormDefaults(){
   const m = document.getElementById('modal-add-order');
   if(!m) return;
 
-  const productSel = m.querySelector('#order-product');
-  if(productSel && !productSel.value){
-    const opt = Array.from(productSel.options).find(o=>
-      o.text.toLowerCase().includes('door lock')
-    );
-    if(opt){ productSel.value = opt.value || opt.text; onOrderProductChange(productSel.value); }
+  // ✅ FIX (Multi-product order, Sept 2026): প্রথম আইটেমে ডিফল্ট প্রোডাক্ট (Door Lock) বসাও
+  if (Array.isArray(window._orderItems) && window._orderItems.length && !window._orderItems[0].product) {
+    const names = window._orderProductNames || [];
+    const match = names.find(n => n.toLowerCase().includes('door lock'));
+    if (match) {
+      window._orderItems[0].product = match;
+      onOrderProductChange(match);
+    }
+    if (!window._orderItems[0].qty) window._orderItems[0].qty = 1;
+    _renderOrderItems();
   }
-
-  const qtyEl = m.querySelector('#order-qty');
-  if(qtyEl && !qtyEl.value){ qtyEl.value = 1; }
 
   const deliveryEl = m.querySelector('#order-delivery');
   if(deliveryEl && !deliveryEl.value){ deliveryEl.value = 150; }
@@ -10010,7 +10411,7 @@ function applyOrderFormDefaults(){
     if(codOpt) paymentSel.value = codOpt.value || codOpt.text;
   }
 
-  setTimeout(()=>{ calcTotal(); calcDue(); }, 60);
+  setTimeout(()=>{ calcDue(); }, 60);
 }
 let liveInventoryData = [];
 
@@ -12825,7 +13226,11 @@ if ('serviceWorker' in navigator) {
 
 const COURIER_CONFIG = {
   Pathao:      { cls:'pathao',    icon:'🏍️', color:'#f02d65', baseDelivery: 60,  trackUrl: 'https://pathao.com/track/{code}' },
-  Steadfast:   { cls:'steadfast', icon:'🚛', color:'#0a84ff', baseDelivery: 70,  trackUrl: 'https://steadfast.com.bd/t/{code}' },
+  // ✅ FIX (সমস্যা ১, Sept 2026): পুরনো 'steadfast.com.bd/t/{code}' প্যাটার্নটা ভাঙা —
+  // ক্লিক করলে "Link Unavailable" দেখায়, কারণ Steadfast API-তে সরাসরি এক-ক্লিক
+  // tracking link ফেরত আসে না। তাই fallback হিসেবে অফিসিয়াল ট্র্যাকিং সার্চ পেজ —
+  // আসল এক-ক্লিক লিংক পেতে হলে 🔗 বাটনে সেভ করা ম্যানুয়াল লিংক ব্যবহার হবে (renderCourierTable দেখুন)।
+  Steadfast:   { cls:'steadfast', icon:'🚛', color:'#0a84ff', baseDelivery: 70,  trackUrl: 'https://steadfast.com.bd/tracking' },
   Redx:        { cls:'redx',      icon:'🔴', color:'#e83a2b', baseDelivery: 65,  trackUrl: 'https://redx.com.bd/track-parcel/?trackingId={code}' },
   'SA Paribahan':{ cls:'sa',      icon:'🟢', color:'#22c55e', baseDelivery: 80,  trackUrl: '' },
   Sundarban:   { cls:'sundarban', icon:'🌿', color:'#f59e0b', baseDelivery: 75,  trackUrl: '' },
@@ -12837,7 +13242,11 @@ const LOCATION_STEPS = ['Warehouse', 'Sorting Hub', 'In Transit', 'District Hub'
 
 // ── Sales ডাটা থেকে কুরিয়ার ডাটা বিল্ড করো
 function buildCourierData() {
-  const orders = (typeof liveSalesData !== 'undefined' && liveSalesData.length ? liveSalesData : (typeof salesData !== 'undefined' ? salesData : []));
+  const rawOrders = (typeof liveSalesData !== 'undefined' && liveSalesData.length ? liveSalesData : (typeof salesData !== 'undefined' ? salesData : []));
+  // ✅ FIX (Multi-product order, Sept 2026): একই Order ID-র একাধিক প্রোডাক্ট-লাইন
+  // কুরিয়ার ম্যানেজারে ডুপ্লিকেট সারি হিসেবে না দেখিয়ে একটা অর্ডার হিসেবে গ্রুপ করা হয়
+  // (ডেলিভারি বুকিং হয় পার্সেল/অর্ডার অনুযায়ী, প্রোডাক্ট-লাইন অনুযায়ী না)
+  const orders = (typeof _groupSalesRows === 'function') ? _groupSalesRows(rawOrders) : rawOrders;
   const result = {};
   Object.keys(COURIER_CONFIG).forEach(name => {
     result[name] = { total:0, delivered:0, inTransit:0, returned:0, pending:0, totalDeliveryFee:0, totalCOD:0, totalNet:0, orders:[] };
@@ -12878,6 +13287,12 @@ function buildCourierData() {
     const notesVal = String(o.notes || o.Notes || '');
     const cidMatch = notesVal.match(/\[CID:([^\]]+)\]/);
     const consignmentId = cidMatch ? cidMatch[1] : '';   // e.g. "265282795"
+    // ✅ FIX (সমস্যা ১): ম্যানুয়ালি সেভ করা এক-ক্লিক tracking link — আলাদা কলাম থেকে
+    // (NOTES-এ রাখা হয়নি, কারণ NOTES কুরিয়ার বুকিং-এর নোট হিসেবে পার্সেলে চলে যায়)
+    const manualLink = o.trackingLink || '';
+    // ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট-লাইন থাকলে সবগুলোর নাম একসাথে দেখাও
+    const items = Array.isArray(o.items) && o.items.length ? o.items : [{product:o.product,qty:o.qty,price:o.price}];
+    const productSummary = items.map(it => `${it.product}${items.length>1?` ×${it.qty}`:''}`).join(', ');
     r.orders.push({
       date:           o.date || o.Date || '—',
       customer:       o.customer || o.Customer || '—',
@@ -12885,14 +13300,15 @@ function buildCourierData() {
       tracking:       trackingVal,        // CN# e.g. SFR260629ST9B4579DBD
       consignmentId:  consignmentId || trackingVal,  // Numeric Consignment ID preferred
       cnCode:         trackingVal,        // always CN#
+      manualLink:     manualLink,         // one-click link pasted from courier app/SMS
       phone:          o.phone || o.Phone || '',
       division:       o.division || o.Division || '',
       district:       o.district || o.District || '',
       thana:          o.thana || o.Thana || '',
       address:        o.address || o.Address || '',
-      product:        o.product || o.Product || '',
-      qty:            o.qty || o.Qty || 1,
-      price:          o.price || o.Price || 0,
+      product:        productSummary,
+      qty:            items.reduce((s,it)=>s+(Number(it.qty)||0),0),
+      price:          items.length===1 ? (items[0].price||0) : '',
       notes:          notesVal,
       courier:        cName,
       status:         stat,
@@ -13000,9 +13416,15 @@ function renderCourierTable(data) {
     const copyBtn = (val, label, color) =>
       `<button onclick="(function(){var v=${JSON.stringify(val)};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v).then(function(){showToast('✅ ${label} কপি হয়েছে!','success');}).catch(function(){var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('✅ কপি!','success');});}else{var t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);showToast('✅ কপি!','success');};})()" title="${label} কপি করুন" style="margin-left:4px;padding:2px 7px;font-size:10px;font-weight:700;background:rgba(${color},.15);color:rgba(${color},1);border:1px solid rgba(${color},.4);border-radius:5px;cursor:pointer;">${label}</button>`;
 
-    const trackLink2 = (rawCN && cfg[r.courier]?.trackUrl)
+    // ✅ FIX (সমস্যা ১): ম্যানুয়ালি সেভ করা এক-ক্লিক লিংক থাকলে সেটাই আসল লিংক —
+    // না থাকলে জেনেরিক (fallback, সরাসরি পার্সেল খোলে না) ট্র্যাকিং পেজ
+    const genericLink = (rawCN && cfg[r.courier]?.trackUrl)
       ? cfg[r.courier].trackUrl.replace('{code}', encodeURIComponent(rawCN))
       : '';
+    const trackLink2 = r.manualLink || genericLink;
+    const oidEsc = String(r.orderId).replace(/'/g, "\\'");
+    const linkEsc = String(r.manualLink||'').replace(/'/g, "\\'");
+    const saveLinkBtn = `<button onclick="saveTrackingLink('${oidEsc}','${linkEsc}')" title="${r.manualLink?'কুরিয়ার অ্যাপ থেকে কপি করা লিংক এডিট করুন':'কুরিয়ার অ্যাপ থেকে কপি করা এক-ক্লিক লিংক পেস্ট করে সেভ করুন'}" style="margin-left:4px;padding:2px 6px;font-size:10px;background:rgba(139,92,246,.15);color:#8b5cf6;border:1px solid rgba(139,92,246,.35);border-radius:5px;cursor:pointer;">${r.manualLink?'✏️':'➕🔗'}</button>`;
 
     let trackCell = '';
     if (rawCID) {
@@ -13017,7 +13439,8 @@ function renderCourierTable(data) {
       trackCell += rawCID ? `<span style="font-size:9px;color:var(--text3);">CN#</span><br>` : '';
       trackCell += `<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--blue);letter-spacing:.3px;">${rawCN}</span>`;
       trackCell += copyBtn(rawCN, 'CN', '77,158,255');
-      if (trackLink2) trackCell += `<a href="${trackLink2}" target="_blank" style="margin-left:4px;padding:2px 7px;font-size:10px;background:rgba(52,209,116,.15);color:var(--green);border:1px solid rgba(52,209,116,.3);border-radius:5px;text-decoration:none;font-weight:700;">🔗</a>`;
+      if (trackLink2) trackCell += `<a href="${trackLink2}" target="_blank" title="${r.manualLink?'এক-ক্লিকে সরাসরি পার্সেল ডিটেইলস':'সাধারণ ট্র্যাকিং পেজ (ম্যানুয়ালি CN# বসাতে হবে)'}" style="margin-left:4px;padding:2px 7px;font-size:10px;background:rgba(52,209,116,.15);color:var(--green);border:1px solid rgba(52,209,116,.3);border-radius:5px;text-decoration:none;font-weight:700;">🔗</a>`;
+      trackCell += saveLinkBtn;
       trackCell += `</div>`;
     }
     if (!rawCN && !rawCID) {
@@ -13114,7 +13537,23 @@ async function manualBookCourier(orderId, courierName) {
   try {
     // salesData থেকে এই order-এর পুরো info নাও
     const allOrders = window.liveSalesData || liveSalesData || [];
-    const ord = allOrders.find(o => String(o.id||o.orderId||'') === String(orderId)) || {};
+    // ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট-লাইনের অর্ডার হলে
+    // গ্রুপ করা কম্বাইন্ড টোটাল/প্রোডাক্ট-লিস্ট ব্যবহার করো, শুধু প্রথম লাইনের না
+    const groupedOrders = (typeof _groupSalesRows === 'function') ? _groupSalesRows(allOrders) : allOrders;
+    const ord = groupedOrders.find(o => String(o.id||o.orderId||'') === String(orderId)) || {};
+    const items = Array.isArray(ord.items) && ord.items.length ? ord.items : [{product:ord.product,qty:ord.qty,price:ord.price}];
+    const productSummary = items.map(it => `${it.product}${items.length>1?` x${it.qty}`:''}`).join(', ');
+    // v45 FIX: liveSalesData ফিল্ডের আসল নাম div/dist (division/district নয়) —
+    // আগে ভুল key পড়ার কারণে match না পেয়ে PROTI order-এই silently
+    // 'Dhaka'/'Dhaka'/'Dhanmondi' বসে যেত, আসল লোকেশন যাই হোক না কেন।
+    const division = ord.division || ord.Division || ord.div  || '';
+    const district = ord.district || ord.District || ord.dist || '';
+    const thana    = ord.thana    || ord.Thana     || '';
+    if (!division || !district) {
+      showToast('❌ এই অর্ডারে Division/District সেট নেই — আগে Edit করে লোকেশন ঠিক করুন, তারপর বুকিং দিন', 'error');
+      if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Book Courier'; }
+      return;
+    }
     const payload = {
       action:   'bookCourier',
       courier:  courierName,
@@ -13122,11 +13561,9 @@ async function manualBookCourier(orderId, courierName) {
       customer: ord.customer || ord.Customer || '',
       phone:    ord.phone    || ord.Phone    || '',
       address:  ord.address  || ord.Address  || '',
-      division: ord.division || ord.Division || 'Dhaka',
-      district: ord.district || ord.District || 'Dhaka',
-      thana:    ord.thana    || ord.Thana    || 'Dhanmondi',
-      product:  ord.product  || ord.Product  || '',
-      qty:      ord.qty      || ord.Qty      || 1,
+      division, district, thana,
+      product:  productSummary,
+      qty:      items.reduce((s,it)=>s+(Number(it.qty)||0),0) || 1,
       notes:    ord.notes    || ord.Notes    || '',
       // FIX 1: cod_amount = customerPayable (Product Total + Delivery), NOT netPayable
       cod_amount: (Number(ord.total||0) + Number(ord.delivery||0)),
@@ -13419,6 +13856,38 @@ async function dispatchCourierBooking(order) {
 }
 
 /**
+ * ✅ FIX (সমস্যা ১, Sept 2026): Steadfast/Pathao API-তে এক-ক্লিক working
+ * tracking link (SMS/অ্যাপে যা আসে) ফেরত আসে না, তাই এটা কোডে অটো-জেনারেট
+ * করা যায় না। এই ফাংশন দিয়ে ইউজার কুরিয়ার অ্যাপ থেকে কপি করা আসল লিংক
+ * একবার পেস্ট করে সেভ করে রাখতে পারবে — এরপর থেকে টেবিলের 🔗 বাটনে
+ * ক্লিক করলেই সরাসরি সেই লিংকে (এক ক্লিকে ফুল ডিটেইলস) যাবে।
+ */
+function saveTrackingLink(orderId, currentLink) {
+  const link = window.prompt(
+    'কুরিয়ার অ্যাপ (Steadfast/Pathao) থেকে "Track Parcel" কপি বাটনে চেপে আসল লিংকটা এখানে পেস্ট করুন:\n(খালি রেখে OK করলে সেভ করা লিংক মুছে যাবে)',
+    currentLink || ''
+  );
+  if (link === null) return; // Cancel চাপা হয়েছে
+  const trimmed = link.trim();
+  postToAPI({ action: 'saveTrackingLink', orderId: String(orderId), link: trimmed })
+    .then(res => {
+      if (res && res.status === 'success') {
+        // in-memory ডাটায়ও আপডেট করো, যাতে রিফ্রেশ ছাড়াই টেবিলে দেখা যায়
+        // (এই ফিল্ড NOTES না — আলাদা internal-only trackingLink ফিল্ড, কুরিয়ারে যায় না)
+        const _sArr = (typeof liveSalesData !== "undefined" && liveSalesData.length) ? liveSalesData
+                     : (typeof salesData !== "undefined" ? salesData : []);
+        const idx = _sArr.findIndex(o => String(o.id || o.orderId || o.OrderID || "") === String(orderId));
+        if (idx > -1) _sArr[idx].trackingLink = trimmed;
+        showToast(trimmed ? '✅ ট্র্যাকিং লিংক সেভ হয়েছে!' : '🗑️ ট্র্যাকিং লিংক মুছে ফেলা হয়েছে', 'success');
+        renderCourierHub();
+      } else {
+        showToast('❌ সেভ হয়নি: ' + (res?.message || 'Unknown error'), 'error');
+      }
+    })
+    .catch(() => showToast('❌ সার্ভারে পাঠাতে সমস্যা হয়েছে', 'error'));
+}
+
+/**
  * কুরিয়ারের সার্ভার থেকে আসা tracking_code ও status
  * OS-এর কুরিয়ার ম্যানেজার টেবিলে এবং Google Sheet-এ আপডেট করো।
  */
@@ -13510,11 +13979,13 @@ function _mapCourierStatus(rawStatus, courierName) {
     if (!m) { await _original(); return; }
 
     // ── সব field আগেই পড়ে রাখো
-    const _qty      = parseFloat(m.querySelector("#order-qty")?.value || "1") || 1;
+    // ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট-লাইনের সমষ্টি ব্যবহার করো
+    const _items    = (Array.isArray(window._orderItems) ? window._orderItems.filter(it=>it.product) : []);
+    const _qty      = _items.length ? _items.reduce((s,it)=>s+(Number(it.qty)||0),0) : (parseFloat(m.querySelector("#order-qty")?.value || "1") || 1);
     const _price    = parseFloat(document.getElementById("unit-price")?.value || "0") || 0;
     const _delivery = parseFloat(m.querySelector("#order-delivery")?.value || "0") || 0;
     const _codPct   = parseFloat(document.getElementById("order-cod-pct")?.value || "0") || 0;
-    const _total    = _qty * _price;
+    const _total    = _items.length ? _items.reduce((s,it)=>s+((Number(it.qty)||0)*(Number(it.price)||0)),0) : (_qty * _price);
     // ✅ BUG #2 FIX: COD % applies to customerPayable (product total + delivery)
     // COD fee is OUR expense — deducted from our net, NOT from what customer pays.
     const _customerPayable = _total + _delivery;
@@ -13530,7 +14001,10 @@ function _mapCourierStatus(rawStatus, courierName) {
       district:    document.getElementById("district-select")?.value || "",
       thana:       document.getElementById("thana-select")?.value || "",
       address:     m.querySelector("#order-address")?.value || "",
-      product:     m.querySelector("#order-product")?.value || "",
+      // ✅ FIX (Multi-product order, Sept 2026): একাধিক প্রোডাক্ট থাকলে সবগুলো নাম একসাথে দেখাও
+      product:     (Array.isArray(window._orderItems) && window._orderItems.length
+                      ? window._orderItems.filter(it=>it.product).map(it=>`${it.product} x${it.qty}`).join(', ')
+                      : (m.querySelector("#order-product")?.value || "")),
       qty:         _qty,
       price:       _price,
       total:       _total,

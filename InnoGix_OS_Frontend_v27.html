@@ -5000,7 +5000,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbwtWREYOFf-MYQA1sK2gmc2SnybGkP6EUykb0Pd1QKl6eAVmNGpvddJumDYIFotEZrw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbxCR-ahtEpaZQA4DwCKPRcZplMWaxtWH-_Skuh8F0JY6Wltm5UpqlNkhXy-jo6XU_AB_w/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -7317,15 +7317,30 @@ function renderSalesRows(rows) {
  * ব্যাকএন্ডে শুধু প্রথম (primary) লাইনেই থাকে (বাকিগুলোতে ০), তাই সরাসরি যোগ করলেই
  * সঠিক অর্ডার-লেভেল টোটাল পাওয়া যায়।
  */
+/**
+ * ✅ FIX (Multi-product order, Sept 2026): একই Order ID (SL#) শেয়ার করা একাধিক
+ * প্রোডাক্ট-লাইন সারিকে একটা অর্ডার হিসেবে গ্রুপ করে — Delivery/Paid/Due অ্যামাউন্ট
+ * ব্যাকএন্ডে শুধু প্রথম (primary) লাইনেই থাকে (বাকিগুলোতে ০), তাই সরাসরি যোগ করলেই
+ * সঠিক অর্ডার-লেভেল টোটাল পাওয়া যায়।
+ * ⚠️ বাগ ফিক্স: rows অ্যারে সবসময় "primary" লাইন আগে থাকে এমন গ্যারান্টি নেই
+ * (Sales লিস্ট newest-first সর্ট করা থাকে, তাই কখনো secondary লাইন আগে চলে আসতে
+ * পারে) — তাই netPayable/codAmount/codPct/tracking/notes ইত্যাদি single-instance
+ * ফিল্ডগুলো এখন "কোন সারি আগে এসেছে" তার বদলে "কোন সারিতে আসলে ভ্যালু আছে" (স্কোর)
+ * দেখে সঠিক primary সারি থেকে নেওয়া হয়।
+ */
 function _groupSalesRows(rows){
   const map = new Map();
   const order = [];
+  const primaryScore = new Map();
+  const scoreOf = r => (Number(r.delivery)||0)+(Number(r.paid)||0)+(Number(r.due)||0)+(Number(r.netPayable)||0)+(Number(r.codAmount)||0);
   (rows||[]).forEach(r=>{
     const key = String(r.id);
+    const s = scoreOf(r);
     if(!map.has(key)){
       const g = { ...r, items:[{product:r.product,qty:r.qty,price:r.price,total:r.total}] };
       map.set(key, g);
       order.push(key);
+      primaryScore.set(key, s);
     } else {
       const g = map.get(key);
       g.items.push({product:r.product,qty:r.qty,price:r.price,total:r.total});
@@ -7333,6 +7348,16 @@ function _groupSalesRows(rows){
       g.paid      = (Number(g.paid)||0)      + (Number(r.paid)||0);
       g.due       = (Number(g.due)||0)       + (Number(r.due)||0);
       g.delivery  = (Number(g.delivery)||0)  + (Number(r.delivery)||0);
+      if (s > primaryScore.get(key)) {
+        g.netPayable   = r.netPayable;
+        g.codAmount    = r.codAmount;
+        g.codPct       = r.codPct;
+        g.tracking     = r.tracking;
+        g.notes        = r.notes;
+        g.description  = r.description;
+        g.trackingLink = r.trackingLink;
+        primaryScore.set(key, s);
+      }
     }
   });
   return order.map(k=>map.get(k));

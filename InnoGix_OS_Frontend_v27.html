@@ -1765,7 +1765,11 @@ tbody td.muted{color:var(--text3);}
         </div>
 
         <!-- ══ PRODUCT TABLE ══ -->
-        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);">
+        <!-- ✅ FIX (PNG এক্সপোর্ট বাগ, Sept 2026): আগে এই টেবিলে border-radius + overflow:hidden
+             একসাথে ছিল — এই কম্বিনেশন html2canvas-এর একটা পরিচিত রেন্ডারিং বাগ, যার কারণে
+             PDF/প্রিন্টে ঠিক দেখালেও PNG এক্সপোর্টে প্রোডাক্ট সারিগুলো ঝাপসা/ফ্যাকাশে হয়ে যেত।
+             সমাধান: টেবিলে radius/overflow/shadow আর ব্যবহার করা হচ্ছে না (সাধারণ, নিরাপদ বর্ডার)। -->
+        <table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px;">
           <thead>
             <tr style="background:#1a3a6b;color:#ffffff;">
               <th style="padding:11px 12px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">পণ্য</th>
@@ -5007,7 +5011,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzxCpKJp8tH9i4Nnc7yygJp6yCzYpTZA2aZ-OGhSdq9MiMNeGo64PHeuo209rErRrLX/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbzjnvP0QhNB_7YWfmmDgOHZ70tb8QSpbkiYvXkGksg4fNADaHYr3LJBSZaq5D1JAw7MlA/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -6187,11 +6191,16 @@ function downloadInvoicePNG(){
   if (typeof _setInvoiceEditMode === 'function') _setInvoiceEditMode(false);
   showToast('PNG তৈরি হচ্ছে...', 'info');
   const doCapture = () => {
+    // ✅ FIX (PNG কোয়ালিটি, Sept 2026): scale 2→3 করা হলো — এতে ছবির আসল
+    // পিক্সেল সাইজ বড় হয়, তাই Facebook Messenger/WhatsApp পাঠানোর সময় নিজেরাই
+    // যে কমপ্রেশন/রিসাইজ করে তার পরেও লেখা শার্প থাকে, জুম করলে ফাটে না।
+    // windowWidth ফিক্স করা হলো যাতে ক্যাপচারের সময় লে-আউট সবসময় একই থাকে।
     html2canvas(area, {
       backgroundColor: '#ffffff',
-      scale: 2,           // ✅ শার্প/হাই-রেজোলিউশন ছবির জন্য
+      scale: 3,
       useCORS: true,
       logging: false,
+      windowWidth: area.scrollWidth,
     }).then(canvas => {
       const invId = (document.getElementById('inv-id')?.textContent || '').trim() || Date.now();
       const link = document.createElement('a');
@@ -13604,8 +13613,17 @@ async function _gasRawCall(payload) {
 }
 
 // ── Feature 5: Manual Book Courier — "🚀 Book Courier" বাটনের handler
+// ✅ FIX (ডুপ্লিকেট বুকিং, Sept 2026): একই অর্ডারের জন্য আগের রিকোয়েস্ট এখনো
+// চলমান থাকলে দ্বিতীয় ক্লিক সার্ভারে পাঠানোই হবে না — সাথে সাথে ব্লক করা হয়
+window._bookingInFlight = window._bookingInFlight || new Set();
 async function manualBookCourier(orderId, courierName) {
   const btn = event?.target;
+  const key = String(orderId);
+  if (window._bookingInFlight.has(key)) {
+    showToast('⏳ এই অর্ডারের বুকিং এখনো প্রসেস হচ্ছে — একটু অপেক্ষা করুন, আবার ক্লিক করবেন না', 'error');
+    return;
+  }
+  window._bookingInFlight.add(key);
   if (btn) { btn.disabled = true; btn.textContent = '⏳ বুকিং হচ্ছে...'; }
   try {
     // salesData থেকে এই order-এর পুরো info নাও
@@ -13625,6 +13643,7 @@ async function manualBookCourier(orderId, courierName) {
     if (!division || !district) {
       showToast('❌ এই অর্ডারে Division/District সেট নেই — আগে Edit করে লোকেশন ঠিক করুন, তারপর বুকিং দিন', 'error');
       if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Book Courier'; }
+      window._bookingInFlight.delete(key);
       return;
     }
     const payload = {
@@ -13648,12 +13667,22 @@ async function manualBookCourier(orderId, courierName) {
       _updateOSTracking(orderId, result.tracking_code||'', result.order_status||'Pending', courierName, true);
       renderCourierHub();
     } else {
-      showToast('❌ বুকিং ব্যর্থ: ' + (result?.message||'Unknown error'), 'error');
+      // ✅ FIX: টাইমআউট হলে স্পষ্ট করে বলো যে আবার সাথে সাথে ক্লিক করা ঠিক হবে না —
+      // কারণ সার্ভার-সাইড বুকিং টাইমআউটের পরেও পেছনে চলতে থাকতে পারে
+      const isTimeout = (result?.message||'').toLowerCase().includes('timeout');
+      showToast(
+        (isTimeout
+          ? '⏳ রিকোয়েস্ট বেশি সময় নিচ্ছে (Timeout) — সাথে সাথে আবার ক্লিক করবেন না, ৩০-৪০ সেকেন্ড পর Courier Manager রিফ্রেশ করে দেখুন বুকিং হয়ে গেছে কিনা।'
+          : '❌ বুকিং ব্যর্থ: ' + (result?.message||'Unknown error')),
+        'error'
+      );
       if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Book Courier'; }
     }
   } catch(e) {
     showToast('❌ Error: ' + e.message, 'error');
     if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Book Courier'; }
+  } finally {
+    window._bookingInFlight.delete(key);
   }
 }
 

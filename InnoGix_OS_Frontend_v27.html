@@ -5011,7 +5011,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzjnvP0QhNB_7YWfmmDgOHZ70tb8QSpbkiYvXkGksg4fNADaHYr3LJBSZaq5D1JAw7MlA/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycby9KMt1n3Jg3KWH8v7J0SNmpWiAdQLi3JWqqBaW0Mf95y6_-y3auec9NJrHMrb9NP6n/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -6191,16 +6191,35 @@ function downloadInvoicePNG(){
   if (typeof _setInvoiceEditMode === 'function') _setInvoiceEditMode(false);
   showToast('PNG তৈরি হচ্ছে...', 'info');
   const doCapture = () => {
-    // ✅ FIX (PNG কোয়ালিটি, Sept 2026): scale 2→3 করা হলো — এতে ছবির আসল
-    // পিক্সেল সাইজ বড় হয়, তাই Facebook Messenger/WhatsApp পাঠানোর সময় নিজেরাই
-    // যে কমপ্রেশন/রিসাইজ করে তার পরেও লেখা শার্প থাকে, জুম করলে ফাটে না।
-    // windowWidth ফিক্স করা হলো যাতে ক্যাপচারের সময় লে-আউট সবসময় একই থাকে।
-    html2canvas(area, {
+    // ✅ FIX (PNG ঝাপসা টেক্সট বাগ, Sept 2026): ইনভয়েসটা একটা মোডালের ভেতরে
+    // থাকে, যেটা ওপেন হওয়ার সময় CSS অ্যানিমেশন চালায় আর স্ক্রলও হতে পারে
+    // (ছোট মোবাইল স্ক্রিনে)। PDF এসব সমস্যায় পড়ে না কারণ সেটা outerHTML কপি
+    // করে সম্পূর্ণ নতুন, animation/scroll-মুক্ত উইন্ডোতে বসায়। PNG-ও এখন
+    // একই কৌশল নিচ্ছে — লাইভ মোডালের বদলে একটা আলাদা, অফ-স্ক্রিন, স্থির
+    // (animation/scroll-মুক্ত) ক্লোন থেকে ক্যাপচার করা হয়, সাথে
+    // document.fonts.ready-এর জন্য অপেক্ষা করা হয় (Google Fonts পুরোপুরি
+    // লোড হওয়ার আগে ছবি না তোলার জন্য) এবং foreignObjectRendering বন্ধ
+    // রাখা হলো (বেশি স্টেবল রেন্ডারিং পাথ)।
+    const clone = area.cloneNode(true);
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'fixed';
+    wrapper.style.left = '-99999px';
+    wrapper.style.top = '0';
+    wrapper.style.opacity = '1';
+    wrapper.style.transform = 'none';
+    wrapper.style.animation = 'none';
+    wrapper.style.pointerEvents = 'none';
+    wrapper.appendChild(clone);
+    document.body.appendChild(wrapper);
+
+    const capture = () => html2canvas(clone, {
       backgroundColor: '#ffffff',
       scale: 3,
       useCORS: true,
       logging: false,
-      windowWidth: area.scrollWidth,
+      windowWidth: clone.scrollWidth,
+      foreignObjectRendering: false,
+      imageTimeout: 15000,
     }).then(canvas => {
       const invId = (document.getElementById('inv-id')?.textContent || '').trim() || Date.now();
       const link = document.createElement('a');
@@ -6210,7 +6229,11 @@ function downloadInvoicePNG(){
       showToast('✅ PNG ডাউনলোড হয়েছে!', 'success');
     }).catch(e => {
       showToast('PNG error: ' + e.message, 'error');
+    }).finally(() => {
+      document.body.removeChild(wrapper);
     });
+    const fontsReady = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+    fontsReady.then(() => setTimeout(capture, 150)); // ফন্ট রেডি হওয়ার পরও একটু বাফার সময়
   };
   if (typeof html2canvas !== 'undefined') { doCapture(); return; }
   const script = document.createElement('script');

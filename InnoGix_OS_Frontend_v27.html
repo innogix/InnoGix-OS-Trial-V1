@@ -1630,6 +1630,29 @@ tbody td.muted{color:var(--text3);}
   visibility: hidden;
 }
 
+
+/* ═══ v80: Strategy Hub — compact preview rows + Book-style Reader ═══ */
+.sh-row{cursor:pointer;}
+.sh-row:hover td{background:rgba(88,166,255,.06);}
+.sh-preview{white-space:normal;max-width:380px;min-width:180px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5;color:var(--text2,#8b949e);word-break:break-word;}
+.sh-preview-sm{max-width:200px;min-width:100px;}
+.sh-actions{white-space:nowrap;}
+#modal-sh-reader .modal{max-width:760px;width:94vw;max-height:92vh;display:flex;flex-direction:column;}
+#modal-sh-reader .modal-body{overflow-y:auto;padding:0;}
+.sh-rd-toolbar{display:flex;gap:6px;align-items:center;}
+.sh-rd-toolbar button{padding:2px 9px;font-size:13px;}
+.sh-rd-head{padding:22px 28px 10px;}
+.sh-rd-title{font-size:22px;font-weight:700;line-height:1.4;word-break:break-word;}
+.sh-rd-badges{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+.sh-rd-meta{display:flex;flex-wrap:wrap;gap:8px 22px;padding:10px 28px 14px;border-bottom:1px solid var(--border,#30363d);font-size:13px;}
+.sh-rd-meta span{color:var(--text3,#6e7681);margin-right:6px;}
+.sh-rd-body{padding:18px 28px 28px;}
+.sh-rd-sec{margin-bottom:22px;}
+.sh-rd-label{font-size:12px;letter-spacing:.5px;color:var(--gold,#d4a017);font-weight:700;margin-bottom:8px;}
+.sh-rd-text{white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere;line-height:1.9;max-width:66ch;}
+.sh-rd-empty{color:var(--text3,#6e7681);font-style:italic;}
+.sh-rd-foot{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:12px 20px;border-top:1px solid var(--border,#30363d);}
+@media(max-width:600px){.sh-rd-head,.sh-rd-meta,.sh-rd-body{padding-left:16px;padding-right:16px;}.sh-rd-title{font-size:19px;}}
 </style>
 </head>
 <body>
@@ -1887,6 +1910,20 @@ tbody td.muted{color:var(--text3);}
 <!-- ══════ 🎯 STRATEGY & TASK HUB — MODALS ══════ -->
 
 <!-- Add/Edit Daily Task -->
+<div class="modal-overlay" id="modal-sh-reader" onclick="if(event.target===this)shCloseReader()">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">📖 পড়ার ভিউ</span>
+      <div class="sh-rd-toolbar">
+        <button class="btn" onclick="shReaderFont(-2)" title="ছোট">A−</button>
+        <button class="btn" onclick="shReaderFont(2)" title="বড়">A+</button>
+        <button class="modal-close" onclick="shCloseReader()">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" id="sh-reader-content"></div>
+    <div class="sh-rd-foot" id="sh-reader-actions"></div>
+  </div>
+</div>
 <div class="modal-overlay" id="modal-add-task">
   <div class="modal" style="max-width:480px;">
     <div class="modal-header">
@@ -5011,7 +5048,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzmvx6iYVhZ5WeunrvOjXgigeu-FhvjXXWWvYFfPywjB13bvRN4fjKvyqM0KZjtZRyycw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbw1vP6nXqBDWfcA6dHwkNJzc3awEma__ORlGPoye44rVaDgx04jg85gNDbSu3LEZGkgdA/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -8952,27 +8989,29 @@ function renderDailyTasksTable(){
     document.getElementById('sh-tasks-showing').textContent = 'Showing 0 records';
     return;
   }
-  body.innerHTML = rows.map(t => `<tr>
-    <td class="mono muted">${t.id}</td>
-    <td class="mono">${t.date||'—'}</td>
-    <td><strong>${t.assignedTo==='Ashik'?'Partner B (Ashik)':t.assignedTo}</strong></td>
-    <td class="muted">${t.description||'—'}</td>
-    <td><span class="status ${SH_PRIORITY_CSS[t.priority]||'pending'}">${t.priority}</span></td>
+  body.innerHTML = rows.map(t => `<tr class="sh-row" onclick="shOpenReader('task','${shEsc(String(t.id))}')" title="খুলে পড়তে ক্লিক করুন">
+    <td class="mono muted">${shEsc(t.id)}</td>
+    <td class="mono">${shFmtDate(t.date)}</td>
+    <td><strong>${shEsc(t.assignedTo==='Ashik'?'Partner B (Ashik)':t.assignedTo)}</strong></td>
+    <td><div class="sh-preview">${shEsc(t.description)||'—'}</div></td>
+    <td><span class="status ${SH_PRIORITY_CSS[t.priority]||'pending'}">${shEsc(t.priority)}</span></td>
     <td>
-      <span class="status ${SH_STATUS_CSS[t.status]||'pending'}" style="cursor:pointer;" onclick="shCycleTaskStatus('${t.id}','${t.status}')" title="ক্লিক করে Status পরিবর্তন করুন">
-        ${t.status==='Completed'?'✅':t.status==='In Progress'?'🔄':'⏳'} ${t.status}
+      <span class="status ${SH_STATUS_CSS[t.status]||'pending'}" style="cursor:pointer;" onclick="event.stopPropagation();shCycleTaskStatus('${shEsc(String(t.id))}')" title="ক্লিক করে Status পরিবর্তন করুন">
+        ${t.status==='Completed'?'✅':t.status==='In Progress'?'🔄':'⏳'} ${shEsc(t.status)}
       </span>
     </td>
-    <td class="muted">${t.remarks||'—'}</td>
-    <td>
-      <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openAddTaskModal(${JSON.stringify(t)})'>✏️</button>
-      <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick="deleteDailyTaskConfirm('${t.id}','${(t.description||'').replace(/'/g,"\\'")}')">🗑️</button>
+    <td><div class="sh-preview sh-preview-sm">${shEsc(t.remarks)||'—'}</div></td>
+    <td class="sh-actions">
+      <button class="btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();shEditItem('task','${shEsc(String(t.id))}')">✏️</button>
+      <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick="event.stopPropagation();shDeleteItem('task','${shEsc(String(t.id))}')">🗑️</button>
     </td>
   </tr>`).join('');
   document.getElementById('sh-tasks-showing').textContent = `Showing ${rows.length} record(s)`;
 }
 // Status বাটনে ক্লিক করলে Pending → In Progress → Completed → Pending চক্রে যায় (instant toggle)
-async function shCycleTaskStatus(taskId, currentStatus){
+async function shCycleTaskStatus(taskId){
+  const cur = liveDailyTasksData.find(x => String(x.id)===String(taskId));
+  const currentStatus = cur ? cur.status : 'Pending';
   const next = currentStatus==='Pending' ? 'In Progress' : currentStatus==='In Progress' ? 'Completed' : 'Pending';
   const result = await postToAPI({ action:'updateTaskStatus', taskId, status: next });
   if(!result) return;
@@ -9015,18 +9054,6 @@ async function submitDailyTask(){
   logAction(taskId ? 'Task #'+taskId+' এডিট করেছেন' : 'নতুন Task যোগ করেছেন: '+description);
   loadLiveDailyTasks();
 }
-function deleteDailyTaskConfirm(taskId, description){
-  if(!confirm(`Task মুছে ফেলতে চান?\n"${description}"\n\n(Recycle Bin-এ পাঠানো হবে — ৩০ দিন পর্যন্ত পুনরুদ্ধার করা যাবে)`)) return;
-  deleteDailyTask(taskId);
-}
-async function deleteDailyTask(taskId){
-  const result = await postToAPI({ action:'deleteDailyTask', taskId });
-  if(!result) return;
-  showToast('🗑️ Task Recycle Bin-এ পাঠানো হয়েছে', 'success');
-  logAction('Task #'+taskId+' মুছে ফেলেছেন');
-  loadLiveDailyTasks();
-}
-
 // ─── STRATEGIC ROADMAP ────────────────────────────────────────
 async function loadLiveStrategyPlans(){
   const data = await fetchFromAPI('strategyPlans');
@@ -9048,18 +9075,18 @@ function renderStrategyPlansTable(){
     document.getElementById('sh-plans-showing').textContent = 'Showing 0 records';
     return;
   }
-  body.innerHTML = rows.map(p => `<tr>
-    <td class="mono muted">${p.id}</td>
-    <td><span class="status ${p.type==='Long-Term'?'processing':'pending'}">${p.type}</span></td>
-    <td><strong>${p.title||'—'}</strong></td>
-    <td class="mono">${p.targetDate||'—'}</td>
-    <td class="muted">${p.milestones||'—'}</td>
+  body.innerHTML = rows.map(p => `<tr class="sh-row" onclick="shOpenReader('plan','${shEsc(String(p.id))}')" title="খুলে পড়তে ক্লিক করুন">
+    <td class="mono muted">${shEsc(p.id)}</td>
+    <td><span class="status ${p.type==='Long-Term'?'processing':'pending'}">${shEsc(p.type)}</span></td>
+    <td><strong>${shEsc(p.title)||'—'}</strong></td>
+    <td class="mono">${shFmtDate(p.targetDate)}</td>
+    <td><div class="sh-preview">${shEsc(p.milestones)||'—'}</div></td>
     <td class="mono" style="font-weight:700;color:var(--gold);">৳${p.budget.toLocaleString()}</td>
-    <td><span class="status ${SH_STATUS_CSS[p.status]||'pending'}">${p.status}</span></td>
-    <td>${p.owner==='Ashik'?'Partner B (Ashik)':(p.owner||'—')}</td>
-    <td>
-      <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openAddPlanModal(${JSON.stringify(p)})'>✏️</button>
-      <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick="deleteStrategyPlanConfirm('${p.id}','${(p.title||'').replace(/'/g,"\\'")}')">🗑️</button>
+    <td><span class="status ${SH_STATUS_CSS[p.status]||'pending'}">${shEsc(p.status)}</span></td>
+    <td>${shEsc(p.owner==='Ashik'?'Partner B (Ashik)':(p.owner||'—'))}</td>
+    <td class="sh-actions">
+      <button class="btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();shEditItem('plan','${shEsc(String(p.id))}')">✏️</button>
+      <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick="event.stopPropagation();shDeleteItem('plan','${shEsc(String(p.id))}')">🗑️</button>
     </td>
   </tr>`).join('');
   document.getElementById('sh-plans-showing').textContent = `Showing ${rows.length} record(s)`;
@@ -9099,18 +9126,6 @@ async function submitStrategyPlan(){
   logAction(strategyId ? 'Strategy #'+strategyId+' এডিট করেছেন' : 'নতুন Strategy Plan যোগ করেছেন: '+title);
   loadLiveStrategyPlans();
 }
-function deleteStrategyPlanConfirm(strategyId, title){
-  if(!confirm(`Strategy Plan মুছে ফেলতে চান?\n"${title}"\n\n(Recycle Bin-এ পাঠানো হবে — ৩০ দিন পর্যন্ত পুনরুদ্ধার করা যাবে)`)) return;
-  deleteStrategyPlan(strategyId);
-}
-async function deleteStrategyPlan(strategyId){
-  const result = await postToAPI({ action:'deleteStrategyPlan', strategyId });
-  if(!result) return;
-  showToast('🗑️ Strategy Plan Recycle Bin-এ পাঠানো হয়েছে', 'success');
-  logAction('Strategy #'+strategyId+' মুছে ফেলেছেন');
-  loadLiveStrategyPlans();
-}
-
 // ─── IDEA & BRAINSTORMING BOX ─────────────────────────────────
 async function loadLiveIdeaNotes(){
   const data = await fetchFromAPI('ideaNotes');
@@ -9132,21 +9147,21 @@ function renderIdeaNotesTable(){
     document.getElementById('sh-ideas-showing').textContent = 'Showing 0 records';
     return;
   }
-  body.innerHTML = rows.map(i => `<tr>
-    <td class="mono muted">${i.id}</td>
-    <td class="mono">${i.date||'—'}</td>
-    <td><strong>${i.title||'—'}</strong></td>
-    <td class="muted">${i.description||'—'}</td>
-    <td>${i.proposedBy==='Ashik'?'Partner B (Ashik)':(i.proposedBy||'—')}</td>
-    <td>
-      <select class="form-select" style="padding:4px 8px;font-size:11px;" onchange="shChangeIdeaStatus('${i.id}',this.value)">
-        ${['New Idea','Under Review','Approved','Archived'].map(s=>`<option value="${s}" ${s===i.status?'selected':''}>${s}</option>`).join('')}
+  body.innerHTML = rows.map(i => `<tr class="sh-row" onclick="shOpenReader('idea','${shEsc(String(i.id))}')" title="খুলে পড়তে ক্লিক করুন">
+    <td class="mono muted">${shEsc(i.id)}</td>
+    <td class="mono">${shFmtDate(i.date)}</td>
+    <td><strong>${shEsc(i.title)||'—'}</strong></td>
+    <td><div class="sh-preview">${shEsc(i.description)||'—'}</div></td>
+    <td>${shEsc(i.proposedBy==='Ashik'?'Partner B (Ashik)':(i.proposedBy||'—'))}</td>
+    <td onclick="event.stopPropagation()">
+      <select class="form-select" style="padding:4px 8px;font-size:11px;" onchange="shChangeIdeaStatus('${shEsc(String(i.id))}',this.value)">
+        ${['New Idea','Under Review','Approved','Archived'].map(st=>`<option value="${st}" ${st===i.status?'selected':''}>${st}</option>`).join('')}
       </select>
     </td>
-    <td class="muted">${i.actionNotes||'—'}</td>
-    <td>
-      <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openAddIdeaModal(${JSON.stringify(i)})'>✏️</button>
-      <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick="deleteIdeaConfirm('${i.id}','${(i.title||'').replace(/'/g,"\\'")}')">🗑️</button>
+    <td><div class="sh-preview sh-preview-sm">${shEsc(i.actionNotes)||'—'}</div></td>
+    <td class="sh-actions">
+      <button class="btn" style="padding:4px 10px;font-size:11px;" onclick="event.stopPropagation();shEditItem('idea','${shEsc(String(i.id))}')">✏️</button>
+      <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick="event.stopPropagation();shDeleteItem('idea','${shEsc(String(i.id))}')">🗑️</button>
     </td>
   </tr>`).join('');
   document.getElementById('sh-ideas-showing').textContent = `Showing ${rows.length} record(s)`;
@@ -9192,28 +9207,135 @@ async function submitIdea(){
   logAction(ideaId ? 'Idea #'+ideaId+' এডিট করেছেন' : 'নতুন Idea যোগ করেছেন: '+title);
   loadLiveIdeaNotes();
 }
-function deleteIdeaConfirm(ideaId, title){
-  if(!confirm(`Idea মুছে ফেলতে চান?\n"${title}"\n\n(Recycle Bin-এ পাঠানো হবে — ৩০ দিন পর্যন্ত পুনরুদ্ধার করা যাবে)`)) return;
-  deleteIdea(ideaId);
-}
-async function deleteIdea(ideaId){
-  const result = await postToAPI({ action:'deleteIdea', ideaId });
-  if(!result) return;
-  showToast('🗑️ Idea Recycle Bin-এ পাঠানো হয়েছে', 'success');
-  logAction('Idea #'+ideaId+' মুছে ফেলেছেন');
-  loadLiveIdeaNotes();
-}
-
 // ─── Helper: 'dd-MMM-yyyy...' বা যেকোনো তারিখ স্ট্রিং কে <input type=date> এর
 //     জন্য 'yyyy-MM-dd' ফরম্যাটে বদলায়; না পারলে খালি রাখে ───
 function _shToDateInput(dateStr){
-  if(!dateStr) return '';
-  const d = new Date(dateStr);
-  if(isNaN(d.getTime())) return '';
-  const yyyy = d.getFullYear(), mm = String(d.getMonth()+1).padStart(2,'0'), dd = String(d.getDate()).padStart(2,'0');
-  return `${yyyy}-${mm}-${dd}`;
+  const p = shParseDate(dateStr);
+  return p ? `${p.y}-${String(p.m).padStart(2,'0')}-${String(p.d).padStart(2,'0')}` : '';
 }
-function dNowBD_(){ return new Date().toISOString(); }
+// আজকের তারিখ — বাংলাদেশ সময় (Asia/Dhaka) অনুযায়ী, UTC নয়
+function dNowBD_(){
+  try{ return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Dhaka',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
+  catch(e){ const d=new Date(Date.now()+6*3600*1000); return d.toISOString().slice(0,10); }
+}
+
+
+// ═══ v80: Date helpers, HTML escape, Book-style Reader, id-based Edit/Delete ═══
+const SH_MON = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+const SH_BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+function shEsc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function shBnNum(n){ return String(n).replace(/\d/g, c=>'০১২৩৪৫৬৭৮৯'[c]); }
+// যেকোনো তারিখ ফরম্যাট (yyyy-mm-dd / dd-MMM-yyyy / পুরনো ISO UTC 'T18:00:00.000Z') → {y,m,d} (ঢাকা সময়)
+function shParseDate(v){
+  if(v==null) return null;
+  const t = String(v).trim(); if(!t) return null;
+  let m;
+  if((m = t.match(/^(\d{4})-(\d{2})-(\d{2})T/))){
+    const d = new Date(t);
+    if(!isNaN(d.getTime())){ const b = new Date(d.getTime()+6*3600*1000); return {y:b.getUTCFullYear(), m:b.getUTCMonth()+1, d:b.getUTCDate()}; }
+  }
+  if((m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return {y:+m[1], m:+m[2], d:+m[3]};
+  if((m = t.match(/^(\d{1,2})[-\s\/]([A-Za-z]{3})[A-Za-z]*[-\s\/,]*(\d{4})/))){ const mo = SH_MON[m[2].toLowerCase()]; if(mo) return {y:+m[3], m:mo, d:+m[1]}; }
+  if((m = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/))) return {y:+m[3], m:+m[2], d:+m[1]};
+  return null;
+}
+function shFmtDate(v){
+  const p = shParseDate(v);
+  if(!p) return v ? shEsc(v) : '—';
+  return `${shBnNum(p.d)} ${SH_BN_MONTHS[p.m-1]} ${shBnNum(p.y)}`;
+}
+function shFindItem(kind,id){
+  const arr = kind==='task' ? liveDailyTasksData : kind==='plan' ? liveStrategyPlansData : liveIdeaNotesData;
+  return arr.find(x => String(x.id)===String(id));
+}
+function shEditItem(kind,id){
+  const it = shFindItem(kind,id); if(!it) return;
+  shCloseReader();
+  if(kind==='task') openAddTaskModal(it); else if(kind==='plan') openAddPlanModal(it); else openAddIdeaModal(it);
+}
+async function shDeleteItem(kind,id){
+  const it = shFindItem(kind,id); if(!it) return;
+  const label = kind==='task' ? 'Task' : kind==='plan' ? 'Strategy Plan' : 'Idea';
+  const name = (kind==='task' ? it.description : it.title) || '';
+  const short = name.length>80 ? name.slice(0,80)+'…' : name;
+  if(!confirm(`${label} মুছে ফেলতে চান?\n"${short}"\n\n(Recycle Bin-এ পাঠানো হবে — ৩০ দিন পর্যন্ত পুনরুদ্ধার করা যাবে)`)) return;
+  const action = kind==='task' ? 'deleteDailyTask' : kind==='plan' ? 'deleteStrategyPlan' : 'deleteIdea';
+  const idKey  = kind==='task' ? 'taskId' : kind==='plan' ? 'strategyId' : 'ideaId';
+  const payload = { action }; payload[idKey] = String(id);
+  const result = await postToAPI(payload);
+  if(!result) return;
+  // সাথে সাথে স্ক্রিন থেকে সরিয়ে ফেলা
+  if(kind==='task'){ liveDailyTasksData = liveDailyTasksData.filter(x=>String(x.id)!==String(id)); renderDailyTasksTable(); }
+  else if(kind==='plan'){ liveStrategyPlansData = liveStrategyPlansData.filter(x=>String(x.id)!==String(id)); renderStrategyPlansTable(); }
+  else { liveIdeaNotesData = liveIdeaNotesData.filter(x=>String(x.id)!==String(id)); renderIdeaNotesTable(); }
+  shCloseReader();
+  showToast(`🗑️ ${label} Recycle Bin-এ পাঠানো হয়েছে`, 'success');
+  logAction(`${label} #${id} মুছে ফেলেছেন`);
+}
+
+// ─── 📖 READER ───
+let _shReader = { kind:null, id:null, size:17 };
+function shReaderSection(label, text){
+  if(text==null || String(text).trim()==='') return '';
+  return `<div class="sh-rd-sec"><div class="sh-rd-label">${label}</div><div class="sh-rd-text" style="font-size:${_shReader.size}px;">${shEsc(text)}</div></div>`;
+}
+function shOpenReader(kind,id){
+  const it = shFindItem(kind,id); if(!it) return;
+  _shReader.kind = kind; _shReader.id = String(id);
+  try{ const sz = parseInt(localStorage.getItem('sh_reader_size')); if(sz>=13 && sz<=28) _shReader.size = sz; }catch(e){}
+  shRenderReader();
+  document.getElementById('modal-sh-reader').classList.add('open');
+}
+function shRenderReader(){
+  const {kind,id} = _shReader; const it = shFindItem(kind,id); if(!it) return;
+  const meta = [], bodyParts = [];
+  let title='', icon='', badges='';
+  const person = n => n==='Ashik' ? 'Partner B (Ashik)' : (n||'—');
+  if(kind==='task'){
+    icon='✅';
+    const lines = String(it.description||'').split('\n'); title = (lines[0]||'Task').trim();
+    const rest = lines.slice(1).join('\n').replace(/^\s*\n/,'');
+    badges = `<span class="status ${SH_PRIORITY_CSS[it.priority]||'pending'}">${shEsc(it.priority)}</span> <span class="status ${SH_STATUS_CSS[it.status]||'pending'}">${shEsc(it.status)}</span>`;
+    meta.push(['📅 তারিখ', shFmtDate(it.date)], ['👤 দায়িত্বে', shEsc(person(it.assignedTo))], ['🔢 ID', '#'+shEsc(it.id)]);
+    bodyParts.push(shReaderSection('বিবরণ', rest || (lines.length>1?'':'')), shReaderSection('মন্তব্য / Remarks', it.remarks));
+    if(!rest) bodyParts[0] = '';
+  } else if(kind==='plan'){
+    icon='🧭'; title = it.title||'Plan';
+    badges = `<span class="status ${it.type==='Long-Term'?'processing':'pending'}">${shEsc(it.type)}</span> <span class="status ${SH_STATUS_CSS[it.status]||'pending'}">${shEsc(it.status)}</span>`;
+    meta.push(['🎯 লক্ষ্য তারিখ', shFmtDate(it.targetDate)], ['💰 বাজেট', '৳'+(it.budget||0).toLocaleString()], ['👤 Owner', shEsc(person(it.owner))], ['🔢 ID', '#'+shEsc(it.id)]);
+    bodyParts.push(shReaderSection('মাইলস্টোন / ধাপসমূহ', it.milestones));
+  } else {
+    icon='💡'; title = it.title||'Idea';
+    badges = `<span class="status ${SH_STATUS_CSS[it.status]||'pending'}">${shEsc(it.status)}</span>`;
+    meta.push(['📅 তারিখ', shFmtDate(it.date)], ['👤 প্রস্তাবক', shEsc(person(it.proposedBy))], ['🔢 ID', '#'+shEsc(it.id)]);
+    bodyParts.push(shReaderSection('বিস্তারিত বিবরণ', it.description), shReaderSection('Action Plan Notes', it.actionNotes));
+  }
+  const bodyHtml = bodyParts.join('') || '<div class="sh-rd-empty">আর কোনো বিস্তারিত লেখা নেই।</div>';
+  document.getElementById('sh-reader-content').innerHTML = `
+    <div class="sh-rd-head"><div class="sh-rd-title">${icon} ${shEsc(title)}</div><div class="sh-rd-badges">${badges}</div></div>
+    <div class="sh-rd-meta">${meta.map(m=>`<div><span>${m[0]}</span><b>${m[1]}</b></div>`).join('')}</div>
+    <div class="sh-rd-body">${bodyHtml}</div>`;
+  document.getElementById('sh-reader-actions').innerHTML = `
+    <button class="btn" onclick="shEditItem('${kind}','${shEsc(id)}')">✏️ Edit</button>
+    <button class="btn" onclick="shCopyReader()">📋 Copy</button>
+    <button class="btn" style="background:var(--red);color:#fff;border-color:var(--red);" onclick="shDeleteItem('${kind}','${shEsc(id)}')">🗑️ Delete</button>`;
+}
+function shCloseReader(){ const m=document.getElementById('modal-sh-reader'); if(m) m.classList.remove('open'); }
+function shReaderFont(delta){
+  _shReader.size = Math.max(13, Math.min(28, _shReader.size + delta));
+  try{ localStorage.setItem('sh_reader_size', String(_shReader.size)); }catch(e){}
+  shRenderReader();
+}
+function shCopyReader(){
+  const it = shFindItem(_shReader.kind,_shReader.id); if(!it) return;
+  let txt;
+  if(_shReader.kind==='task') txt = `${it.description}\n\nAssigned: ${it.assignedTo}\nDate: ${it.date}\nPriority: ${it.priority} | Status: ${it.status}\n${it.remarks?'Remarks: '+it.remarks:''}`;
+  else if(_shReader.kind==='plan') txt = `${it.title}\n[${it.type} | ${it.status}] Target: ${it.targetDate} | Budget: ${it.budget}\n\n${it.milestones}`;
+  else txt = `${it.title}\n[${it.status}] ${it.date} — ${it.proposedBy}\n\n${it.description}\n\n${it.actionNotes?'Action Notes:\n'+it.actionNotes:''}`;
+  const done = ()=>showToast('📋 কপি হয়েছে','success');
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt.trim()).then(done, ()=>showToast('কপি করা যায়নি','error')); }
+  else { const ta=document.createElement('textarea'); ta.value=txt.trim(); document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');done();}catch(e){showToast('কপি করা যায়নি','error');} ta.remove(); }
+}
 
 // ─── CONNECTION TEST ─────────────────────────────────────────
 async function testConnection(){

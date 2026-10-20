@@ -2116,6 +2116,7 @@ tbody td.muted{color:var(--text3);}
   <div class="nav-item" onclick="showPage('partner',this)"><span class="nav-icon">🤝</span>Partners</div>
   <div class="nav-item" onclick="showPage('crm',this)"><span class="nav-icon">👥</span>Customers</div>
   <div class="nav-item" onclick="showPage('investors',this)"><span class="nav-icon">📈</span>Investors</div>
+  <div class="nav-item" onclick="showPage('cashflow',this)"><span class="nav-icon">💰</span>Cash Flow</div>
   <div class="nav-item" onclick="showPage('delivery-analytics',this)"><span class="nav-icon">🚚</span>Delivery Analytics</div>
   <div class="nav-item" onclick="showPage('courier-hub',this)"><span class="nav-icon">📦</span>কুরিয়ার ম্যানেজার<span class="nav-badge gold" id="courier-badge">6</span></div>
   <div class="nav-item" onclick="showPage('calculator',this)"><span class="nav-icon">🧮</span>Order Calculator</div>
@@ -2329,6 +2330,12 @@ tbody td.muted{color:var(--text3);}
           <div class="kpi-label">Total Investment</div>
           <div class="kpi-value"><span class="tk">৳</span><span id="kpi-total-investment">—</span></div>
           <div class="kpi-change" style="color:var(--text3)" id="kpi-investor-sub">Investor module</div>
+        </div>
+        <div class="kpi-card green" id="kpi-card-cashflow" onclick="showPage('cashflow',document.querySelector('.nav-item[onclick*=cashflow]'))" style="cursor:pointer;" title="Cash Flow মডিউল খুলুন">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-label">Cash Flow Balance</div>
+          <div class="kpi-value"><span class="tk">৳</span><span id="kpi-cashflow-balance">—</span></div>
+          <div class="kpi-change" style="color:var(--text3)" id="kpi-cashflow-sub">Cash Flow module</div>
         </div>
         <div class="kpi-card blue" id="kpi-card-top-region" onclick="openTopRegionModal()" title="Click to see full regional breakdown">
           <div class="kpi-icon">🗺️</div>
@@ -2999,6 +3006,236 @@ tbody td.muted{color:var(--text3);}
       </div>
     </div>
 
+    <!-- ═══════════════════════════════════════════════
+         💰 CASH FLOW MODULE (Independent) — v82
+         অন্য কোনো মডিউলের সাথে যুক্ত নয়। সব এন্ট্রি ম্যানুয়াল।
+         Current Balance = Opening Balance + Total Credit − Total Debit
+         ═══════════════════════════════════════════════ -->
+    <style>
+      #page-cashflow .cf-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:14px;}
+      #page-cashflow .cf-kpi{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;overflow:hidden;}
+      #page-cashflow .cf-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--cf-accent,var(--gold));}
+      #page-cashflow .cf-kpi.balance{--cf-accent:var(--gold);background:linear-gradient(135deg,rgba(212,160,23,.12),rgba(212,160,23,.02));border-color:rgba(212,160,23,.35);}
+      #page-cashflow .cf-kpi.credit{--cf-accent:var(--green);}
+      #page-cashflow .cf-kpi.debit{--cf-accent:var(--red);}
+      #page-cashflow .cf-kpi.opening{--cf-accent:var(--blue);}
+      #page-cashflow .cf-kpi-label{font-size:12px;color:var(--text3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+      #page-cashflow .cf-kpi-value{font-size:26px;font-weight:800;color:var(--text);font-family:'IBM Plex Mono',monospace,sans-serif;word-break:break-all;}
+      #page-cashflow .cf-kpi.balance .cf-kpi-value{font-size:32px;}
+      #page-cashflow .cf-kpi.credit .cf-kpi-value{color:var(--green);}
+      #page-cashflow .cf-kpi.debit .cf-kpi-value{color:var(--red);}
+      #page-cashflow .cf-kpi-sub{font-size:11px;color:var(--text3);margin-top:4px;}
+      #page-cashflow .cf-formula{font-size:12px;color:var(--text3);margin-bottom:16px;padding:8px 12px;border:1px dashed var(--border);border-radius:8px;}
+      #page-cashflow .cf-notice{display:none;margin-bottom:14px;padding:12px 16px;border-radius:10px;background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.4);color:var(--text);font-size:13px;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+      #page-cashflow .cf-notice.show{display:flex;}
+      #page-cashflow .cf-actions{display:flex;gap:10px;flex-wrap:wrap;}
+      #page-cashflow .cf-btn-credit{background:var(--green);border-color:var(--green);color:#fff;font-weight:700;}
+      #page-cashflow .cf-btn-credit:hover{filter:brightness(1.1);}
+      #page-cashflow .cf-btn-debit{background:var(--red);border-color:var(--red);color:#fff;font-weight:700;}
+      #page-cashflow .cf-btn-debit:hover{filter:brightness(1.1);}
+      #page-cashflow .cf-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);align-items:end;}
+      #page-cashflow .cf-filters label{font-size:11px;color:var(--text3);font-weight:600;display:block;margin-bottom:4px;}
+      #page-cashflow .cf-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;}
+      #page-cashflow .cf-pill.credit{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.4);}
+      #page-cashflow .cf-pill.debit{background:rgba(248,81,73,.15);color:var(--red);border:1px solid rgba(248,81,73,.4);}
+      #page-cashflow td.cf-amt{font-family:'IBM Plex Mono',monospace,sans-serif;font-weight:700;white-space:nowrap;text-align:right;}
+      #page-cashflow td.cf-amt.credit{color:var(--green);}
+      #page-cashflow td.cf-amt.debit{color:var(--red);}
+      #page-cashflow td.cf-run{font-family:'IBM Plex Mono',monospace,sans-serif;white-space:nowrap;text-align:right;color:var(--text2);}
+      #page-cashflow td.cf-note{max-width:340px;white-space:pre-wrap;word-break:break-word;}
+      #page-cashflow .cf-row-actions{display:flex;gap:6px;justify-content:center;}
+      #page-cashflow .cf-foot{padding:10px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between;}
+      #modal-cf-entry .cf-type-toggle{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+      #modal-cf-entry .cf-type-toggle button{padding:12px;border-radius:10px;border:2px solid var(--border);background:var(--bg2);color:var(--text2);font-weight:700;font-size:14px;cursor:pointer;}
+      #modal-cf-entry .cf-type-toggle button.on-credit{border-color:var(--green);background:rgba(63,185,80,.15);color:var(--green);}
+      #modal-cf-entry .cf-type-toggle button.on-debit{border-color:var(--red);background:rgba(248,81,73,.15);color:var(--red);}
+      #modal-cf-entry .cf-amount-input{font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace,sans-serif;}
+      @media (max-width:600px){#page-cashflow .cf-kpi.balance .cf-kpi-value{font-size:26px;}#page-cashflow .cf-kpi-value{font-size:22px;}}
+    </style>
+
+    <div class="page" id="page-cashflow">
+      <div class="page-header">
+        <div>
+          <div class="page-title">💰 Cash Flow</div>
+          <div class="page-sub">আলাদা ক্যাশ ব্যালেন্স — সব এন্ট্রি ম্যানুয়াল, অন্য কোনো মডিউলের সাথে যুক্ত নয়</div>
+        </div>
+        <div class="cf-actions">
+          <button class="btn cf-btn-credit" onclick="cfOpenEntry('Credit')">＋ Credit (জমা)</button>
+          <button class="btn cf-btn-debit" onclick="cfOpenEntry('Debit')">− Debit (খরচ)</button>
+          <button class="btn" onclick="cfOpenOpening()">⚙️ Opening Balance</button>
+          <button class="btn" onclick="cfLoad()">🔄 রিফ্রেশ</button>
+          <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="cfOpenImport()">📥 Import CSV</button>
+          <button class="btn export-excel" onclick="cfExport()">📥 Export Excel</button>
+        </div>
+      </div>
+
+      <div class="cf-notice" id="cf-open-notice">
+        <span>⚠️ <strong>Opening Balance</strong> এখনো সেট করা হয়নি। শুরুতে হাতে কত টাকা ছিল সেটা দিন — না দিলে ০ ধরে হিসাব হবে।</span>
+        <button class="btn btn-gold btn-sm" onclick="cfOpenOpening()">Opening Balance দিন</button>
+      </div>
+
+      <div class="cf-kpis">
+        <div class="cf-kpi balance">
+          <div class="cf-kpi-label">💼 Current Balance</div>
+          <div class="cf-kpi-value" id="cf-kpi-balance">—</div>
+          <div class="cf-kpi-sub">বর্তমানে মোট কত টাকা আছে</div>
+        </div>
+        <div class="cf-kpi credit">
+          <div class="cf-kpi-label">⬆️ Total Credit</div>
+          <div class="cf-kpi-value" id="cf-kpi-credit">—</div>
+          <div class="cf-kpi-sub" id="cf-kpi-credit-sub">মোট জমা</div>
+        </div>
+        <div class="cf-kpi debit">
+          <div class="cf-kpi-label">⬇️ Total Debit</div>
+          <div class="cf-kpi-value" id="cf-kpi-debit">—</div>
+          <div class="cf-kpi-sub" id="cf-kpi-debit-sub">মোট খরচ</div>
+        </div>
+        <div class="cf-kpi opening">
+          <div class="cf-kpi-label">🏁 Opening Balance</div>
+          <div class="cf-kpi-value" id="cf-kpi-opening">—</div>
+          <div class="cf-kpi-sub" id="cf-kpi-opening-sub">শুরুতে থাকা টাকা</div>
+        </div>
+      </div>
+      <div class="cf-formula">📐 Current Balance = Opening Balance + Total Credit − Total Debit</div>
+
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+          <span style="font-weight:600;color:var(--text);">📒 Transaction History</span>
+          <span style="font-size:12px;color:var(--text3);" id="cf-count"></span>
+        </div>
+        <div class="cf-filters">
+          <div><label>তারিখ থেকে</label><input type="date" class="form-input" id="cf-f-from" oninput="cfRender()"></div>
+          <div><label>তারিখ পর্যন্ত</label><input type="date" class="form-input" id="cf-f-to" oninput="cfRender()"></div>
+          <div><label>ধরন</label>
+            <select class="form-select" id="cf-f-type" onchange="cfRender()">
+              <option value="">সব</option><option value="Credit">Credit (+)</option><option value="Debit">Debit (−)</option>
+            </select>
+          </div>
+          <div><label>নোটে খুঁজুন</label><input type="text" class="form-input" id="cf-f-q" placeholder="বিবরণ / পরিমাণ…" oninput="cfRender()"></div>
+          <div><button class="btn" onclick="cfClearFilters()">✕ ফিল্টার মুছুন</button></div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>তারিখ</th><th>ধরন</th><th style="text-align:right;">পরিমাণ (৳)</th><th>নোট / বিবরণ</th><th style="text-align:right;">ব্যালেন্স (৳)</th><th style="text-align:center;">Action</th></tr>
+            </thead>
+            <tbody id="cf-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px;">লোড হচ্ছে…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cf-foot" id="cf-foot" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- ADD / EDIT ENTRY MODAL -->
+    <div class="modal-overlay" id="modal-cf-entry" onclick="if(event.target===this)closeModal('cf-entry')">
+      <div class="modal-box" style="max-width:460px;">
+        <div class="modal-header">
+          <span class="modal-title" id="cf-modal-title">💰 নতুন এন্ট্রি</span>
+          <button class="modal-close" onclick="closeModal('cf-entry')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="cf-type-toggle">
+            <button type="button" id="cf-type-credit" onclick="cfSetType('Credit')">＋ Credit (জমা)</button>
+            <button type="button" id="cf-type-debit" onclick="cfSetType('Debit')">− Debit (খরচ)</button>
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">টাকার পরিমাণ (৳) *</label>
+            <input class="form-input cf-amount-input" id="cf-amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">তারিখ *</label>
+            <input class="form-input" id="cf-date" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">নোট / বিবরণ</label>
+            <textarea class="form-textarea" id="cf-note" rows="3" maxlength="500" placeholder="কোথা থেকে এলো / কীসে খরচ হলো…"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('cf-entry')">বাতিল</button>
+          <button class="btn btn-gold" id="cf-save-btn" onclick="cfSubmitEntry()">✅ সেভ করুন</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT CSV MODAL -->
+    <div class="modal-overlay" id="modal-cf-import" onclick="if(event.target===this)cfCloseImport()">
+      <div class="modal-box" style="max-width:640px;">
+        <div class="modal-header">
+          <span class="modal-title">📥 CSV Import — Cash Flow</span>
+          <button class="modal-close" onclick="cfCloseImport()">✕</button>
+        </div>
+        <div class="modal-body" style="padding:16px;">
+          <div style="background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.3);border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;color:var(--text2);">
+            <strong style="color:#58a6ff;">📋 CSV Format:</strong>
+            <span style="color:var(--text3);font-family:'IBM Plex Mono',monospace;font-size:11px;display:block;">Date, Type, Amount, Note</span>
+            <span style="color:var(--gold);">Type: Credit / Debit (জমা / খরচ)। Export করা ফাইলই সরাসরি Import করা যায়।</span><br>
+            <a href="javascript:void(0)" onclick="cfSampleCSV()" style="color:#58a6ff;text-decoration:underline;">📄 নমুনা CSV ডাউনলোড</a>
+            <br><span style="color:var(--text3);font-size:12px;">Excel ফাইল হলে আগে File → Save As → CSV করুন</span>
+          </div>
+          <div id="cf-imp-drop" style="border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;cursor:pointer;margin-bottom:14px;"
+            onclick="document.getElementById('cf-imp-file').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+            ondragleave="this.style.borderColor='var(--border)'"
+            ondrop="cfImpDrop(event)">
+            <div style="font-size:32px;margin-bottom:8px;">📂</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);">CSV ফাইল drop করুন বা click করুন</div>
+            <input type="file" id="cf-imp-file" accept=".csv,.txt" style="display:none" onchange="cfImpRead(this.files[0])">
+          </div>
+          <div id="cf-imp-preview" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;color:var(--text);" id="cf-imp-summary"></span>
+              <button class="btn btn-sm" onclick="cfImpReset()">🔄 Reset</button>
+            </div>
+            <div style="overflow:auto;max-height:230px;border:1px solid var(--border);border-radius:8px;">
+              <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead style="position:sticky;top:0;background:var(--bg2);"><tr><th style="padding:6px 10px;text-align:left;">তারিখ</th><th style="padding:6px 10px;text-align:left;">ধরন</th><th style="padding:6px 10px;text-align:right;">পরিমাণ</th><th style="padding:6px 10px;text-align:left;">নোট</th><th style="padding:6px 10px;text-align:left;">অবস্থা</th></tr></thead>
+                <tbody id="cf-imp-tbody"></tbody>
+              </table>
+            </div>
+            <label id="cf-imp-dup-wrap" style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--text2);cursor:pointer;"><input type="checkbox" id="cf-imp-skipdup" checked onchange="cfImpRefresh()"> আগে থেকে থাকা হুবহু একই এন্ট্রি বাদ দিন (ডুপ্লিকেট এড়াতে)</label>
+            <label id="cf-imp-open-wrap" style="display:none;gap:8px;align-items:center;margin-top:8px;font-size:13px;color:var(--text2);cursor:pointer;"><input type="checkbox" id="cf-imp-useopen"> <span id="cf-imp-open-text"></span></label>
+          </div>
+          <div id="cf-imp-progress" style="display:none;margin-top:14px;">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:8px;" id="cf-imp-ptext">Importing...</div>
+            <div style="background:var(--bg);border-radius:8px;height:8px;overflow:hidden;"><div id="cf-imp-pbar" style="height:100%;background:var(--green);width:0%;transition:width .3s;"></div></div>
+          </div>
+          <div id="cf-imp-result" style="display:none;margin-top:14px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="cfCloseImport()">বাতিল</button>
+          <button class="btn btn-gold" id="cf-imp-submit" onclick="cfImpSubmit()" style="display:none;">📥 <span id="cf-imp-submit-text">Import করুন</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPENING BALANCE MODAL -->
+    <div class="modal-overlay" id="modal-cf-opening" onclick="if(event.target===this)closeModal('cf-opening')">
+      <div class="modal-box" style="max-width:440px;">
+        <div class="modal-header">
+          <span class="modal-title">🏁 Opening Balance</span>
+          <button class="modal-close" onclick="closeModal('cf-opening')">✕</button>
+        </div>
+        <div class="modal-body">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">শুরুতে হাতে যত টাকা ছিল সেটা দিন। পরে পরিবর্তন করলে Current Balance সঙ্গে সঙ্গে নতুন করে হিসাব হবে।</div>
+          <div class="form-group" style="margin-bottom:14px;">
+            <label class="form-label">Opening Balance (৳) *</label>
+            <input class="form-input cf-amount-input" id="cf-open-amount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" style="font-size:20px;font-weight:700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label">কোন তারিখ থেকে (ঐচ্ছিক)</label>
+            <input class="form-input" id="cf-open-date" type="date">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="closeModal('cf-opening')">বাতিল</button>
+          <button class="btn btn-gold" id="cf-open-save" onclick="cfSubmitOpening()">✅ সেভ করুন</button>
+        </div>
+      </div>
+    </div>
+
     <div class="page" id="page-crm">
       <div class="breadcrumb">InnoGix OS / <span>Customers</span></div>
       <div class="section-head">
@@ -3448,6 +3685,8 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn" onclick="loadStrategyHubAll()">🔄 রিফ্রেশ</button>
+          <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" title="বর্তমান ট্যাবের ডেটা Import করুন" onclick="shxOpenImport()">📥 Import CSV</button>
+          <button class="btn export-excel" title="বর্তমান ট্যাবের ডেটা Export করুন" onclick="shxExport()">📥 Export Excel</button>
         </div>
       </div>
 
@@ -3559,6 +3798,56 @@ tbody td.muted{color:var(--text3);}
         </div>
       </div>
     </div><!-- /#page-strategy-hub -->
+    <!-- ═══ 🎯 Strategy & Tasks — CSV Import মডাল (v57) ═══ -->
+    <div class="modal-overlay" id="modal-shx-import" onclick="if(event.target===this)shxCloseImport()">
+      <div class="modal-box" style="max-width:680px;">
+        <div class="modal-header">
+          <span class="modal-title" id="shx-imp-title">📥 CSV Import</span>
+          <button class="modal-close" onclick="shxCloseImport()">✕</button>
+        </div>
+        <div class="modal-body" style="padding:16px;">
+          <div style="background:rgba(88,166,255,0.08);border:1px solid rgba(88,166,255,0.3);border-radius:10px;padding:14px;margin-bottom:14px;font-size:13px;line-height:1.8;color:var(--text2);">
+            <strong style="color:#58a6ff;">📋 CSV Format:</strong>
+            <span style="color:var(--text3);font-family:'IBM Plex Mono',monospace,sans-serif;font-size:11px;display:block;word-break:break-word;" id="shx-imp-format"></span>
+            <span style="color:var(--gold);" id="shx-imp-valid"></span><br>
+            <a href="javascript:void(0)" onclick="shxSample()" style="color:#58a6ff;text-decoration:underline;">📄 নমুনা CSV ডাউনলোড</a>
+            <br><span style="color:var(--text3);font-size:12px;">Export করা ফাইলই সরাসরি Import করা যায়। Excel ফাইল হলে আগে File → Save As → CSV করুন।</span>
+          </div>
+          <div id="shx-imp-drop" style="border:2px dashed var(--border);border-radius:12px;padding:30px;text-align:center;cursor:pointer;margin-bottom:14px;"
+            onclick="document.getElementById('shx-imp-file').click()"
+            ondragover="event.preventDefault();this.style.borderColor='var(--green)'"
+            ondragleave="this.style.borderColor='var(--border)'"
+            ondrop="shxImpDrop(event)">
+            <div style="font-size:32px;margin-bottom:8px;">📂</div>
+            <div style="font-size:14px;font-weight:600;color:var(--text);">CSV ফাইল drop করুন বা click করুন</div>
+            <input type="file" id="shx-imp-file" accept=".csv,.txt" style="display:none" onchange="shxImpRead(this.files[0])">
+          </div>
+          <div id="shx-imp-preview" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap;">
+              <span style="font-size:13px;font-weight:600;color:var(--text);" id="shx-imp-summary"></span>
+              <button class="btn btn-sm" onclick="shxImpReset()">🔄 Reset</button>
+            </div>
+            <div style="overflow:auto;max-height:240px;border:1px solid var(--border);border-radius:8px;">
+              <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                <thead style="position:sticky;top:0;background:var(--bg2);" id="shx-imp-thead"></thead>
+                <tbody id="shx-imp-tbody"></tbody>
+              </table>
+            </div>
+            <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13px;color:var(--text2);cursor:pointer;"><input type="checkbox" id="shx-imp-skipdup" checked onchange="shxImpRefresh()"> আগে থেকে থাকা হুবহু একই এন্ট্রি বাদ দিন (ডুপ্লিকেট এড়াতে)</label>
+          </div>
+          <div id="shx-imp-progress" style="display:none;margin-top:14px;">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:8px;" id="shx-imp-ptext">Importing...</div>
+            <div style="background:var(--bg);border-radius:8px;height:8px;overflow:hidden;"><div id="shx-imp-pbar" style="height:100%;background:var(--green);width:0%;transition:width .3s;"></div></div>
+          </div>
+          <div id="shx-imp-result" style="display:none;margin-top:14px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn" onclick="shxCloseImport()">বাতিল</button>
+          <button class="btn btn-gold" id="shx-imp-submit" onclick="shxImpSubmit()" style="display:none;">📥 <span id="shx-imp-submit-text">Import করুন</span></button>
+        </div>
+      </div>
+    </div>
+
 
     <!-- ══════════════════════════════
          PAGE: ARCHITECTURE GUIDE
@@ -5060,7 +5349,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzrxwqRdKplsStt8_HeCReiZWxkv8jJ3AkCSdDAXeXCuFXN_Lj9XSaC_FIYT6-IQkU9/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbzxkTLgld6rJJuHqAFpNBkmFRyCashlvy2JcY-U17QoaLNvc95q4Wv4wJBx7iI0cYpj7A/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -14441,6 +14730,572 @@ window.syncCourierData = async function () {
   if (typeof _origSync === "function") _origSync();
   await liveRefreshAllTracking();
 };
+
+/* ═══════════ শেয়ার্ড CSV হেল্পার (Cash Flow + Strategy & Tasks ব্যবহার করে) ═══════════ */
+(function () {
+  'use strict';
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const csvCell = v => { let t = String(v == null ? '' : v); if (/^[=+\-@\t\r]/.test(t)) t = "'" + t; return '"' + t.replace(/"/g, '""') + '"'; }; // Excel formula-injection রোধ
+  function downloadCSV(rows, name) {
+    const csv = '\uFEFF' + rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    a.download = name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  }
+  // RFC-4180 CSV parser — "" escape, quoted newline, delimiter auto-detect (, ; tab)
+  function parseCSV(text) {
+    text = String(text || '').replace(/^\uFEFF/, '');
+    const first = text.split(/\r?\n/)[0] || '';
+    let q0 = false; const cnt = { ',': 0, ';': 0, '\t': 0 };
+    for (const ch of first) { if (ch === '"') q0 = !q0; else if (!q0 && ch in cnt) cnt[ch]++; }
+    const delim = cnt[';'] > cnt[','] && cnt[';'] >= cnt['\t'] ? ';' : (cnt['\t'] > cnt[','] ? '\t' : ',');
+    const rows = []; let row = [], cur = '', inQ = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inQ) { if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else inQ = false; } else cur += ch; }
+      else if (ch === '"') inQ = true;
+      else if (ch === delim) { row.push(cur); cur = ''; }
+      else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(cur); cur = ''; rows.push(row); row = []; }
+      else cur += ch;
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows.filter(r => r.some(c => String(c).trim() !== ''));
+  }
+  const bn2en = s => String(s).replace(/[০-৯]/g, d => '০১২৩৪৫৬৭৮৯'.indexOf(d));
+  function parseDateAny(v) {
+    const s = bn2en(String(v || '').trim()); let y, m, d, x;
+    if ((x = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/.exec(s))) { y = +x[1]; m = +x[2]; d = +x[3]; }
+    else if ((x = /^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{4})/.exec(s))) { d = +x[1]; m = +x[2]; y = +x[3]; }
+    else if ((x = /^(\d{1,2})[-\s]([A-Za-z]{3})[A-Za-z]*[-\s,]*(\d{4})/.exec(s))) { d = +x[1]; m = MONTHS.findIndex(n => n.toLowerCase() === x[2].toLowerCase()) + 1; y = +x[3]; }
+    else return '';
+    const dt = new Date(y, m - 1, d);
+    if (!m || dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return '';
+    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
+  const parseAmt = v => { const s = bn2en(String(v == null ? '' : v)).replace(/[৳,\s]/g, '').replace(/[()]/g, ''); if (!/^[+-]?\d*\.?\d+$/.test(s)) return NaN; return Math.round(parseFloat(s) * 100) / 100; };
+
+  // নেটওয়ার্ক কল ≥১ms ফাঁকে: file:// JSONP callback নাম Date.now()-ভিত্তিক, একই ms-এ দুই কল গেলে একটা হারায়
+  let _lastNet = 0;
+  async function spaced(fn) { let n = Date.now(); while (n <= _lastNet) { await new Promise(r => setTimeout(r, 2)); n = Date.now(); } _lastNet = n; return fn(); }
+  window.__igxCsv = { csvCell, downloadCSV, parseCSV, bn2en, parseDateAny, parseAmt, spaced, MONTHS };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   💰 CASH FLOW MODULE (Independent) — v82
+   • নিজস্ব state/API/শিট; Sales, Expense, Partner, Investor, Courier — কিছুই ছোঁয় না
+   • Current Balance = Opening + Total Credit − Total Debit (পয়সায় integer হিসাব)
+   • বিদ্যমান ফাংশন শুধু ব্যবহার করে: fetchFromAPI, postToAPI, showToast, logAction, closeModal, showPage
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  const CF = { opening: 0, openingSet: false, openingDate: '', entries: [], loaded: false, busy: false, editId: null, type: 'Credit', cid: '' };
+  const $ = id => document.getElementById(id);
+  const { csvCell, downloadCSV, parseCSV, bn2en, parseDateAny, parseAmt } = window.__igxCsv; // শেয়ার্ড CSV হেল্পার
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // নেটওয়ার্ক কল: একই মিলিসেকেন্ডে দুটো কল গেলে (file:// JSONP callback নাম Date.now()-ভিত্তিক) একটা হারিয়ে যায় — তাই মডিউলের কলগুলো ≥১ms ফাঁকে পাঠানো হয়
+  let _lastNet = 0;
+  async function spaced(fn) { let n = Date.now(); while (n <= _lastNet) { await new Promise(r => setTimeout(r, 2)); n = Date.now(); } _lastNet = n; return fn(); }
+  const netGet = (action, params) => spaced(() => fetchFromAPI(action, params));
+  const netPost = payload => spaced(() => postToAPI(payload));
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const num = n => { n = Number(n) || 0; return (n < 0 ? '−' : '') + Math.abs(n).toLocaleString('en-BD', { minimumFractionDigits: 0, maximumFractionDigits: 2 }); };
+  const money = n => (Number(n) < 0 ? '−' : '') + '৳' + num(Math.abs(Number(n) || 0));
+  const toast = (m, t) => { try { showToast(m, t || 'success'); } catch (e) {} };
+  const todayBD = () => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } };
+  const fmtDate = d => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || '')); return m ? `${m[3]}-${MONTHS[+m[2] - 1]}-${m[1]}` : esc(d || '—'); };
+
+  // ── হিসাব: Opening + Credit − Debit ──
+  function compute() {
+    let cr = 0, db = 0;
+    CF.entries.forEach(e => { const p = Math.round(e.amount * 100); if (e.type === 'Credit') cr += p; else db += p; });
+    const op = Math.round(CF.opening * 100);
+    return { opening: op / 100, credit: cr / 100, debit: db / 100, balance: (op + cr - db) / 100, crN: CF.entries.filter(e => e.type === 'Credit').length, dbN: CF.entries.filter(e => e.type === 'Debit').length };
+  }
+  // তারিখ অনুযায়ী (পুরোনো→নতুন) running balance — id → balance
+  function runningMap() {
+    const asc = CF.entries.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : Number(a.id) - Number(b.id)));
+    let bal = Math.round(CF.opening * 100); const map = {};
+    asc.forEach(e => { const p = Math.round(e.amount * 100); bal += e.type === 'Credit' ? p : -p; map[e.id] = bal / 100; });
+    return map;
+  }
+
+  // ── Render ──
+  function render() {
+    const t = compute();
+    const set = (id, v) => { const x = $(id); if (x) x.textContent = v; };
+    set('cf-kpi-balance', money(t.balance));
+    const bEl = $('cf-kpi-balance'); if (bEl) bEl.style.color = t.balance < 0 ? 'var(--red)' : '';
+    set('cf-kpi-credit', money(t.credit)); set('cf-kpi-credit-sub', `মোট জমা · ${t.crN}টি এন্ট্রি`);
+    set('cf-kpi-debit', money(t.debit)); set('cf-kpi-debit-sub', `মোট খরচ · ${t.dbN}টি এন্ট্রি`);
+    set('cf-kpi-opening', money(t.opening));
+    set('cf-kpi-opening-sub', CF.openingSet ? (CF.openingDate ? 'শুরু: ' + fmtDate(CF.openingDate) : 'শুরুতে থাকা টাকা') : 'এখনো সেট করা হয়নি');
+    const notice = $('cf-open-notice'); if (notice) notice.classList.toggle('show', CF.loaded && !CF.openingSet);
+    paintCard(t.balance, t.credit, t.debit);
+
+    const from = $('cf-f-from').value, to = $('cf-f-to').value, ty = $('cf-f-type').value, q = $('cf-f-q').value.trim().toLowerCase();
+    const run = runningMap();
+    let rows = CF.entries.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : Number(b.id) - Number(a.id)));
+    if (from) rows = rows.filter(e => e.date >= from);
+    if (to) rows = rows.filter(e => e.date <= to);
+    if (ty) rows = rows.filter(e => e.type === ty);
+    if (q) rows = rows.filter(e => (e.note || '').toLowerCase().includes(q) || String(e.amount).includes(q) || String(e.id) === q);
+
+    const body = $('cf-body'), foot = $('cf-foot');
+    set('cf-count', `${rows.length} / ${CF.entries.length} টি লেনদেন`);
+    if (!rows.length) {
+      body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px;">${CF.entries.length ? 'এই ফিল্টারে কোনো লেনদেন নেই' : 'এখনো কোনো লেনদেন নেই — উপরের <strong>Credit</strong> বা <strong>Debit</strong> বাটনে ক্লিক করে প্রথম এন্ট্রি দিন'}</td></tr>`;
+      foot.style.display = 'none'; return;
+    }
+    body.innerHTML = rows.map(e => {
+      const cr = e.type === 'Credit', id = Number(e.id);
+      return `<tr>
+        <td style="white-space:nowrap;">${fmtDate(e.date)}</td>
+        <td><span class="cf-pill ${cr ? 'credit' : 'debit'}">${cr ? '＋ Credit' : '− Debit'}</span></td>
+        <td class="cf-amt ${cr ? 'credit' : 'debit'}">${cr ? '+' : '−'}৳${num(e.amount)}</td>
+        <td class="cf-note">${esc(e.note) || '<span style="color:var(--text3)">—</span>'}</td>
+        <td class="cf-run" style="${run[e.id] < 0 ? 'color:var(--red);' : ''}">${money(run[e.id])}</td>
+        <td><div class="cf-row-actions"><button class="btn btn-sm" title="Edit" onclick="cfOpenEntry(null,${id})">✏️</button><button class="btn btn-sm" title="Delete" onclick="cfDelete(${id})">🗑️</button></div></td>
+      </tr>`;
+    }).join('');
+    let c = 0, d = 0; rows.forEach(e => { const p = Math.round(e.amount * 100); if (e.type === 'Credit') c += p; else d += p; });
+    foot.style.display = 'flex';
+    foot.innerHTML = `<span>দেখানো লেনদেনের মোট Credit: <strong style="color:var(--green)">${money(c / 100)}</strong></span><span>মোট Debit: <strong style="color:var(--red)">${money(d / 100)}</strong></span><span>নিট: <strong>${money((c - d) / 100)}</strong></span>`;
+  }
+
+  // মূল Dashboard-এর Cash Flow কার্ড
+  function paintCard(balance, credit, debit) {
+    const v = $('kpi-cashflow-balance'); if (!v) return;
+    v.textContent = num(balance); v.style.color = balance < 0 ? 'var(--red)' : '';
+    const s = $('kpi-cashflow-sub'); if (s) s.textContent = `Credit ৳${num(credit)} · Debit ৳${num(debit)}`;
+  }
+  async function refreshCard() {
+    if (!$('kpi-cashflow-balance')) return;
+    const d = await netGet('cashflow_summary');
+    if (d && d.summary) paintCard(d.summary.currentBalance, d.summary.totalCredit, d.summary.totalDebit);
+  }
+
+  // ── Load ──
+  async function load() {
+    const d = await netGet('cashflow');
+    if (!d || !Array.isArray(d.entries)) {
+      if (!CF.loaded) $('cf-body').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:40px;">❌ Cash Flow ডেটা লোড হয়নি — API URL ও Apps Script-এর নতুন Deployment চেক করুন, তারপর 🔄 রিফ্রেশ চাপুন</td></tr>';
+      return false;
+    }
+    const s = d.summary || {};
+    CF.entries = d.entries; CF.opening = Number(s.opening) || 0; CF.openingSet = !!s.openingSet; CF.openingDate = s.openingDate || '';
+    CF.loaded = true; render(); return true;
+  }
+
+  // ── Entry modal (Add / Edit) ──
+  function setType(t) {
+    CF.type = t;
+    $('cf-type-credit').className = t === 'Credit' ? 'on-credit' : '';
+    $('cf-type-debit').className = t === 'Debit' ? 'on-debit' : '';
+    $('cf-modal-title').textContent = (CF.editId ? '✏️ এন্ট্রি Edit — ' : '') + (t === 'Credit' ? '＋ Credit (টাকা জমা)' : '− Debit (টাকা খরচ)');
+  }
+  function openEntry(type, id) {
+    CF.editId = null; CF.cid = 'cf' + Date.now() + Math.random().toString(36).slice(2, 8);
+    let amount = '', date = todayBD(), note = '';
+    if (id != null) {
+      const e = CF.entries.find(x => Number(x.id) === Number(id)); if (!e) { toast('এন্ট্রি পাওয়া যায়নি', 'error'); return; }
+      CF.editId = Number(e.id); type = e.type; amount = e.amount; date = e.date || date; note = e.note || '';
+    }
+    $('cf-amount').value = amount; $('cf-date').value = date; $('cf-note').value = note;
+    setType(type || 'Credit');
+    $('modal-cf-entry').classList.add('open');
+    setTimeout(() => { try { $('cf-amount').focus(); } catch (e) {} }, 80);
+  }
+  async function submitEntry() {
+    if (CF.busy) return;
+    const amount = Number(String($('cf-amount').value).replace(/,/g, ''));
+    const date = $('cf-date').value, note = $('cf-note').value.trim();
+    if (!isFinite(amount) || amount <= 0) { toast('সঠিক টাকার পরিমাণ লিখুন (০ এর বেশি)', 'error'); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('তারিখ বেছে নিন', 'error'); return; }
+    CF.busy = true; const btn = $('cf-save-btn'); btn.disabled = true; btn.textContent = '⏳ সেভ হচ্ছে…';
+    try {
+      const payload = CF.editId
+        ? { action: 'cfUpdateEntry', id: CF.editId, type: CF.type, amount, date, note }
+        : { action: 'cfAddEntry', cid: CF.cid, type: CF.type, amount, date, note };
+      const r = await netPost(payload);
+      if (!r) { toast('❌ সেভ হয়নি — আবার চেষ্টা করুন' + (window.__lastAPIErrorReason ? ' (' + window.__lastAPIErrorReason + ')' : ''), 'error'); return; }
+      closeModal('cf-entry');
+      toast(CF.editId ? '✅ এন্ট্রি আপডেট হয়েছে' : (CF.type === 'Credit' ? '✅ Credit যোগ হয়েছে' : '✅ Debit যোগ হয়েছে'), 'success');
+      try { logAction(`Cash Flow ${CF.editId ? 'এডিট' : 'যোগ'}: ${CF.type} ৳${num(amount)}`); } catch (e) {}
+      await load();
+    } finally { CF.busy = false; btn.disabled = false; btn.textContent = '✅ সেভ করুন'; }
+  }
+
+  async function del(id) {
+    const e = CF.entries.find(x => Number(x.id) === Number(id)); if (!e) return;
+    if (!confirm(`⚠️ এই এন্ট্রি ডিলিট করবেন?\n\n${e.type} ৳${num(e.amount)} — ${fmtDate(e.date)}\n${e.note || ''}\n\n🗑️ এটি Recycle Bin-এ যাবে (৩০ দিনের মধ্যে Restore করা যাবে)। ব্যালেন্স নতুন করে হিসাব হবে।`)) return;
+    const r = await netPost({ action: 'cfDeleteEntry', id: Number(id) });
+    if (!r) { toast('❌ ডিলিট হয়নি — আবার চেষ্টা করুন', 'error'); return; }
+    toast('🗑️ এন্ট্রি Recycle Bin-এ গেছে', 'info');
+    try { logAction(`Cash Flow এন্ট্রি #${id} (${e.type} ৳${num(e.amount)}) Recycle Bin-এ পাঠিয়েছেন`); } catch (x) {}
+    await load();
+    setTimeout(() => { try { if (typeof updateBinBadge === 'function') updateBinBadge(); } catch (x) {} }, 400);
+  }
+
+  // ── Opening Balance ──
+  function openOpening() {
+    $('cf-open-amount').value = CF.openingSet || CF.opening ? CF.opening : '';
+    $('cf-open-date').value = CF.openingDate || '';
+    $('modal-cf-opening').classList.add('open');
+    setTimeout(() => { try { $('cf-open-amount').focus(); } catch (e) {} }, 80);
+  }
+  async function submitOpening() {
+    if (CF.busy) return;
+    const raw = String($('cf-open-amount').value).replace(/,/g, '').trim(), amount = Number(raw);
+    if (raw === '' || !isFinite(amount) || amount < 0) { toast('সঠিক Opening Balance লিখুন (০ বা তার বেশি)', 'error'); return; }
+    CF.busy = true; const btn = $('cf-open-save'); btn.disabled = true;
+    try {
+      const r = await netPost({ action: 'cfSetOpening', amount, date: $('cf-open-date').value || '' });
+      if (!r) { toast('❌ সেভ হয়নি — আবার চেষ্টা করুন', 'error'); return; }
+      closeModal('cf-opening'); toast('✅ Opening Balance সেভ হয়েছে', 'success');
+      try { logAction(`Cash Flow Opening Balance সেট: ৳${num(amount)}`); } catch (e) {}
+      await load();
+    } finally { CF.busy = false; btn.disabled = false; }
+  }
+
+  function clearFilters() { ['cf-f-from', 'cf-f-to', 'cf-f-type', 'cf-f-q'].forEach(i => { $(i).value = ''; }); render(); }
+
+  // ═════════ EXPORT / IMPORT (CSV — Excel-এ সরাসরি খোলে) ═════════
+  function exportCSV() {
+    if (!CF.loaded) { toast('আগে Cash Flow ডেটা লোড করুন', 'error'); return; }
+    if (!CF.entries.length && !CF.openingSet) { toast('Export করার মতো কোনো ডেটা নেই', 'error'); return; }
+    const asc = CF.entries.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : Number(a.id) - Number(b.id)));
+    const run = runningMap();
+    const rows = [['#', 'Date', 'Type', 'Amount (৳)', 'Note / Description', 'Balance After (৳)']];
+    if (CF.openingSet) rows.push(['', CF.openingDate || '', 'Opening Balance', CF.opening, '', CF.opening]);
+    asc.forEach(e => rows.push([e.id, e.date, e.type, e.amount, e.note || '', run[e.id]]));
+    downloadCSV(rows, `cashflow_${todayBD()}.csv`);
+    toast(`📥 ${asc.length}টি লেনদেন export হয়েছে`, 'success');
+    try { logAction(`Cash Flow export: ${asc.length}টি লেনদেন`); } catch (e) {}
+  }
+  function sampleCSV() {
+    downloadCSV([['Date', 'Type', 'Amount', 'Note'], ['2026-10-01', 'Opening Balance', 10000, 'শুরুর ব্যালেন্স (ঐচ্ছিক)'], ['2026-10-05', 'Credit', 5000, 'বিক্রির টাকা'], ['2026-10-06', 'Debit', 1200.5, 'অফিস ভাড়া']], 'cashflow_sample.csv');
+  }
+
+  const keyOf = (date, type, amount, note) => `${date}|${type}|${Math.round(amount * 100)}|${String(note || '').trim().slice(0, 500)}`;
+
+  // CSV টেক্সট → { rows:[{line,date,type,amount,note,bad}], opening, error }
+  function analyzeCSV(text) {
+    const all = parseCSV(text);
+    if (all.length < 2) return { error: 'CSV-এ কোনো ডেটা নেই' };
+    const hd = all[0].map(h => bn2en(String(h)).toLowerCase().replace(/\(.*?\)|৳/g, '').trim());
+    const find = vs => hd.findIndex(h => h && !/balance|ব্যালেন্স/.test(h) && vs.some(v => h === v || h.includes(v)));
+    const ci = { date: find(['date', 'তারিখ']), type: find(['type', 'ধরন', 'ধরণ']), amount: find(['amount', 'পরিমাণ', 'টাকা']), note: find(['note', 'description', 'বিবরণ', 'নোট']) };
+    if (ci.date < 0 || ci.amount < 0) return { error: 'Header পাওয়া যায়নি — প্রথম লাইনে Date, Type, Amount, Note কলাম থাকতে হবে' };
+    const out = []; let opening = null;
+    all.slice(1).forEach((r, i) => {
+      const cell = k => (ci[k] >= 0 ? String(r[ci[k]] == null ? '' : r[ci[k]]).trim() : '');
+      const tRaw = cell('type'), line = i + 2; let note = cell('note').replace(/^'(?=[=+\-@])/, '');
+      let amt = parseAmt(cell('amount')), date = parseDateAny(cell('date'));
+      if (/opening|ওপেনিং|শুরুর/i.test(tRaw)) {
+        if (isFinite(amt) && amt >= 0) opening = { amount: Math.abs(amt), date: cell('date') ? date : '', line };
+        else out.push({ line, date: cell('date'), type: tRaw, amount: cell('amount'), note, bad: 'Opening-এর পরিমাণ ভুল' });
+        return;
+      }
+      let type = '';
+      if (tRaw) { if (/credit|জমা|^cr$|^in$|^\+|আয়/i.test(tRaw)) type = 'Credit'; else if (/debit|খরচ|ব্যয়|^dr$|^out$|^-/i.test(tRaw)) type = 'Debit'; }
+      else if (isFinite(amt) && amt !== 0) type = amt > 0 ? 'Credit' : 'Debit';
+      let bad = '';
+      if (!type) bad = tRaw ? 'ধরন বোঝা যায়নি' : 'ধরন নেই';
+      else if (!isFinite(amt) || amt === 0) bad = 'পরিমাণ ভুল';
+      else if (Math.abs(amt) > 999999999999) bad = 'পরিমাণ অতিরিক্ত বড়';
+      else if (!date) bad = 'তারিখ বোঝা যায়নি';
+      out.push({ line, date: date || cell('date'), type: type || tRaw, amount: bad && !isFinite(amt) ? cell('amount') : Math.abs(amt), note: note.slice(0, 500), bad });
+    });
+    return { rows: out, opening };
+  }
+
+  // ── Import UI ──
+  const IMP = { rows: [], opening: null, running: false, timer: null };
+  function impReset() {
+    IMP.rows = []; IMP.opening = null;
+    ['cf-imp-preview', 'cf-imp-progress', 'cf-imp-result'].forEach(i => { $(i).style.display = 'none'; });
+    $('cf-imp-submit').style.display = 'none'; $('cf-imp-submit').disabled = false; $('cf-imp-drop').style.display = 'block'; $('cf-imp-file').value = '';
+  }
+  function openImport() { clearTimeout(IMP.timer); impReset(); $('modal-cf-import').classList.add('open'); }
+  function closeImport() { if (IMP.running) return; clearTimeout(IMP.timer); closeModal('cf-import'); impReset(); }
+  function impRead(file) { if (!file) return; const r = new FileReader(); r.onload = e => impParse(e.target.result); r.readAsText(file, 'UTF-8'); }
+  function impDrop(e) { e.preventDefault(); $('cf-imp-drop').style.borderColor = 'var(--border)'; if (e.dataTransfer.files[0]) impRead(e.dataTransfer.files[0]); }
+  function impParse(text) {
+    const a = analyzeCSV(text);
+    if (a.error) { toast(a.error, 'error'); return; }
+    IMP.rows = a.rows; IMP.opening = a.opening;
+    $('cf-imp-drop').style.display = 'none'; $('cf-imp-preview').style.display = 'block'; $('cf-imp-result').style.display = 'none';
+    const ow = $('cf-imp-open-wrap');
+    if (IMP.opening) {
+      ow.style.display = 'flex'; $('cf-imp-useopen').checked = !CF.openingSet;
+      $('cf-imp-open-text').textContent = `CSV-র Opening Balance ${money(IMP.opening.amount)} সেট করুন` + (CF.openingSet ? ` (বর্তমান ${money(CF.opening)} বদলে যাবে)` : '');
+    } else ow.style.display = 'none';
+    impRefresh();
+  }
+  // কোন row যাবে/বাদ যাবে — বিদ্যমান এন্ট্রির সাথে মিলিয়ে (multiset: একই হুবহু row একাধিকবার থাকলে সংখ্যা মেলানো হয়)
+  function impPlan() {
+    const skip = $('cf-imp-skipdup').checked, pool = {};
+    if (skip) CF.entries.forEach(e => { const k = keyOf(e.date, e.type, e.amount, e.note); pool[k] = (pool[k] || 0) + 1; });
+    return IMP.rows.map(r => {
+      if (r.bad) return { r, st: 'bad' };
+      const k = keyOf(r.date, r.type, r.amount, r.note);
+      if (skip && pool[k] > 0) { pool[k]--; return { r, st: 'dup' }; }
+      return { r, st: 'new' };
+    });
+  }
+  function impRefresh() {
+    const plan = impPlan(), n = plan.filter(p => p.st === 'new').length, d = plan.filter(p => p.st === 'dup').length, b = plan.filter(p => p.st === 'bad').length;
+    $('cf-imp-summary').innerHTML = `মোট ${plan.length}টি row · ✅ নতুন ${n} · ⚠️ ডুপ্লিকেট ${d} · ❌ ভুল ${b}`;
+    $('cf-imp-tbody').innerHTML = plan.slice(0, 100).map(({ r, st }) => {
+      const stx = st === 'new' ? '<span style="color:var(--green)">✅ নতুন</span>' : st === 'dup' ? '<span style="color:var(--gold)">⚠️ ডুপ্লিকেট — বাদ যাবে</span>' : `<span style="color:var(--red)">❌ ${esc(r.bad)} (লাইন ${r.line})</span>`;
+      return `<tr style="${st === 'bad' ? 'background:rgba(248,81,73,.06);' : ''}"><td style="padding:5px 10px;border-bottom:1px solid var(--border);white-space:nowrap;">${esc(r.date) || '—'}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);">${esc(r.type) || '—'}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);text-align:right;">${esc(r.amount)}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.note) || '—'}</td><td style="padding:5px 10px;border-bottom:1px solid var(--border);white-space:nowrap;">${stx}</td></tr>`;
+    }).join('') + (plan.length > 100 ? `<tr><td colspan="5" style="padding:6px 10px;color:var(--text3);">… আরও ${plan.length - 100}টি row (প্রথম ১০০টি দেখানো হয়েছে)</td></tr>` : '');
+    const btn = $('cf-imp-submit'), total = n + (IMP.opening ? 1 : 0);
+    btn.style.display = total ? 'inline-flex' : 'none'; $('cf-imp-submit-text').textContent = n ? `${n}টি এন্ট্রি Import করুন` : 'Opening Balance সেট করুন';
+  }
+  async function impSubmit() {
+    if (IMP.running || CF.busy) return;
+    const plan = impPlan().filter(p => p.st === 'new').map(p => ({ date: p.r.date, type: p.r.type, amount: p.r.amount, note: p.r.note }));
+    const useOpen = !!(IMP.opening && $('cf-imp-useopen').checked);
+    if (!plan.length && !useOpen) { toast('Import করার মতো নতুন কিছু নেই', 'error'); return; }
+    IMP.running = CF.busy = true; $('cf-imp-submit').disabled = true;
+    $('cf-imp-preview').style.display = 'none'; $('cf-imp-progress').style.display = 'block'; $('cf-imp-result').style.display = 'none';
+    const batch = 'imp' + Date.now() + Math.random().toString(36).slice(2, 6);
+    // ব্যাচ ভাগ: সর্বোচ্চ ১০০টি row। ফাইল সরাসরি ডিস্ক (file://) থেকে খুললে অ্যাপ ডেটা URL-এ পাঠায় (~৭৫০০ অক্ষর সীমা) — তাই তখন আকার ধরে ছোট ব্যাচ
+    const sizeLimit = location.protocol === 'file:' ? 4200 : Infinity, parts = []; let curPart = [], curLen = 0;
+    plan.forEach(r => { const l = JSON.stringify(r).length + 1; if (curPart.length && (curPart.length >= 100 || curLen + l > sizeLimit)) { parts.push(curPart); curPart = []; curLen = 0; } curPart.push(r); curLen += l; });
+    if (curPart.length || !parts.length) parts.push(curPart);
+    const chunks = parts.length;
+    let added = 0, dups = 0, invalid = 0, failed = false; const errs = [];
+    try {
+      for (let c = 0; c < chunks; c++) {
+        $('cf-imp-ptext').textContent = `পাঠানো হচ্ছে… ব্যাচ ${c + 1} / ${chunks}`;
+        $('cf-imp-pbar').style.width = Math.round((c / chunks) * 90 + 5) + '%';
+        const payload = { action: 'cfBulkImport', batch: batch + 'c' + c, rows: parts[c] };
+        if (c === 0 && useOpen) payload.opening = { set: true, amount: IMP.opening.amount, date: IMP.opening.date || '' };
+        const r = await netPost(payload);
+        if (!r) { failed = true; break; }
+        added += r.added || 0; dups += r.duplicates || 0; invalid += r.invalid || 0; (r.errors || []).forEach(e => errs.push(e));
+      }
+      $('cf-imp-pbar').style.width = '100%'; $('cf-imp-progress').style.display = 'none';
+      const res = $('cf-imp-result'); res.style.display = 'block';
+      if (failed) {
+        res.style.cssText = 'display:block;margin-top:14px;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;';
+        res.innerHTML = `❌ Import মাঝপথে থেমেছে — ${added}টি এন্ট্রি সেভ হয়েছে। একই ফাইল আবার Import করুন: ডুপ্লিকেট বাদ থাকায় সেভ হওয়া এন্ট্রিগুলো দ্বিতীয়বার যাবে না।<br><button class="btn" style="margin-top:8px;" onclick="cfImpReset()">🔄 আবার চেষ্টা করুন</button>`;
+        IMP.running = CF.busy = false; $('cf-imp-submit').disabled = false; await load(); return;
+      }
+      res.style.cssText = 'display:block;margin-top:14px;padding:12px;border-radius:8px;background:rgba(34,201,122,0.1);border:1px solid rgba(34,201,122,0.3);color:var(--green);font-size:13px;font-weight:600;text-align:center;';
+      res.textContent = `✅ ${added}টি এন্ট্রি import হয়েছে` + (useOpen ? ' · Opening Balance সেট হয়েছে' : '') + (invalid ? ` · ${invalid}টি ভুল row বাদ` : '');
+      try { logAction(`Cash Flow CSV import: ${added}টি এন্ট্রি`); } catch (e) {}
+      IMP.running = CF.busy = false; await load();
+      toast(`✅ ${added}টি এন্ট্রি import সম্পন্ন`, 'success');
+      if (!invalid && !errs.length) IMP.timer = setTimeout(() => { closeImport(); }, 1800);
+    } finally { IMP.running = CF.busy = false; }
+  }
+
+  // inline onclick-এর জন্য global expose (সব নাম cf-প্রিফিক্স)
+  Object.assign(window, { cfLoad: load, cfRender: render, cfOpenEntry: openEntry, cfSetType: setType, cfSubmitEntry: submitEntry, cfDelete: del, cfOpenOpening: openOpening, cfSubmitOpening: submitOpening, cfClearFilters: clearFilters, cfRefreshCard: refreshCard, __cfCompute: compute, cfExport: exportCSV, cfSampleCSV: sampleCSV, cfOpenImport: openImport, cfCloseImport: closeImport, cfImpReset: impReset, cfImpRead: impRead, cfImpDrop: impDrop, cfImpRefresh: impRefresh, cfImpSubmit: impSubmit, __cfAnalyze: analyzeCSV, __cfParseCSV: parseCSV });
+
+  // ── বিদ্যমান নেভিগেশনে যুক্ত হওয়া — মূল showPage অপরিবর্তিত, শুধু wrap করা ──
+  if (typeof pageTitles === 'object') pageTitles.cashflow = ['Cash Flow', '— আলাদা ক্যাশ ব্যালেন্স'];
+  if (typeof window.showPage === 'function') {
+    const orig = window.showPage;
+    window.showPage = function (id) {
+      const r = orig.apply(this, arguments);
+      try { if (id === 'cashflow') load(); else if (id === 'dashboard') setTimeout(refreshCard, 700); } catch (e) { console.error('cashflow hook:', e); }
+      return r;
+    };
+  }
+  window.addEventListener('load', () => setTimeout(() => { try { refreshCard(); } catch (e) {} }, 2500));
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   🎯 STRATEGY & TASKS — Export Excel / Import CSV (v57)
+   • একটাই বাটন-জোড়া; যে ট্যাব খোলা (Daily Tasks / Strategic Roadmap / Idea Box) তার ডেটার উপর কাজ করে
+   • বিদ্যমান ডেটা/ফাংশন বদলায় না — শুধু পড়ে: liveDailyTasksData, liveStrategyPlansData, liveIdeaNotesData
+   • Import শেষে বিদ্যমান loadLive… ফাংশন দিয়ে টেবিল রিফ্রেশ
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+  const { downloadCSV, parseCSV, bn2en, parseDateAny, spaced } = window.__igxCsv;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const toast = (m, t) => { try { showToast(m, t || 'success'); } catch (e) {} };
+  const todayBD = () => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka' }).format(new Date()); } catch (e) { return new Date().toISOString().slice(0, 10); } };
+  const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9\u0980-\u09ff]/g, '');
+  // সংরক্ষিত তারিখ (dd-MMM-yyyy) → yyyy-MM-dd; না বুঝলে যেমন আছে
+  const toIso = v => { const t = String(v == null ? '' : v).trim(); return t ? (parseDateAny(t) || t) : ''; };
+
+  // বৈধ মান (অ্যাপের ড্রপডাউনের সাথে হুবহু) + সহজ সমার্থক শব্দ
+  const ENUM = {
+    priority: { list: ['High', 'Medium', 'Low'], def: 'Medium', alias: {} },
+    taskStatus: { list: ['Pending', 'In Progress', 'Completed'], def: 'Pending', alias: { done: 'Completed', complete: 'Completed', progress: 'In Progress', ongoing: 'In Progress' } },
+    planType: { list: ['Short-Term', 'Long-Term'], def: 'Short-Term', alias: { short: 'Short-Term', long: 'Long-Term' } },
+    planStatus: { list: ['Planning', 'Active', 'Achieved'], def: 'Planning', alias: { done: 'Achieved', completed: 'Achieved' } },
+    ideaStatus: { list: ['New Idea', 'Under Review', 'Approved', 'Archived'], def: 'New Idea', alias: { new: 'New Idea', review: 'Under Review' } },
+  };
+  function pickEnum(v, e) {
+    const s = String(v == null ? '' : v).trim(); if (!s) return e.def;
+    const n = norm(s); const hit = e.list.find(x => norm(x) === n) || e.alias[n]; return hit || null;
+  }
+
+  // ── তিন ট্যাবের কনফিগ ──
+  const KINDS = {
+    tasks: {
+      label: 'Daily Tasks', file: 'daily-tasks', data: () => liveDailyTasksData, reload: () => loadLiveDailyTasks(),
+      cols: [['id', '#'], ['date', 'Date'], ['assignedTo', 'Assigned To'], ['description', 'Task Description'], ['deadline', 'Deadline'], ['priority', 'Priority'], ['status', 'Status'], ['remarks', 'Remarks']],
+      dateKeys: ['date', 'deadline'], required: 'description',
+      order: ['deadline', 'assignedTo', 'description', 'priority', 'status', 'remarks', 'date'],
+      hdr: { deadline: ['deadline', 'duedate', 'due', 'শেষতারিখ'], assignedTo: ['assigned', 'assignee', 'দায়িত্ব'], description: ['description', 'task', 'বিবরণ', 'কাজ'], priority: ['priority', 'অগ্রাধিকার'], status: ['status', 'স্ট্যাটাস'], remarks: ['remark', 'মন্তব্য', 'note'], date: ['date', 'তারিখ'] },
+      preview: ['date', 'assignedTo', 'description', 'status'], previewHdr: ['তারিখ', 'Assigned', 'Task', 'Status'],
+      format: 'Date, Assigned To, Task Description, Deadline, Priority, Status, Remarks', valid: 'Priority: High / Medium / Low · Status: Pending / In Progress / Completed (শুধু Task Description বাধ্যতামূলক)',
+      sample: [['Date', 'Assigned To', 'Task Description', 'Deadline', 'Priority', 'Status', 'Remarks'], ['2026-10-20', 'Ismail', 'সাপ্লায়ারকে কল করা', '2026-10-22', 'High', 'Pending', 'জরুরি'], ['2026-10-20', 'Ashik', 'স্টক গণনা', '2026-10-25', 'Medium', 'In Progress', '']],
+      norm(r) { let bad = ''; const e = { date: r.date, assignedTo: r.assignedTo, description: r.description, deadline: r.deadline, remarks: r.remarks };
+        e.priority = pickEnum(r.priority, ENUM.priority); e.status = pickEnum(r.status, ENUM.taskStatus);
+        if (!String(e.description || '').trim()) bad = 'Task Description নেই'; else if (e.priority === null) bad = 'Priority ভুল'; else if (e.status === null) bad = 'Status ভুল';
+        return { e, bad }; },
+      key: e => [e.date, e.assignedTo, e.description, e.deadline].map(x => String(x || '').trim().toLowerCase()).join('|'),
+    },
+    plans: {
+      label: 'Strategic Roadmap', file: 'strategy-plans', data: () => liveStrategyPlansData, reload: () => loadLiveStrategyPlans(),
+      cols: [['id', '#'], ['type', 'Type'], ['title', 'Plan Title'], ['targetDate', 'Target Date'], ['milestones', 'Key Milestones / Steps'], ['budget', 'Est. Budget (৳)'], ['status', 'Status'], ['owner', 'Owner']],
+      dateKeys: ['targetDate'], required: 'title',
+      order: ['targetDate', 'type', 'title', 'milestones', 'budget', 'status', 'owner'],
+      hdr: { targetDate: ['targetdate', 'target', 'লক্ষ্য'], type: ['type', 'ধরন', 'ধরণ'], title: ['title', 'plan', 'শিরোনাম'], milestones: ['milestone', 'steps', 'ধাপ'], budget: ['budget', 'বাজেট'], status: ['status', 'স্ট্যাটাস'], owner: ['owner', 'দায়িত্ব'] },
+      preview: ['type', 'title', 'targetDate', 'status'], previewHdr: ['Type', 'Plan', 'Target', 'Status'],
+      format: 'Type, Plan Title, Target Date, Key Milestones / Steps, Est. Budget, Status, Owner', valid: 'Type: Short-Term / Long-Term · Status: Planning / Active / Achieved (শুধু Plan Title বাধ্যতামূলক)',
+      sample: [['Type', 'Plan Title', 'Target Date', 'Key Milestones / Steps', 'Est. Budget', 'Status', 'Owner'], ['Short-Term', 'নতুন কুরিয়ার চুক্তি', '2026-11-30', '১) দর যাচাই ২) চুক্তি', 5000, 'Planning', 'Ismail'], ['Long-Term', 'দ্বিতীয় গুদাম', '2027-06-30', 'জায়গা খোঁজা', 250000, 'Planning', 'Both']],
+      norm(r) { let bad = ''; const e = { title: r.title, targetDate: r.targetDate, milestones: r.milestones, owner: r.owner };
+        e.type = pickEnum(r.type, ENUM.planType); e.status = pickEnum(r.status, ENUM.planStatus);
+        const raw = bn2en(String(r.budget == null ? '' : r.budget)).replace(/[৳,\s]/g, ''); const b = raw === '' ? 0 : Number(raw); e.budget = isFinite(b) ? Math.round(b * 100) / 100 : raw;
+        if (!String(e.title || '').trim()) bad = 'Plan Title নেই'; else if (e.type === null) bad = 'Type ভুল'; else if (e.status === null) bad = 'Status ভুল'; else if (!isFinite(b) || b < 0) bad = 'Budget ভুল';
+        return { e, bad }; },
+      key: e => [e.type, e.title, e.targetDate].map(x => String(x || '').trim().toLowerCase()).join('|'),
+    },
+    ideas: {
+      label: 'Idea Box', file: 'idea-box', data: () => liveIdeaNotesData, reload: () => loadLiveIdeaNotes(),
+      cols: [['id', '#'], ['date', 'Date'], ['title', 'Title'], ['description', 'Description'], ['proposedBy', 'Proposed By'], ['status', 'Status'], ['actionNotes', 'Action Plan Notes']],
+      dateKeys: ['date'], required: 'title',
+      order: ['title', 'description', 'proposedBy', 'actionNotes', 'status', 'date'],
+      hdr: { title: ['title', 'শিরোনাম'], description: ['description', 'details', 'বিবরণ'], proposedBy: ['proposed', 'প্রস্তাব'], actionNotes: ['action', 'notes'], status: ['status', 'স্ট্যাটাস'], date: ['date', 'তারিখ'] },
+      preview: ['date', 'title', 'proposedBy', 'status'], previewHdr: ['তারিখ', 'Title', 'Proposed By', 'Status'],
+      format: 'Date, Title, Description, Proposed By, Status, Action Plan Notes', valid: 'Status: New Idea / Under Review / Approved / Archived (শুধু Title বাধ্যতামূলক)',
+      sample: [['Date', 'Title', 'Description', 'Proposed By', 'Status', 'Action Plan Notes'], ['2026-10-20', 'ফ্রি ডেলিভারি অফার', 'প্রথম অর্ডারে ডেলিভারি ফ্রি', 'Ismail', 'New Idea', ''], ['2026-10-21', 'রিভিউ ভিডিও', 'গ্রাহকের ভিডিও রিভিউ', 'Ashik', 'Under Review', 'পরের সপ্তাহে আলোচনা']],
+      norm(r) { let bad = ''; const e = { date: r.date, title: r.title, description: r.description, proposedBy: r.proposedBy, actionNotes: r.actionNotes };
+        e.status = pickEnum(r.status, ENUM.ideaStatus);
+        if (!String(e.title || '').trim()) bad = 'Title নেই'; else if (e.status === null) bad = 'Status ভুল';
+        return { e, bad }; },
+      key: e => [e.title, e.date, e.proposedBy].map(x => String(x || '').trim().toLowerCase()).join('|'),
+    },
+  };
+  const activeKind = () => ['tasks', 'plans', 'ideas'].find(t => { const s = $('sh-section-' + t); return s && s.style.display !== 'none'; }) || 'tasks';
+
+  // ── Export (বর্তমান ট্যাবের সব ডেটা) ──
+  function exportCSV() {
+    const k = activeKind(), K = KINDS[k], rows = (K.data() || []).slice().sort((a, b) => Number(a.id) - Number(b.id));
+    if (!rows.length) { toast(`${K.label}-এ Export করার মতো ডেটা নেই`, 'error'); return; }
+    const out = [K.cols.map(c => c[1])];
+    rows.forEach(r => out.push(K.cols.map(([key]) => K.dateKeys.includes(key) ? toIso(r[key]) : (r[key] == null ? '' : r[key]))));
+    downloadCSV(out, `${K.file}_${todayBD()}.csv`);
+    toast(`📥 ${K.label}: ${rows.length}টি এন্ট্রি export হয়েছে`, 'success');
+    try { logAction(`${K.label} export: ${rows.length}টি এন্ট্রি`); } catch (e) {}
+  }
+  const sampleCSV = () => { const K = KINDS[IMP.kind || activeKind()]; downloadCSV(K.sample, `${K.file}_sample.csv`); };
+
+  // ── CSV → rows ──
+  function analyze(kind, text) {
+    const K = KINDS[kind], all = parseCSV(text);
+    if (all.length < 2) return { error: 'CSV-এ কোনো ডেটা নেই' };
+    const hd = all[0].map(h => norm(bn2en(String(h)).replace(/\(.*?\)|৳/g, '')));
+    const col = {}, used = new Set();
+    // প্রতিটি কলাম একটি ফিল্ডই পাবে: আগে হুবহু মিল, তারপর "ধারণ করে"
+    [true, false].forEach(exact => K.order.forEach(f => {
+      if (col[f] != null) return;
+      const i = hd.findIndex((h, ix) => h && h !== 'id' && !used.has(ix) && K.hdr[f].some(v => exact ? h === norm(v) : h.includes(norm(v))));
+      if (i >= 0) { col[f] = i; used.add(i); }
+    }));
+    if (col[K.required] == null) return { error: `Header পাওয়া যায়নি — প্রথম লাইনে "${KINDS[kind].cols.find(c => c[0] === K.required)[1]}" কলাম থাকতে হবে` };
+    const rows = [];
+    all.slice(1).forEach((r, i) => {
+      const raw = {}; Object.keys(col).forEach(f => { raw[f] = String(r[col[f]] == null ? '' : r[col[f]]).trim(); });
+      const { e, bad: b0 } = K.norm(raw); let bad = b0;
+      K.dateKeys.forEach(dk => { const v = raw[dk]; if (v) { const iso = parseDateAny(v); if (!iso) bad = bad || 'তারিখ বোঝা যায়নি'; e[dk] = iso || v; } else e[dk] = ''; });
+      Object.keys(e).forEach(f => { if (typeof e[f] === 'string') e[f] = e[f].replace(/^'(?=[=+\-@])/, ''); });
+      rows.push({ line: i + 2, e, bad });
+    });
+    return { rows };
+  }
+
+  // ── Import UI ──
+  const IMP = { kind: null, rows: [], running: false, timer: null };
+  const $$ = (id, v) => { const x = $(id); if (x) x.style.display = v; };
+  function reset() { IMP.rows = []; ['shx-imp-preview', 'shx-imp-progress', 'shx-imp-result'].forEach(i => $$(i, 'none')); $$('shx-imp-submit', 'none'); $('shx-imp-submit').disabled = false; $$('shx-imp-drop', 'block'); $('shx-imp-file').value = ''; }
+  function openImport() {
+    clearTimeout(IMP.timer); reset(); IMP.kind = activeKind(); const K = KINDS[IMP.kind];
+    $('shx-imp-title').textContent = `📥 CSV Import — ${K.label}`; $('shx-imp-format').textContent = K.format; $('shx-imp-valid').textContent = K.valid;
+    $('modal-shx-import').classList.add('open');
+  }
+  function closeImport() { if (IMP.running) return; clearTimeout(IMP.timer); closeModal('shx-import'); reset(); }
+  function readFile(f) { if (!f) return; const r = new FileReader(); r.onload = ev => parseText(ev.target.result); r.readAsText(f, 'UTF-8'); }
+  function dropFile(ev) { ev.preventDefault(); $('shx-imp-drop').style.borderColor = 'var(--border)'; if (ev.dataTransfer.files[0]) readFile(ev.dataTransfer.files[0]); }
+  function parseText(text) {
+    const a = analyze(IMP.kind, text); if (a.error) { toast(a.error, 'error'); return; }
+    IMP.rows = a.rows; $$('shx-imp-drop', 'none'); $$('shx-imp-preview', 'block'); $$('shx-imp-result', 'none'); refresh();
+  }
+  function plan() {
+    const K = KINDS[IMP.kind], skip = $('shx-imp-skipdup').checked, pool = {};
+    if (skip) (K.data() || []).forEach(r => { const e = Object.assign({}, r); K.dateKeys.forEach(d => { e[d] = toIso(r[d]); }); const k = K.key(e); pool[k] = (pool[k] || 0) + 1; });
+    return IMP.rows.map(r => { if (r.bad) return { r, st: 'bad' }; const k = K.key(r.e); if (skip && pool[k] > 0) { pool[k]--; return { r, st: 'dup' }; } return { r, st: 'new' }; });
+  }
+  function refresh() {
+    const K = KINDS[IMP.kind], pl = plan(), n = pl.filter(p => p.st === 'new').length, d = pl.filter(p => p.st === 'dup').length, b = pl.filter(p => p.st === 'bad').length;
+    $('shx-imp-summary').textContent = `মোট ${pl.length}টি row · ✅ নতুন ${n} · ⚠️ ডুপ্লিকেট ${d} · ❌ ভুল ${b}`;
+    const td = 'padding:5px 10px;border-bottom:1px solid var(--border);';
+    $('shx-imp-thead').innerHTML = '<tr>' + K.previewHdr.concat(['অবস্থা']).map(h => `<th style="padding:6px 10px;text-align:left;">${esc(h)}</th>`).join('') + '</tr>';
+    $('shx-imp-tbody').innerHTML = pl.slice(0, 100).map(({ r, st }) => {
+      const stx = st === 'new' ? '<span style="color:var(--green)">✅ নতুন</span>' : st === 'dup' ? '<span style="color:var(--gold)">⚠️ ডুপ্লিকেট — বাদ যাবে</span>' : `<span style="color:var(--red)">❌ ${esc(r.bad)} (লাইন ${r.line})</span>`;
+      return `<tr style="${st === 'bad' ? 'background:rgba(248,81,73,.06);' : ''}">` + K.preview.map(f => `<td style="${td}max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.e[f]) || '—'}</td>`).join('') + `<td style="${td}white-space:nowrap;">${stx}</td></tr>`;
+    }).join('') + (pl.length > 100 ? `<tr><td colspan="${K.preview.length + 1}" style="padding:6px 10px;color:var(--text3);">… আরও ${pl.length - 100}টি row (প্রথম ১০০টি দেখানো হয়েছে)</td></tr>` : '');
+    $$('shx-imp-submit', n ? 'inline-flex' : 'none'); $('shx-imp-submit-text').textContent = `${n}টি এন্ট্রি Import করুন`;
+  }
+  async function submit() {
+    if (IMP.running) return;
+    const kind = IMP.kind, K = KINDS[kind], rows = plan().filter(p => p.st === 'new').map(p => p.r.e);
+    if (!rows.length) { toast('Import করার মতো নতুন কিছু নেই', 'error'); return; }
+    IMP.running = true; $('shx-imp-submit').disabled = true; $$('shx-imp-preview', 'none'); $$('shx-imp-progress', 'block'); $$('shx-imp-result', 'none');
+    // ব্যাচ: সর্বোচ্চ ১০০ row; file:// থেকে খুললে অ্যাপ ডেটা URL-এ পাঠায় (~৭৫০০ অক্ষর) তাই আকার ধরে ছোট ব্যাচ
+    const lim = location.protocol === 'file:' ? 4200 : Infinity, parts = []; let cur = [], len = 0;
+    rows.forEach(r => { const l = JSON.stringify(r).length + 1; if (cur.length && (cur.length >= 100 || len + l > lim)) { parts.push(cur); cur = []; len = 0; } cur.push(r); len += l; });
+    if (cur.length) parts.push(cur);
+    const batch = 'shi' + Date.now() + Math.random().toString(36).slice(2, 6); let added = 0, invalid = 0, failed = false;
+    try {
+      for (let c = 0; c < parts.length; c++) {
+        $('shx-imp-ptext').textContent = `পাঠানো হচ্ছে… ব্যাচ ${c + 1} / ${parts.length}`; $('shx-imp-pbar').style.width = Math.round((c / parts.length) * 90 + 5) + '%';
+        const r = await spaced(() => postToAPI({ action: 'shBulkImport', kind, batch: batch + 'c' + c, rows: parts[c] }));
+        if (!r) { failed = true; break; }
+        added += r.added || 0; invalid += r.invalid || 0;
+      }
+      $('shx-imp-pbar').style.width = '100%'; $$('shx-imp-progress', 'none');
+      const res = $('shx-imp-result');
+      if (failed) {
+        res.style.cssText = 'display:block;margin-top:14px;padding:12px;border-radius:8px;background:rgba(248,81,73,0.1);border:1px solid rgba(248,81,73,0.3);color:var(--red);font-size:13px;';
+        res.innerHTML = `❌ Import মাঝপথে থেমেছে — ${added}টি এন্ট্রি সেভ হয়েছে। একই ফাইল আবার Import করুন: ডুপ্লিকেট বাদ থাকায় সেভ হওয়া এন্ট্রিগুলো দ্বিতীয়বার যাবে না।<br><button class="btn" style="margin-top:8px;" onclick="shxImpReset()">🔄 আবার চেষ্টা করুন</button>`;
+        IMP.running = false; $('shx-imp-submit').disabled = false; try { await K.reload(); } catch (e) {} return;
+      }
+      res.style.cssText = 'display:block;margin-top:14px;padding:12px;border-radius:8px;background:rgba(34,201,122,0.1);border:1px solid rgba(34,201,122,0.3);color:var(--green);font-size:13px;font-weight:600;text-align:center;';
+      res.textContent = `✅ ${added}টি এন্ট্রি import হয়েছে` + (invalid ? ` · ${invalid}টি ভুল row বাদ` : '');
+      try { logAction(`${K.label} CSV import: ${added}টি এন্ট্রি`); } catch (e) {}
+      IMP.running = false;
+      try { await spaced(() => K.reload()); } catch (e) {}
+      toast(`✅ ${K.label}: ${added}টি এন্ট্রি import সম্পন্ন`, 'success');
+      if (!invalid) IMP.timer = setTimeout(closeImport, 1800);
+    } finally { IMP.running = false; }
+  }
+
+  Object.assign(window, { shxExport: exportCSV, shxSample: sampleCSV, shxOpenImport: openImport, shxCloseImport: closeImport, shxImpReset: reset, shxImpRead: readFile, shxImpDrop: dropFile, shxImpRefresh: refresh, shxImpSubmit: submit, __shxAnalyze: analyze });
+})();
 </script>
 </body>
 </html>

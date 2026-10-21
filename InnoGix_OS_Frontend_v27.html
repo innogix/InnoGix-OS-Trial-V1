@@ -3069,6 +3069,11 @@ tbody td.muted{color:var(--text3);}
         </div>
       </div>
 
+      <div class="cf-notice" id="cf-outbox-notice" style="background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.4);">
+        <span id="cf-outbox-text">❌ কিছু এন্ট্রি সেভ হয়নি</span>
+        <button class="btn btn-sm" onclick="cfRetryAll()">🔁 সব আবার পাঠান</button>
+      </div>
+
       <div class="cf-notice" id="cf-open-notice">
         <span>⚠️ <strong>Opening Balance</strong> এখনো সেট করা হয়নি। শুরুতে হাতে কত টাকা ছিল সেটা দিন — না দিলে ০ ধরে হিসাব হবে।</span>
         <button class="btn btn-gold btn-sm" onclick="cfOpenOpening()">Opening Balance দিন</button>
@@ -5349,7 +5354,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzxkTLgld6rJJuHqAFpNBkmFRyCashlvy2JcY-U17QoaLNvc95q4Wv4wJBx7iI0cYpj7A/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbxxW7WjtOrfGVoy2DL_XN8nVTCVfcJNMetNh7oSWOeioX-zFbFizKLSzuh4jS3lHSJI/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -14789,7 +14794,15 @@ window.syncCourierData = async function () {
    ═══════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
-  const CF = { opening: 0, openingSet: false, openingDate: '', entries: [], loaded: false, busy: false, editId: null, type: 'Credit', cid: '' };
+  const CF = { opening: 0, openingSet: false, openingDate: '', entries: [], pending: [], loaded: false, busy: false, inflight: 0, editId: null, type: 'Credit', cid: '' };
+  // ── Outbox: সেভ না হওয়া এন্ট্রি ব্রাউজারে জমা থাকে (রিলোড করলেও হারায় না); একই cid দিয়ে আবার পাঠালে সার্ভার ডুপ্লিকেট ঠেকায় ──
+  const OB_KEY = 'igx_cf_outbox_v1';
+  const obSave = () => { try { localStorage.setItem(OB_KEY, JSON.stringify(CF.pending.map(p => ({ cid: p.cid, type: p.type, amount: p.amount, date: p.date, note: p.note })))); } catch (e) {} };
+  try { CF.pending = (JSON.parse(localStorage.getItem(OB_KEY) || '[]') || []).filter(p => p && p.cid && p.amount > 0).map(p => Object.assign({}, p, { state: 'failed' })); } catch (e) { CF.pending = []; }
+  const idNum = e => (typeof e.id === 'number' ? e.id : 1e15);
+  const liveEntries = () => CF.entries.concat(CF.pending.filter(p => p.state === 'saving'));   // ব্যালেন্সে ধরা হয়: সার্ভারের + সেভ হতে থাকা; ব্যর্থগুলো নয়
+  const track = async fn => { CF.inflight++; try { return await fn(); } finally { CF.inflight--; } };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
   const $ = id => document.getElementById(id);
   const { csvCell, downloadCSV, parseCSV, bn2en, parseDateAny, parseAmt } = window.__igxCsv; // শেয়ার্ড CSV হেল্পার
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -14808,20 +14821,23 @@ window.syncCourierData = async function () {
 
   // ── হিসাব: Opening + Credit − Debit ──
   function compute() {
-    let cr = 0, db = 0;
-    CF.entries.forEach(e => { const p = Math.round(e.amount * 100); if (e.type === 'Credit') cr += p; else db += p; });
+    let cr = 0, db = 0, crN = 0, dbN = 0; const L = liveEntries();
+    L.forEach(e => { const p = Math.round(e.amount * 100); if (e.type === 'Credit') { cr += p; crN++; } else { db += p; dbN++; } });
     const op = Math.round(CF.opening * 100);
-    return { opening: op / 100, credit: cr / 100, debit: db / 100, balance: (op + cr - db) / 100, crN: CF.entries.filter(e => e.type === 'Credit').length, dbN: CF.entries.filter(e => e.type === 'Debit').length };
+    return { opening: op / 100, credit: cr / 100, debit: db / 100, balance: (op + cr - db) / 100, crN, dbN };
   }
+
+  // তারিখ অনুযায়ী (পুরোনো→নতুন) running balance — id → balance
   // তারিখ অনুযায়ী (পুরোনো→নতুন) running balance — id → balance
   function runningMap() {
-    const asc = CF.entries.slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : Number(a.id) - Number(b.id)));
+    const asc = liveEntries().slice().sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : idNum(a) - idNum(b)));
     let bal = Math.round(CF.opening * 100); const map = {};
-    asc.forEach(e => { const p = Math.round(e.amount * 100); bal += e.type === 'Credit' ? p : -p; map[e.id] = bal / 100; });
+    asc.forEach(e => { const p = Math.round(e.amount * 100); bal += e.type === 'Credit' ? p : -p; map[e.id == null ? 'p:' + e.cid : e.id] = bal / 100; });
     return map;
   }
 
   // ── Render ──
+  const rowKey = e => (e.id == null ? 'p:' + e.cid : e.id);
   function render() {
     const t = compute();
     const set = (id, v) => { const x = $(id); if (x) x.textContent = v; };
@@ -14832,34 +14848,43 @@ window.syncCourierData = async function () {
     set('cf-kpi-opening', money(t.opening));
     set('cf-kpi-opening-sub', CF.openingSet ? (CF.openingDate ? 'শুরু: ' + fmtDate(CF.openingDate) : 'শুরুতে থাকা টাকা') : 'এখনো সেট করা হয়নি');
     const notice = $('cf-open-notice'); if (notice) notice.classList.toggle('show', CF.loaded && !CF.openingSet);
+    const failedN = CF.pending.filter(p => p.state === 'failed').length, ob = $('cf-outbox-notice');
+    if (ob) { ob.classList.toggle('show', failedN > 0); const ot = $('cf-outbox-text'); if (ot) ot.textContent = `❌ ${failedN}টি এন্ট্রি সেভ হয়নি (ব্যালেন্সে ধরা হয়নি) — এগুলো এই ব্রাউজারে জমা আছে, হারাবে না।`; }
     paintCard(t.balance, t.credit, t.debit);
 
     const from = $('cf-f-from').value, to = $('cf-f-to').value, ty = $('cf-f-type').value, q = $('cf-f-q').value.trim().toLowerCase();
     const run = runningMap();
-    let rows = CF.entries.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : Number(b.id) - Number(a.id)));
+    const all = CF.entries.concat(CF.pending.map(p => Object.assign({}, p, { _pending: true })));
+    let rows = all.slice().sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : idNum(b) - idNum(a)));
     if (from) rows = rows.filter(e => e.date >= from);
     if (to) rows = rows.filter(e => e.date <= to);
     if (ty) rows = rows.filter(e => e.type === ty);
     if (q) rows = rows.filter(e => (e.note || '').toLowerCase().includes(q) || String(e.amount).includes(q) || String(e.id) === q);
 
     const body = $('cf-body'), foot = $('cf-foot');
-    set('cf-count', `${rows.length} / ${CF.entries.length} টি লেনদেন`);
+    set('cf-count', `${rows.length} / ${all.length} টি লেনদেন`);
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px;">${CF.entries.length ? 'এই ফিল্টারে কোনো লেনদেন নেই' : 'এখনো কোনো লেনদেন নেই — উপরের <strong>Credit</strong> বা <strong>Debit</strong> বাটনে ক্লিক করে প্রথম এন্ট্রি দিন'}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:40px;">${all.length ? 'এই ফিল্টারে কোনো লেনদেন নেই' : 'এখনো কোনো লেনদেন নেই — উপরের <strong>Credit</strong> বা <strong>Debit</strong> বাটনে ক্লিক করে প্রথম এন্ট্রি দিন'}</td></tr>`;
       foot.style.display = 'none'; return;
     }
     body.innerHTML = rows.map(e => {
-      const cr = e.type === 'Credit', id = Number(e.id);
-      return `<tr>
+      const cr = e.type === 'Credit', failed = e._pending && e.state === 'failed', saving = (e._pending && !failed) || e._sync, k = rowKey(e);
+      let actions;
+      if (e._pending) actions = failed ? `<button class="btn btn-sm" title="আবার পাঠান" onclick="cfRetry('${esc(e.cid)}')">🔁 আবার</button><button class="btn btn-sm" title="বাদ দিন" onclick="cfDiscard('${esc(e.cid)}')">🗑️</button>` : '<span title="সেভ হচ্ছে">⏳</span>';
+      else if (e._sync) actions = '<span title="সেভ হচ্ছে">⏳</span>';
+      else actions = `<button class="btn btn-sm" title="Edit" onclick="cfOpenEntry(null,${Number(e.id)})">✏️</button><button class="btn btn-sm" title="Delete" onclick="cfDelete(${Number(e.id)})">🗑️</button>`;
+      const style = failed ? 'background:rgba(248,81,73,.08);' : (saving ? 'opacity:.7;' : '');
+      const tag = failed ? '<div style="color:var(--red);font-size:11px;font-weight:700;">❌ সেভ হয়নি</div>' : (e._pending ? '<div style="color:var(--text3);font-size:11px;">⏳ সেভ হচ্ছে…</div>' : '');
+      return `<tr style="${style}">
         <td style="white-space:nowrap;">${fmtDate(e.date)}</td>
         <td><span class="cf-pill ${cr ? 'credit' : 'debit'}">${cr ? '＋ Credit' : '− Debit'}</span></td>
         <td class="cf-amt ${cr ? 'credit' : 'debit'}">${cr ? '+' : '−'}৳${num(e.amount)}</td>
-        <td class="cf-note">${esc(e.note) || '<span style="color:var(--text3)">—</span>'}</td>
-        <td class="cf-run" style="${run[e.id] < 0 ? 'color:var(--red);' : ''}">${money(run[e.id])}</td>
-        <td><div class="cf-row-actions"><button class="btn btn-sm" title="Edit" onclick="cfOpenEntry(null,${id})">✏️</button><button class="btn btn-sm" title="Delete" onclick="cfDelete(${id})">🗑️</button></div></td>
+        <td class="cf-note">${esc(e.note) || '<span style="color:var(--text3)">—</span>'}${tag}</td>
+        <td class="cf-run" style="${run[k] < 0 ? 'color:var(--red);' : ''}">${failed ? '—' : money(run[k])}</td>
+        <td><div class="cf-row-actions">${actions}</div></td>
       </tr>`;
     }).join('');
-    let c = 0, d = 0; rows.forEach(e => { const p = Math.round(e.amount * 100); if (e.type === 'Credit') c += p; else d += p; });
+    let c = 0, d = 0; rows.filter(e => !(e._pending && e.state === 'failed')).forEach(e => { const p = Math.round(e.amount * 100); if (e.type === 'Credit') c += p; else d += p; });
     foot.style.display = 'flex';
     foot.innerHTML = `<span>দেখানো লেনদেনের মোট Credit: <strong style="color:var(--green)">${money(c / 100)}</strong></span><span>মোট Debit: <strong style="color:var(--red)">${money(d / 100)}</strong></span><span>নিট: <strong>${money((c - d) / 100)}</strong></span>`;
   }
@@ -14881,9 +14906,11 @@ window.syncCourierData = async function () {
     const d = await netGet('cashflow');
     if (!d || !Array.isArray(d.entries)) {
       if (!CF.loaded) $('cf-body').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:40px;">❌ Cash Flow ডেটা লোড হয়নি — API URL ও Apps Script-এর নতুন Deployment চেক করুন, তারপর 🔄 রিফ্রেশ চাপুন</td></tr>';
-      return false;
+      render(); return false;
     }
-    const s = d.summary || {};
+    for (let i = 0; CF.inflight > 0 && i < 200; i++) await sleep(150);          // চলমান সেভ শেষ হওয়ার পর সার্ভারের তালিকা বসাই — নইলে নতুন এন্ট্রি মুছে যেতে পারে
+    const s = d.summary || {}, onServer = new Set(d.entries.map(e => e.cid).filter(Boolean));
+    CF.pending = CF.pending.filter(p => !onServer.has(p.cid)); obSave();        // যেগুলো আসলে সার্ভারে পৌঁছে গেছে সেগুলো আউটবক্স থেকে বাদ
     CF.entries = d.entries; CF.opening = Number(s.opening) || 0; CF.openingSet = !!s.openingSet; CF.openingDate = s.openingDate || '';
     CF.loaded = true; render(); return true;
   }
@@ -14900,6 +14927,7 @@ window.syncCourierData = async function () {
     let amount = '', date = todayBD(), note = '';
     if (id != null) {
       const e = CF.entries.find(x => Number(x.id) === Number(id)); if (!e) { toast('এন্ট্রি পাওয়া যায়নি', 'error'); return; }
+      if (e._sync) { toast('এই এন্ট্রি এখনো সেভ হচ্ছে — একটু অপেক্ষা করুন', 'info'); return; }
       CF.editId = Number(e.id); type = e.type; amount = e.amount; date = e.date || date; note = e.note || '';
     }
     $('cf-amount').value = amount; $('cf-date').value = date; $('cf-note').value = note;
@@ -14907,35 +14935,60 @@ window.syncCourierData = async function () {
     $('modal-cf-entry').classList.add('open');
     setTimeout(() => { try { $('cf-amount').focus(); } catch (e) {} }, 80);
   }
+
+  // সেভ: মডাল সঙ্গে সঙ্গে বন্ধ, এন্ট্রি সঙ্গে সঙ্গে তালিকা/ব্যালেন্সে; সার্ভারে যায় পেছনে (আলাদা রিফেচ ছাড়াই)
   async function submitEntry() {
-    if (CF.busy) return;
     const amount = Number(String($('cf-amount').value).replace(/,/g, ''));
-    const date = $('cf-date').value, note = $('cf-note').value.trim();
+    const date = $('cf-date').value, note = $('cf-note').value.trim().slice(0, 500);
+    if (!CF.editId && !CF.cid) return;                                       // ডাবল-ক্লিক: প্রথম ক্লিকেই cid ব্যবহার হয়ে গেছে
     if (!isFinite(amount) || amount <= 0) { toast('সঠিক টাকার পরিমাণ লিখুন (০ এর বেশি)', 'error'); return; }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('তারিখ বেছে নিন', 'error'); return; }
-    CF.busy = true; const btn = $('cf-save-btn'); btn.disabled = true; btn.textContent = '⏳ সেভ হচ্ছে…';
-    try {
-      const payload = CF.editId
-        ? { action: 'cfUpdateEntry', id: CF.editId, type: CF.type, amount, date, note }
-        : { action: 'cfAddEntry', cid: CF.cid, type: CF.type, amount, date, note };
-      const r = await netPost(payload);
-      if (!r) { toast('❌ সেভ হয়নি — আবার চেষ্টা করুন' + (window.__lastAPIErrorReason ? ' (' + window.__lastAPIErrorReason + ')' : ''), 'error'); return; }
-      closeModal('cf-entry');
-      toast(CF.editId ? '✅ এন্ট্রি আপডেট হয়েছে' : (CF.type === 'Credit' ? '✅ Credit যোগ হয়েছে' : '✅ Debit যোগ হয়েছে'), 'success');
-      try { logAction(`Cash Flow ${CF.editId ? 'এডিট' : 'যোগ'}: ${CF.type} ৳${num(amount)}`); } catch (e) {}
-      await load();
-    } finally { CF.busy = false; btn.disabled = false; btn.textContent = '✅ সেভ করুন'; }
+    const type = CF.type, amt = Math.round(amount * 100) / 100;
+    if (CF.editId) {                                                          // ── Edit (আশাবাদী আপডেট; ব্যর্থ হলে আগের অবস্থায় ফেরে) ──
+      const id = CF.editId, e = CF.entries.find(x => Number(x.id) === id); CF.editId = null;
+      if (!e || e._sync) return;
+      const old = { type: e.type, amount: e.amount, date: e.date, note: e.note };
+      Object.assign(e, { type, amount: amt, date, note, _sync: true });
+      closeModal('cf-entry'); render();
+      const r = await track(() => netPost({ action: 'cfUpdateEntry', id, type, amount: amt, date, note }));
+      e._sync = false;
+      if (!r) { Object.assign(e, old); toast('❌ Edit সেভ হয়নি — আগের অবস্থায় ফেরানো হয়েছে', 'error'); }
+      else { toast('✅ এন্ট্রি আপডেট হয়েছে', 'success'); try { logAction(`Cash Flow এডিট: ${type} ৳${num(amt)}`); } catch (x) {} }
+      render(); return;
+    }
+    const it = { cid: CF.cid, type, amount: amt, date, note, state: 'saving' }; CF.cid = '';
+    CF.pending.push(it); obSave(); closeModal('cf-entry'); render();
+    sendPending(it);
+  }
+  async function sendPending(it) {
+    it.state = 'saving'; render();
+    const r = await track(() => netPost({ action: 'cfAddEntry', cid: it.cid, type: it.type, amount: it.amount, date: it.date, note: it.note }));
+    if (!r) { it.state = 'failed'; obSave(); render(); toast('❌ সেভ হয়নি — তালিকায় লাল সারির 🔁 চাপুন (এন্ট্রি হারায়নি)', 'error'); return; }
+    CF.pending = CF.pending.filter(p => p !== it); obSave();
+    if (r.id != null) CF.entries.push({ id: Number(r.id), date: it.date, type: it.type, amount: it.amount, note: it.note, createdAt: '', cid: it.cid });
+    render();
+    toast(it.type === 'Credit' ? '✅ Credit সেভ হয়েছে' : '✅ Debit সেভ হয়েছে', 'success');
+    try { logAction(`Cash Flow যোগ: ${it.type} ৳${num(it.amount)}`); } catch (x) {}
+    if (r.id == null) load();
+  }
+  function retry(cid) { const it = CF.pending.find(p => p.cid === cid); if (it && it.state === 'failed') sendPending(it); }
+  function retryAll() { CF.pending.filter(p => p.state === 'failed').forEach(sendPending); }
+  function discard(cid) {
+    const it = CF.pending.find(p => p.cid === cid); if (!it) return;
+    if (!confirm(`এই এন্ট্রি বাদ দেবেন?\n\n${it.type} ৳${num(it.amount)} — ${fmtDate(it.date)}\n${it.note || ''}\n\n(এটি সেভ হয়নি; বাদ দিলে আর ফিরবে না)`)) return;
+    CF.pending = CF.pending.filter(p => p !== it); obSave(); render();
   }
 
   async function del(id) {
-    const e = CF.entries.find(x => Number(x.id) === Number(id)); if (!e) return;
+    const idx = CF.entries.findIndex(x => Number(x.id) === Number(id)); if (idx < 0) return;
+    const e = CF.entries[idx]; if (e._sync) return;
     if (!confirm(`⚠️ এই এন্ট্রি ডিলিট করবেন?\n\n${e.type} ৳${num(e.amount)} — ${fmtDate(e.date)}\n${e.note || ''}\n\n🗑️ এটি Recycle Bin-এ যাবে (৩০ দিনের মধ্যে Restore করা যাবে)। ব্যালেন্স নতুন করে হিসাব হবে।`)) return;
-    const r = await netPost({ action: 'cfDeleteEntry', id: Number(id) });
-    if (!r) { toast('❌ ডিলিট হয়নি — আবার চেষ্টা করুন', 'error'); return; }
+    CF.entries.splice(idx, 1); render();                                       // আশাবাদী: সঙ্গে সঙ্গে সরে যায়; ব্যর্থ হলে ফিরে আসে
+    const r = await track(() => netPost({ action: 'cfDeleteEntry', id: Number(id) }));
+    if (!r) { CF.entries.splice(Math.min(idx, CF.entries.length), 0, e); render(); toast('❌ ডিলিট হয়নি — এন্ট্রি ফিরিয়ে আনা হয়েছে', 'error'); return; }
     toast('🗑️ এন্ট্রি Recycle Bin-এ গেছে', 'info');
     try { logAction(`Cash Flow এন্ট্রি #${id} (${e.type} ৳${num(e.amount)}) Recycle Bin-এ পাঠিয়েছেন`); } catch (x) {}
-    await load();
-    setTimeout(() => { try { if (typeof updateBinBadge === 'function') updateBinBadge(); } catch (x) {} }, 400);
+    setTimeout(() => { try { if (typeof updateBinBadge === 'function') updateBinBadge(); } catch (x) {} }, 600);
   }
 
   // ── Opening Balance ──
@@ -14949,14 +15002,15 @@ window.syncCourierData = async function () {
     if (CF.busy) return;
     const raw = String($('cf-open-amount').value).replace(/,/g, '').trim(), amount = Number(raw);
     if (raw === '' || !isFinite(amount) || amount < 0) { toast('সঠিক Opening Balance লিখুন (০ বা তার বেশি)', 'error'); return; }
-    CF.busy = true; const btn = $('cf-open-save'); btn.disabled = true;
+    CF.busy = true; const btn = $('cf-open-save'); btn.disabled = true; btn.textContent = '⏳ সেভ হচ্ছে…';
+    const date = $('cf-open-date').value || '';
     try {
-      const r = await netPost({ action: 'cfSetOpening', amount, date: $('cf-open-date').value || '' });
+      const r = await track(() => netPost({ action: 'cfSetOpening', amount, date }));
       if (!r) { toast('❌ সেভ হয়নি — আবার চেষ্টা করুন', 'error'); return; }
-      closeModal('cf-opening'); toast('✅ Opening Balance সেভ হয়েছে', 'success');
+      CF.opening = Math.round(amount * 100) / 100; CF.openingSet = true; CF.openingDate = date;   // সার্ভারের অপেক্ষায় রিফেচ নয়
+      closeModal('cf-opening'); render(); toast('✅ Opening Balance সেভ হয়েছে', 'success');
       try { logAction(`Cash Flow Opening Balance সেট: ৳${num(amount)}`); } catch (e) {}
-      await load();
-    } finally { CF.busy = false; btn.disabled = false; }
+    } finally { CF.busy = false; btn.disabled = false; btn.textContent = '✅ সেভ করুন'; }
   }
 
   function clearFilters() { ['cf-f-from', 'cf-f-to', 'cf-f-type', 'cf-f-q'].forEach(i => { $(i).value = ''; }); render(); }
@@ -15096,7 +15150,7 @@ window.syncCourierData = async function () {
   }
 
   // inline onclick-এর জন্য global expose (সব নাম cf-প্রিফিক্স)
-  Object.assign(window, { cfLoad: load, cfRender: render, cfOpenEntry: openEntry, cfSetType: setType, cfSubmitEntry: submitEntry, cfDelete: del, cfOpenOpening: openOpening, cfSubmitOpening: submitOpening, cfClearFilters: clearFilters, cfRefreshCard: refreshCard, __cfCompute: compute, cfExport: exportCSV, cfSampleCSV: sampleCSV, cfOpenImport: openImport, cfCloseImport: closeImport, cfImpReset: impReset, cfImpRead: impRead, cfImpDrop: impDrop, cfImpRefresh: impRefresh, cfImpSubmit: impSubmit, __cfAnalyze: analyzeCSV, __cfParseCSV: parseCSV });
+  Object.assign(window, { cfLoad: load, cfRender: render, cfOpenEntry: openEntry, cfSetType: setType, cfSubmitEntry: submitEntry, cfDelete: del, cfOpenOpening: openOpening, cfSubmitOpening: submitOpening, cfClearFilters: clearFilters, cfRefreshCard: refreshCard, cfRetry: retry, cfDiscard: discard, cfRetryAll: retryAll, __cfCompute: compute, cfExport: exportCSV, cfSampleCSV: sampleCSV, cfOpenImport: openImport, cfCloseImport: closeImport, cfImpReset: impReset, cfImpRead: impRead, cfImpDrop: impDrop, cfImpRefresh: impRefresh, cfImpSubmit: impSubmit, __cfAnalyze: analyzeCSV, __cfParseCSV: parseCSV });
 
   // ── বিদ্যমান নেভিগেশনে যুক্ত হওয়া — মূল showPage অপরিবর্তিত, শুধু wrap করা ──
   if (typeof pageTitles === 'object') pageTitles.cashflow = ['Cash Flow', '— আলাদা ক্যাশ ব্যালেন্স'];
@@ -15128,17 +15182,21 @@ window.syncCourierData = async function () {
   // সংরক্ষিত তারিখ (dd-MMM-yyyy) → yyyy-MM-dd; না বুঝলে যেমন আছে
   const toIso = v => { const t = String(v == null ? '' : v).trim(); return t ? (parseDateAny(t) || t) : ''; };
 
-  // বৈধ মান (অ্যাপের ড্রপডাউনের সাথে হুবহু) + সহজ সমার্থক শব্দ
+  // বৈধ মান (অ্যাপের ড্রপডাউনের সাথে হুবহু) + সমার্থক/বাংলা শব্দ। অচেনা মান ইমপোর্ট আটকায় না — ডিফল্ট ধরে সতর্কতা দেখায়
   const ENUM = {
-    priority: { list: ['High', 'Medium', 'Low'], def: 'Medium', alias: {} },
-    taskStatus: { list: ['Pending', 'In Progress', 'Completed'], def: 'Pending', alias: { done: 'Completed', complete: 'Completed', progress: 'In Progress', ongoing: 'In Progress' } },
-    planType: { list: ['Short-Term', 'Long-Term'], def: 'Short-Term', alias: { short: 'Short-Term', long: 'Long-Term' } },
-    planStatus: { list: ['Planning', 'Active', 'Achieved'], def: 'Planning', alias: { done: 'Achieved', completed: 'Achieved' } },
-    ideaStatus: { list: ['New Idea', 'Under Review', 'Approved', 'Archived'], def: 'New Idea', alias: { new: 'New Idea', review: 'Under Review' } },
+    priority: { label: 'Priority', list: ['High', 'Medium', 'Low'], def: 'Medium', fuzzy: [[/high|urgent|critical|asap|জরুরি|উচ্চ|বেশি/i, 'High'], [/med|normal|mid|average|মাঝারি|সাধারণ/i, 'Medium'], [/low|কম|নিম্ন/i, 'Low']] },
+    taskStatus: { label: 'Status', list: ['Pending', 'In Progress', 'Completed'], def: 'Pending', fuzzy: [[/complete|done|finish|closed|সম্পন্ন|শেষ|হয়ে\s?গেছে/i, 'Completed'], [/not\s?start|pending|open|todo|to-?do|new|wait|বাকি|অপেক্ষ|শুরু\s?হয়নি/i, 'Pending'], [/progress|ongoing|doing|working|started|চলমান|চলছে/i, 'In Progress']] },
+    planType: { label: 'Type', list: ['Short-Term', 'Long-Term'], def: 'Short-Term', fuzzy: [[/long|দীর্ঘ/i, 'Long-Term'], [/short|স্বল্প|ছোট/i, 'Short-Term']] },
+    planStatus: { label: 'Status', list: ['Planning', 'Active', 'Achieved'], def: 'Planning', fuzzy: [[/achiev|done|complete|finish|সম্পন্ন|অর্জিত/i, 'Achieved'], [/active|progress|ongoing|running|চলমান|চলছে/i, 'Active'], [/plan|pending|new|idea|পরিকল্পনা/i, 'Planning']] },
+    ideaStatus: { label: 'Status', list: ['New Idea', 'Under Review', 'Approved', 'Archived'], def: 'New Idea', fuzzy: [[/approv|accept|অনুমোদ|গৃহীত/i, 'Approved'], [/archiv|reject|drop|cancel|বাতিল/i, 'Archived'], [/review|pending|consider|বিবেচনা/i, 'Under Review'], [/new|নতুন/i, 'New Idea']] },
   };
-  function pickEnum(v, e) {
+  // সবসময় একটি বৈধ মান ফেরত দেয়; না চিনলে ডিফল্ট + warns-এ সতর্কতা
+  function pickEnum(v, e, warns) {
     const s = String(v == null ? '' : v).trim(); if (!s) return e.def;
-    const n = norm(s); const hit = e.list.find(x => norm(x) === n) || e.alias[n]; return hit || null;
+    const n = norm(s), hit = e.list.find(x => norm(x) === n); if (hit) return hit;
+    const f = e.fuzzy.find(([re]) => re.test(s)); if (f) return f[1];
+    if (warns) warns.push(`${e.label} "${s.slice(0, 20)}" বোঝা যায়নি → ${e.def} ধরা হয়েছে`);
+    return e.def;
   }
 
   // ── তিন ট্যাবের কনফিগ ──
@@ -15152,10 +15210,9 @@ window.syncCourierData = async function () {
       preview: ['date', 'assignedTo', 'description', 'status'], previewHdr: ['তারিখ', 'Assigned', 'Task', 'Status'],
       format: 'Date, Assigned To, Task Description, Deadline, Priority, Status, Remarks', valid: 'Priority: High / Medium / Low · Status: Pending / In Progress / Completed (শুধু Task Description বাধ্যতামূলক)',
       sample: [['Date', 'Assigned To', 'Task Description', 'Deadline', 'Priority', 'Status', 'Remarks'], ['2026-10-20', 'Ismail', 'সাপ্লায়ারকে কল করা', '2026-10-22', 'High', 'Pending', 'জরুরি'], ['2026-10-20', 'Ashik', 'স্টক গণনা', '2026-10-25', 'Medium', 'In Progress', '']],
-      norm(r) { let bad = ''; const e = { date: r.date, assignedTo: r.assignedTo, description: r.description, deadline: r.deadline, remarks: r.remarks };
-        e.priority = pickEnum(r.priority, ENUM.priority); e.status = pickEnum(r.status, ENUM.taskStatus);
-        if (!String(e.description || '').trim()) bad = 'Task Description নেই'; else if (e.priority === null) bad = 'Priority ভুল'; else if (e.status === null) bad = 'Status ভুল';
-        return { e, bad }; },
+      norm(r) { const w = [], e = { date: r.date, assignedTo: r.assignedTo, description: r.description, deadline: r.deadline, remarks: r.remarks };
+        e.priority = pickEnum(r.priority, ENUM.priority, w); e.status = pickEnum(r.status, ENUM.taskStatus, w);
+        return { e, bad: String(e.description || '').trim() ? '' : 'Task Description নেই', warn: w }; },
       key: e => [e.date, e.assignedTo, e.description, e.deadline].map(x => String(x || '').trim().toLowerCase()).join('|'),
     },
     plans: {
@@ -15167,11 +15224,11 @@ window.syncCourierData = async function () {
       preview: ['type', 'title', 'targetDate', 'status'], previewHdr: ['Type', 'Plan', 'Target', 'Status'],
       format: 'Type, Plan Title, Target Date, Key Milestones / Steps, Est. Budget, Status, Owner', valid: 'Type: Short-Term / Long-Term · Status: Planning / Active / Achieved (শুধু Plan Title বাধ্যতামূলক)',
       sample: [['Type', 'Plan Title', 'Target Date', 'Key Milestones / Steps', 'Est. Budget', 'Status', 'Owner'], ['Short-Term', 'নতুন কুরিয়ার চুক্তি', '2026-11-30', '১) দর যাচাই ২) চুক্তি', 5000, 'Planning', 'Ismail'], ['Long-Term', 'দ্বিতীয় গুদাম', '2027-06-30', 'জায়গা খোঁজা', 250000, 'Planning', 'Both']],
-      norm(r) { let bad = ''; const e = { title: r.title, targetDate: r.targetDate, milestones: r.milestones, owner: r.owner };
-        e.type = pickEnum(r.type, ENUM.planType); e.status = pickEnum(r.status, ENUM.planStatus);
-        const raw = bn2en(String(r.budget == null ? '' : r.budget)).replace(/[৳,\s]/g, ''); const b = raw === '' ? 0 : Number(raw); e.budget = isFinite(b) ? Math.round(b * 100) / 100 : raw;
-        if (!String(e.title || '').trim()) bad = 'Plan Title নেই'; else if (e.type === null) bad = 'Type ভুল'; else if (e.status === null) bad = 'Status ভুল'; else if (!isFinite(b) || b < 0) bad = 'Budget ভুল';
-        return { e, bad }; },
+      norm(r) { const w = [], e = { title: r.title, targetDate: r.targetDate, milestones: r.milestones, owner: r.owner };
+        e.type = pickEnum(r.type, ENUM.planType, w); e.status = pickEnum(r.status, ENUM.planStatus, w);
+        const raw = bn2en(String(r.budget == null ? '' : r.budget)).replace(/[৳,\s]/g, ''), b = raw === '' ? 0 : Number(raw);
+        if (isFinite(b) && b >= 0) e.budget = Math.round(b * 100) / 100; else { e.budget = 0; w.push(`Budget "${String(r.budget).slice(0, 15)}" বোঝা যায়নি → ০ ধরা হয়েছে`); }
+        return { e, bad: String(e.title || '').trim() ? '' : 'Plan Title নেই', warn: w }; },
       key: e => [e.type, e.title, e.targetDate].map(x => String(x || '').trim().toLowerCase()).join('|'),
     },
     ideas: {
@@ -15183,10 +15240,9 @@ window.syncCourierData = async function () {
       preview: ['date', 'title', 'proposedBy', 'status'], previewHdr: ['তারিখ', 'Title', 'Proposed By', 'Status'],
       format: 'Date, Title, Description, Proposed By, Status, Action Plan Notes', valid: 'Status: New Idea / Under Review / Approved / Archived (শুধু Title বাধ্যতামূলক)',
       sample: [['Date', 'Title', 'Description', 'Proposed By', 'Status', 'Action Plan Notes'], ['2026-10-20', 'ফ্রি ডেলিভারি অফার', 'প্রথম অর্ডারে ডেলিভারি ফ্রি', 'Ismail', 'New Idea', ''], ['2026-10-21', 'রিভিউ ভিডিও', 'গ্রাহকের ভিডিও রিভিউ', 'Ashik', 'Under Review', 'পরের সপ্তাহে আলোচনা']],
-      norm(r) { let bad = ''; const e = { date: r.date, title: r.title, description: r.description, proposedBy: r.proposedBy, actionNotes: r.actionNotes };
-        e.status = pickEnum(r.status, ENUM.ideaStatus);
-        if (!String(e.title || '').trim()) bad = 'Title নেই'; else if (e.status === null) bad = 'Status ভুল';
-        return { e, bad }; },
+      norm(r) { const w = [], e = { date: r.date, title: r.title, description: r.description, proposedBy: r.proposedBy, actionNotes: r.actionNotes };
+        e.status = pickEnum(r.status, ENUM.ideaStatus, w);
+        return { e, bad: String(e.title || '').trim() ? '' : 'Title নেই', warn: w }; },
       key: e => [e.title, e.date, e.proposedBy].map(x => String(x || '').trim().toLowerCase()).join('|'),
     },
   };
@@ -15220,10 +15276,10 @@ window.syncCourierData = async function () {
     const rows = [];
     all.slice(1).forEach((r, i) => {
       const raw = {}; Object.keys(col).forEach(f => { raw[f] = String(r[col[f]] == null ? '' : r[col[f]]).trim(); });
-      const { e, bad: b0 } = K.norm(raw); let bad = b0;
-      K.dateKeys.forEach(dk => { const v = raw[dk]; if (v) { const iso = parseDateAny(v); if (!iso) bad = bad || 'তারিখ বোঝা যায়নি'; e[dk] = iso || v; } else e[dk] = ''; });
+      const { e, bad, warn } = K.norm(raw);
+      K.dateKeys.forEach(dk => { const v = raw[dk]; if (v) { const iso = parseDateAny(v); if (!iso) warn.push(`তারিখ "${v.slice(0, 15)}" বোঝা যায়নি → ফাঁকা থাকবে`); e[dk] = iso || ''; } else e[dk] = ''; });
       Object.keys(e).forEach(f => { if (typeof e[f] === 'string') e[f] = e[f].replace(/^'(?=[=+\-@])/, ''); });
-      rows.push({ line: i + 2, e, bad });
+      rows.push({ line: i + 2, e, bad, warn: warn.join(' · ') });
     });
     return { rows };
   }
@@ -15250,13 +15306,13 @@ window.syncCourierData = async function () {
     return IMP.rows.map(r => { if (r.bad) return { r, st: 'bad' }; const k = K.key(r.e); if (skip && pool[k] > 0) { pool[k]--; return { r, st: 'dup' }; } return { r, st: 'new' }; });
   }
   function refresh() {
-    const K = KINDS[IMP.kind], pl = plan(), n = pl.filter(p => p.st === 'new').length, d = pl.filter(p => p.st === 'dup').length, b = pl.filter(p => p.st === 'bad').length;
-    $('shx-imp-summary').textContent = `মোট ${pl.length}টি row · ✅ নতুন ${n} · ⚠️ ডুপ্লিকেট ${d} · ❌ ভুল ${b}`;
+    const K = KINDS[IMP.kind], pl = plan(), n = pl.filter(p => p.st === 'new').length, d = pl.filter(p => p.st === 'dup').length, b = pl.filter(p => p.st === 'bad').length, wn = pl.filter(p => p.st === 'new' && p.r.warn).length;
+    $('shx-imp-summary').textContent = `মোট ${pl.length}টি row · ✅ নতুন ${n}` + (wn ? ` (সতর্কতা ${wn})` : '') + ` · ⚠️ ডুপ্লিকেট ${d} · ❌ বাদ ${b}`;
     const td = 'padding:5px 10px;border-bottom:1px solid var(--border);';
     $('shx-imp-thead').innerHTML = '<tr>' + K.previewHdr.concat(['অবস্থা']).map(h => `<th style="padding:6px 10px;text-align:left;">${esc(h)}</th>`).join('') + '</tr>';
     $('shx-imp-tbody').innerHTML = pl.slice(0, 100).map(({ r, st }) => {
-      const stx = st === 'new' ? '<span style="color:var(--green)">✅ নতুন</span>' : st === 'dup' ? '<span style="color:var(--gold)">⚠️ ডুপ্লিকেট — বাদ যাবে</span>' : `<span style="color:var(--red)">❌ ${esc(r.bad)} (লাইন ${r.line})</span>`;
-      return `<tr style="${st === 'bad' ? 'background:rgba(248,81,73,.06);' : ''}">` + K.preview.map(f => `<td style="${td}max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.e[f]) || '—'}</td>`).join('') + `<td style="${td}white-space:nowrap;">${stx}</td></tr>`;
+      const stx = st === 'new' ? (r.warn ? `<span style="color:var(--gold)" title="${esc(r.warn)}">⚠️ নতুন — ${esc(r.warn)}</span>` : '<span style="color:var(--green)">✅ নতুন</span>') : st === 'dup' ? '<span style="color:var(--gold)">⚠️ ডুপ্লিকেট — বাদ যাবে</span>' : `<span style="color:var(--red)">❌ ${esc(r.bad)} (লাইন ${r.line})</span>`;
+      return `<tr style="${st === 'bad' ? 'background:rgba(248,81,73,.06);' : ''}">` + K.preview.map(f => `<td style="${td}max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.e[f]) || '—'}</td>`).join('') + `<td style="${td}min-width:150px;">${stx}</td></tr>`;
     }).join('') + (pl.length > 100 ? `<tr><td colspan="${K.preview.length + 1}" style="padding:6px 10px;color:var(--text3);">… আরও ${pl.length - 100}টি row (প্রথম ১০০টি দেখানো হয়েছে)</td></tr>` : '');
     $$('shx-imp-submit', n ? 'inline-flex' : 'none'); $('shx-imp-submit-text').textContent = `${n}টি এন্ট্রি Import করুন`;
   }
@@ -15293,6 +15349,63 @@ window.syncCourierData = async function () {
       if (!invalid) IMP.timer = setTimeout(closeImport, 1800);
     } finally { IMP.running = false; }
   }
+
+  // ═══════════ দ্রুত ও নিরাপদ সেভ: Daily Task / Strategy Plan / Idea ═══════════
+  // সমস্যা: সেভ চলাকালীন মডাল খোলা থাকে ও বাটন চালু থাকে → ডাবল-ক্লিকে দুটো রিকোয়েস্ট → দুটো সেভ।
+  // সমাধান (বিদ্যমান ফাংশন না বদলে মুড়ে দেওয়া): ১) চলাকালীন আবার চাপলে উপেক্ষা ২) প্রতি "যোগ" রিকোয়েস্টে ইউনিক cid
+  //   (সার্ভার একই cid দ্বিতীয়বার লেখে না) ৩) মডাল সঙ্গে সঙ্গে বন্ধ, সার্ভারে যায় পেছনে; হয়ে গেলে তালিকা রিফ্রেশ
+  //   ৪) ব্যর্থ হলে মডাল আবার খুলে ডেটা ফেরত দেয় — কিছু হারায় না।  (Idea→Task/Plan রূপান্তরে আগের ধীর-নিরাপদ পথই চলে)
+  const newCid = () => 'sh' + Date.now() + Math.random().toString(36).slice(2, 8);
+  const FAST = [
+    { fn: 'submitDailyTask', btn: 'sh-task-submit-btn', modal: 'add-task', loader: 'loadLiveDailyTasks', add: 'addDailyTask', upd: 'updateDailyTask', idEl: 'sh-task-id', idKey: 'taskId', map: { date: 'sh-task-date', assignedTo: 'sh-task-assigned', description: 'sh-task-desc', priority: 'sh-task-priority', status: 'sh-task-status', deadline: 'sh-task-deadline', remarks: 'sh-task-remarks' } },
+    { fn: 'submitStrategyPlan', btn: 'sh-plan-submit-btn', modal: 'add-plan', loader: 'loadLiveStrategyPlans', add: 'addStrategyPlan', upd: 'updateStrategyPlan', idEl: 'sh-plan-id', idKey: 'strategyId', map: { type: 'sh-plan-type', title: 'sh-plan-title', targetDate: 'sh-plan-target-date', milestones: 'sh-plan-milestones', budget: 'sh-plan-budget', status: 'sh-plan-status', owner: 'sh-plan-owner' } },
+    { fn: 'submitIdea', btn: 'sh-idea-submit-btn', modal: 'add-idea', loader: 'loadLiveIdeaNotes', add: 'addIdea', upd: 'updateIdea', idEl: 'sh-idea-id', idKey: 'ideaId', map: { date: 'sh-idea-date', title: 'sh-idea-title', description: 'sh-idea-desc', proposedBy: 'sh-idea-proposed-by', status: 'sh-idea-status', actionNotes: 'sh-idea-action-notes' } },
+  ];
+  function refillAndReopen(c, p) {
+    Object.keys(c.map).forEach(k => { const el = $(c.map[k]); if (el && p[k] != null) el.value = p[k]; });
+    const idEl = $(c.idEl); if (idEl) idEl.value = p[c.idKey] || '';
+    try { openModal(c.modal); } catch (e) { const m = $('modal-' + c.modal); if (m) m.classList.add('open'); }
+  }
+  function installFast(c) {
+    const orig = window[c.fn]; if (typeof orig !== 'function') return;
+    let busy = false, failed = null;
+    window[c.fn] = async function () {
+      if (busy) return;                                   // ডাবল-ক্লিক: চলমান সেভ শেষ না হওয়া পর্যন্ত উপেক্ষা
+      busy = true;
+      const btn = $(c.btn), label = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ সেভ হচ্ছে…'; }
+      const realPost = window.postToAPI, realLoad = window[c.loader], realToast = window.showToast;
+      const optimistic = !(typeof _shFromIdea !== 'undefined' && _shFromIdea);
+      let bg = null, captured = null, capSig = null, held = null;
+      window.postToAPI = function (payload) {
+        if (!payload || (payload.action !== c.add && payload.action !== c.upd)) return realPost.apply(this, arguments);
+        if (payload.action === c.add) { const sig = JSON.stringify(payload); capSig = sig; payload = Object.assign({}, payload, { cid: failed && failed.sig === sig ? failed.cid : newCid() }); }
+        captured = payload;
+        const prom = spaced(() => realPost(payload));
+        if (!optimistic) return prom;
+        bg = prom; return Promise.resolve({ status: 'success', optimistic: true });   // মডাল এখনই বন্ধ হবে; আসল ফল পেছনে
+      };
+      if (optimistic) {
+        window[c.loader] = function () {};                                            // এখনই বাসি রিফ্রেশ নয় — সার্ভারের উত্তরের পর
+        window.showToast = function (m, t) { if ((t || 'success') === 'success') { held = [m, t]; return; } return realToast.apply(this, arguments); };
+      }
+      try { await orig.apply(this, arguments); }
+      finally { window.postToAPI = realPost; window[c.loader] = realLoad; window.showToast = realToast; busy = false; if (btn) { btn.disabled = false; btn.textContent = label; } }
+      if (!bg) return;
+      realToast('⏳ সেভ হচ্ছে…', 'info');
+      const res = await bg;
+      if (res) {
+        failed = null;
+        try { if (typeof realLoad === 'function') await spaced(() => realLoad()); } catch (e) {}
+        realToast(held ? held[0] : '✅ সেভ হয়েছে', 'success');
+      } else {
+        if (captured && captured.action === c.add) failed = { sig: capSig, cid: captured.cid };   // একই ডেটায় আবার সেভ করলে একই cid
+        if (captured) refillAndReopen(c, captured);
+        realToast('❌ সেভ হয়নি — আপনার লেখা ফর্মে ফিরিয়ে দেওয়া হয়েছে, আবার সেভ চাপুন', 'error');
+      }
+    };
+  }
+  FAST.forEach(installFast);
 
   Object.assign(window, { shxExport: exportCSV, shxSample: sampleCSV, shxOpenImport: openImport, shxCloseImport: closeImport, shxImpReset: reset, shxImpRead: readFile, shxImpDrop: dropFile, shxImpRefresh: refresh, shxImpSubmit: submit, __shxAnalyze: analyze });
 })();

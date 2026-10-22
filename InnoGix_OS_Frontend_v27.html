@@ -1590,6 +1590,7 @@ tbody td.muted{color:var(--text3);}
 
 /* OPT-A2: Modal animations via transform (no layout thrash) */
 .modal-overlay { will-change: opacity; }
+.modal-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-height:90vh;overflow-y:auto;}
 .modal-box {
   will-change: transform, opacity;
   transform: translateZ(0);
@@ -3040,6 +3041,23 @@ tbody td.muted{color:var(--text3);}
       #page-purchases .pt-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px;}
       #page-purchases .pt-kpi{position:relative;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px 18px;overflow:hidden;}
       #page-purchases .pt-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--pt);}
+      #page-purchases .pt-kpi.click{cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;}
+      #page-purchases .pt-kpi.click:hover,#page-purchases .pt-kpi.click:focus-visible{transform:translateY(-2px);border-color:var(--pt);box-shadow:0 6px 18px rgba(212,160,23,.18);outline:none;}
+      #page-purchases .pt-kpi-more{position:absolute;right:12px;top:12px;font-size:10px;color:var(--pt);opacity:.8;}
+      #page-purchases tr.pt-grow{cursor:pointer;}
+      #page-purchases tr.pt-grow:hover td{background:rgba(212,160,23,.06);}
+      #page-purchases .pt-badge{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.4);color:var(--pt);font-size:11px;font-weight:700;white-space:nowrap;}
+      .pt-dtbl{width:100%;border-collapse:collapse;font-size:13px;}
+      .pt-dtbl th{background:var(--bg3,rgba(255,255,255,.04));color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:8px 10px;white-space:nowrap;}
+      .pt-dtbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
+      .pt-dtbl td.r,.pt-dtbl th.r{text-align:right;font-family:'IBM Plex Mono',monospace,sans-serif;white-space:nowrap;}
+      .pt-dtbl tr.clk{cursor:pointer;}.pt-dtbl tr.clk:hover td{background:rgba(212,160,23,.07);}
+      .pt-sec{font-weight:700;color:var(--text);margin:16px 0 8px;font-size:13px;}
+      .pt-bar{height:6px;border-radius:4px;background:var(--border);overflow:hidden;min-width:70px;}.pt-bar i{display:block;height:100%;background:#D4A017;}
+      .pt-vinfo{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px 16px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:14px;font-size:13px;}
+      .pt-vinfo span{display:block;font-size:11px;color:var(--text3);}
+      .pt-vact{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin:12px 0;padding:12px;border:1px dashed var(--border);border-radius:10px;}
+      .pt-vact label{font-size:11px;color:var(--text3);display:block;margin-bottom:3px;}
       #page-purchases .pt-kpi-label{font-size:12px;color:var(--text3);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:6px;}
       #page-purchases .pt-kpi-value{font-size:24px;font-weight:800;color:var(--text);font-family:'IBM Plex Mono',monospace,sans-serif;word-break:break-all;}
       #page-purchases .pt-kpi.amt .pt-kpi-value{color:var(--pt);}
@@ -3090,10 +3108,10 @@ tbody td.muted{color:var(--text3);}
       <div class="pt-notice">ℹ️ এখানে দেখানো সব অঙ্ক <strong>Recorded Purchase Amount</strong> — এটি ব্যবসায়িক খরচ বা COGS নয়, এবং Payment Method/Source শুধু বর্ণনা (কোনো অ্যাকাউন্ট ব্যালেন্স বদলায় না)।</div>
 
       <div class="pt-kpis">
-        <div class="pt-kpi"><div class="pt-kpi-label">📄 Total Purchase Records</div><div class="pt-kpi-value" id="pt-k-count">—</div><div class="pt-kpi-sub" id="pt-k-count-sub">মোট রেকর্ড</div></div>
-        <div class="pt-kpi amt"><div class="pt-kpi-label">🧾 Recorded Purchase Amount</div><div class="pt-kpi-value" id="pt-k-amt">—</div><div class="pt-kpi-sub">রেকর্ডকৃত ক্রয়ের মোট (খরচ/COGS নয়)</div></div>
-        <div class="pt-kpi"><div class="pt-kpi-label">🏭 Number of Suppliers</div><div class="pt-kpi-value" id="pt-k-sup">—</div><div class="pt-kpi-sub">আলাদা সরবরাহকারী</div></div>
-        <div class="pt-kpi"><div class="pt-kpi-label">📅 Recorded This Month</div><div class="pt-kpi-value" id="pt-k-month">—</div><div class="pt-kpi-sub" id="pt-k-month-sub">এই মাসের রেকর্ড</div></div>
+        <div class="pt-kpi click" role="button" tabindex="0" onclick="ptKpi('count')" onkeydown="if(event.key==='Enter')ptKpi('count')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">📄 Total Purchase Records</div><div class="pt-kpi-value" id="pt-k-count">—</div><div class="pt-kpi-sub" id="pt-k-count-sub">মোট রেকর্ড</div></div>
+        <div class="pt-kpi amt click" role="button" tabindex="0" onclick="ptKpi('amount')" onkeydown="if(event.key==='Enter')ptKpi('amount')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">🧾 Recorded Purchase Amount</div><div class="pt-kpi-value" id="pt-k-amt">—</div><div class="pt-kpi-sub">রেকর্ডকৃত ক্রয়ের মোট (খরচ/COGS নয়)</div></div>
+        <div class="pt-kpi click" role="button" tabindex="0" onclick="ptKpi('suppliers')" onkeydown="if(event.key==='Enter')ptKpi('suppliers')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">🏭 Number of Suppliers</div><div class="pt-kpi-value" id="pt-k-sup">—</div><div class="pt-kpi-sub">আলাদা সরবরাহকারী</div></div>
+        <div class="pt-kpi click" role="button" tabindex="0" onclick="ptKpi('month')" onkeydown="if(event.key==='Enter')ptKpi('month')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">📅 Recorded This Month</div><div class="pt-kpi-value" id="pt-k-month">—</div><div class="pt-kpi-sub" id="pt-k-month-sub">এই মাসের রেকর্ড</div></div>
       </div>
 
       <!-- ENTRY FORM -->
@@ -3133,8 +3151,8 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>তারিখ</th><th>Supplier</th><th>Phone</th><th>Product / Item</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Unit Price</th><th style="text-align:right;">Total</th><th>Method</th><th>Source</th><th>Invoice No.</th><th>Note</th><th style="text-align:center;">Action</th></tr></thead>
-            <tbody id="pt-body"><tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px;">লোড হচ্ছে…</td></tr></tbody>
+            <thead><tr><th>তারিখ</th><th>Supplier</th><th>Phone</th><th>কেনা পণ্য</th><th style="text-align:right;">মোট (৳)</th><th>Method</th><th>Source</th><th>Invoice No.</th><th style="text-align:center;">Action</th></tr></thead>
+            <tbody id="pt-body"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;">লোড হচ্ছে…</td></tr></tbody>
           </table>
         </div>
         <div class="pt-pager" id="pt-pager" style="display:none;"></div>
@@ -3143,7 +3161,7 @@ tbody td.muted{color:var(--text3);}
 
     <!-- PURCHASE IMPORT MODAL -->
     <div class="modal-overlay" id="modal-pt-import" onclick="if(event.target===this)ptCloseImport()">
-      <div class="modal-box" style="max-width:560px;">
+      <div class="modal-box modal" style="max-width:560px;">
         <div class="modal-header"><span class="modal-title">📥 Purchase CSV Import</span><button class="modal-close" onclick="ptCloseImport()">✕</button></div>
         <div class="modal-body">
           <div id="pt-imp-drop" style="border:2px dashed var(--border);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;" onclick="document.getElementById('pt-imp-file').click()"
@@ -3160,9 +3178,29 @@ tbody td.muted{color:var(--text3);}
       </div>
     </div>
 
+    <!-- KPI DETAIL MODAL -->
+    <div class="modal-overlay" id="modal-pt-kpi" onclick="if(event.target===this)closeModal('pt-kpi')">
+      <div class="modal-box modal" style="max-width:860px;">
+        <div class="modal-header"><span class="modal-title" id="pt-kpi-title">বিস্তারিত</span><button class="modal-close" onclick="closeModal('pt-kpi')">✕</button></div>
+        <div class="modal-body" id="pt-kpi-body" style="max-height:72vh;overflow:auto;"></div>
+        <div class="modal-footer"><button class="btn" onclick="closeModal('pt-kpi')">বন্ধ করুন</button></div>
+      </div>
+    </div>
+    <!-- PURCHASE VIEW MODAL (একটি ক্রয়ের সব আইটেম) -->
+    <div class="modal-overlay" id="modal-pt-view" onclick="if(event.target===this)closeModal('pt-view')">
+      <div class="modal-box modal" style="max-width:900px;">
+        <div class="modal-header"><span class="modal-title" id="pt-v-title">🧾 ক্রয়ের বিস্তারিত</span><button class="modal-close" onclick="closeModal('pt-view')">✕</button></div>
+        <div class="modal-body" id="pt-v-body" style="max-height:74vh;overflow:auto;"></div>
+        <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <button class="btn" style="color:var(--red);border-color:rgba(248,81,73,.4);" onclick="ptViewDeleteAll()">🗑️ পুরো ক্রয় মুছুন</button>
+          <span style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" onclick="ptViewPrint()">🖨️ প্রিন্ট</button><button class="btn" onclick="closeModal('pt-view')">বন্ধ করুন</button></span>
+        </div>
+      </div>
+    </div>
+
     <!-- EDIT MODAL (একটি row; Purchase ID দিয়ে শনাক্ত) -->
     <div class="modal-overlay" id="modal-pt-edit" onclick="if(event.target===this)closeModal('pt-edit')">
-      <div class="modal-box" style="max-width:560px;">
+      <div class="modal-box modal" style="max-width:560px;">
         <div class="modal-header"><span class="modal-title" id="pt-e-title">✏️ রেকর্ড Edit</span><button class="modal-close" onclick="closeModal('pt-edit')">✕</button></div>
         <div class="modal-body">
           <div class="pt-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 14px;">
@@ -5490,7 +5528,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbyhXQufnksBwLWPYyYLW8qHy0FbgkXxVD4LWMq7e8BDrWhrcPXMOq6haz_tM3ANAJv5/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbxBb_i1ml7S1ftRSp3qKDS34rXbsEhwNO38yq6K1JMUbD5zRnMx48rxZr21Te5NWyII/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -7451,7 +7489,7 @@ async function viewInvestorReport(investorId) {
   try {
     const data = await fetchFromAPI('investor_report&investorId=' + investorId);
     if (!data || data.status !== 'ok') { el('investor-report-body').innerHTML = '❌ Report লোড ব্যর্থ'; return; }
-    const d = data;
+    const d = data; window._invRepData = d;
     el('investor-report-body').innerHTML = `
       <div id="investor-report-print">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border);">
@@ -7509,80 +7547,76 @@ const INNOGIX_LOGO_DATAURI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAoAA
 // 📄 Investor Statement PDF Export — ব্র্যান্ডেড, প্রিন্ট-অপ্টিমাইজড স্টেটমেন্ট
 // ব্রাউজারের Print ডায়ালগ থেকে "Save as PDF" বেছে নিলেই ডাউনলোড হয়ে যাবে — কোনো থার্ড-পার্টি লাইব্রেরি লাগে না।
 function printInvestorReport() {
-  const content = el('investor-report-print');
-  if (!content) return;
-
+  const d = window._invRepData;
+  if (!d) { showToast && showToast('আগে একজন investor-এর Report খুলুন', 'warning'); return; }
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const money = n => '৳ ' + (Number(n) || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
   const now = new Date();
-  const genTime = new Intl.DateTimeFormat('bn-BD', {
-    timeZone: 'Asia/Dhaka', day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'
-  }).format(now);
+  const genTime = new Intl.DateTimeFormat('bn-BD', { timeZone: 'Asia/Dhaka', day:'2-digit', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit' }).format(now);
   const stmtNo = 'STMT-' + now.getFullYear() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + String(now.getTime()).slice(-4);
-
+  const txns = Array.isArray(d.transactions) ? d.transactions : [];
+  const sums = {}; txns.forEach(t => { const k = t[4] || 'অন্যান্য'; sums[k] = (sums[k] || 0) + (Number(t[5]) || 0); });
+  const tcolor = { 'Investment':'#8a6300', 'Profit Share':'#1b7a3d', 'Buyback':'#b3261e' };
+  const rows = txns.length ? txns.map((t, i) => `<tr><td class="c">${i+1}</td><td>${esc(formatBDDate(t[1]) || '—')}</td>
+      <td><span class="tag" style="color:${tcolor[t[4]] || '#333'};border-color:${tcolor[t[4]] || '#999'}">${esc(t[4] || '—')}</span></td>
+      <td class="r b">${money(t[5])}</td><td class="mut">${esc(t[6] || '—')}</td><td class="c">${esc(t[7] || '—')}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="c mut" style="padding:18px">কোনো লেনদেন নেই</td></tr>';
+  const sumRows = Object.keys(sums).map(k => `<tr><td>${esc(k)}</td><td class="r b">${money(sums[k])}</td></tr>`).join('');
+  const isEq = d.investmentType === 'Equity';
   const win = window.open('', '_blank');
+  if (!win) { showToast && showToast('পপ-আপ ব্লক করা আছে — অনুমতি দিন', 'warning'); return; }
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Investor Statement — ${stmtNo}</title>
-    <style>
-      @page { size: A4; margin: 16mm 14mm; }
-      * { box-sizing: border-box; }
-      body {
-        font-family: 'Noto Sans Bengali','IBM Plex Sans',sans-serif;
-        color: #1a1a1a; padding: 0; margin: 0; font-size: 13px; line-height: 1.5;
-      }
-      .stmt-header {
-        display: flex; justify-content: space-between; align-items: center;
-        border-bottom: 3px solid #0f2a5c; padding-bottom: 14px; margin-bottom: 18px;
-      }
-      .stmt-header .brand { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
-      .stmt-header .brand img { width: 180px; height: auto; display:block; }
-      .stmt-header .brand-text .name { font-size: 20px; font-weight: 700; color: #B8860B; }
-      .stmt-header .brand-text .tagline { font-size: 11px; color: #666; }
-      .stmt-header .meta { text-align: right; font-size: 11px; color: #555; }
-      .stmt-title {
-        text-align: center; font-size: 18px; font-weight: 700; margin: 6px 0 20px;
-        letter-spacing: 0.5px;
-      }
-      table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
-      td, th { border: 1px solid #ddd; padding: 7px 10px; font-size: 12px; text-align: left; }
-      th { background: #faf5e6; color: #7a5c00; font-weight: 700; }
-      .stmt-footer {
-        margin-top: 28px; padding-top: 12px; border-top: 1px solid #ddd;
-        font-size: 10px; color: #888; display: flex; justify-content: space-between;
-      }
-      .disclaimer {
-        margin-top: 10px; font-size: 10px; color: #999; font-style: italic;
-      }
-      @media print {
-        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-      }
-    </style></head><body>
-
-    <div class="stmt-header">
-      <div class="brand">
-        <img src="${INNOGIX_LOGO_DATAURI}" alt="InnoGix">
-        <div class="brand-text">
-          <div class="tagline">Amanah Security Device — কালিয়াকৈর, গাজীপুর, ঢাকা</div>
-        </div>
-      </div>
-      <div class="meta">
-        স্টেটমেন্ট নং: <strong>${stmtNo}</strong><br>
-        জেনারেট করা হয়েছে: ${genTime}
-      </div>
-    </div>
-
-    <div class="stmt-title">📄 বিনিয়োগকারী স্টেটমেন্ট (Investor Statement)</div>
-
-    ${content.innerHTML}
-
-    <div class="disclaimer">
-      এই স্টেটমেন্টটি InnoGix Business OS থেকে স্বয়ংক্রিয়ভাবে জেনারেট করা হয়েছে এবং তথ্যগত উদ্দেশ্যে প্রদত্ত। কোনো আইনি বা স্বাক্ষরিত ডকুমেন্ট নয়।
-    </div>
-
-    <div class="stmt-footer">
-      <span>InnoGix Business OS</span>
-      <span>${genTime}</span>
-    </div>
-
-    <script>window.onload = () => { window.print(); };<\/script>
-  </body></html>`);
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 14mm 13mm; }
+    *{box-sizing:border-box} body{font-family:'Noto Sans Bengali','IBM Plex Sans',Arial,sans-serif;color:#1a1a1a;margin:0;font-size:12.5px;line-height:1.5}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .hd{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:3px solid #0f2a5c}
+    .hd img{width:175px;height:auto;display:block}
+    .hd .t{text-align:right}.hd .t b{display:block;font-size:20px;letter-spacing:2.5px;color:#0f2a5c}.hd .t span{display:block;font-size:11px;color:#555;margin-top:2px}
+    .sub{display:flex;justify-content:space-between;font-size:11px;color:#555;margin:8px 0 16px}
+    .card{border:1px solid #cfd8e8;border-left:5px solid #0f2a5c;border-radius:6px;padding:12px 14px;margin-bottom:16px;display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:8px 16px}
+    .card .nm{font-size:17px;font-weight:700;color:#0f2a5c}.card span{display:block;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px}
+    .card b{font-weight:600}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+    .k{border:1px solid #dfe5f0;border-radius:6px;padding:10px 12px;background:#f7f9fd}.k span{display:block;font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.4px}
+    .k b{display:block;font-size:17px;margin-top:3px}.k small{display:block;font-size:9.5px;color:#777;margin-top:2px}
+    h3{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#0f2a5c;margin:0 0 7px;padding-bottom:4px;border-bottom:1px solid #cfd8e8}
+    table{width:100%;border-collapse:collapse}th{background:#0f2a5c;color:#fff;font-size:10.5px;text-align:left;padding:7px 8px;letter-spacing:.3px}
+    td{padding:7px 8px;border-bottom:1px solid #e5e9f2;vertical-align:top}tbody tr:nth-child(even) td{background:#f8faff}
+    .c{text-align:center}.r{text-align:right;white-space:nowrap}.b{font-weight:700}.mut{color:#666}
+    .tag{display:inline-block;border:1px solid;border-radius:10px;padding:0 8px;font-size:10.5px;font-weight:600;white-space:nowrap}
+    tr{page-break-inside:avoid}
+    .two{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin-top:18px;align-items:start}
+    .sum td{background:transparent!important}.sum tr:last-child td{border-top:2px solid #0f2a5c}
+    .nb{border:1px dashed #b8c2d6;border-radius:6px;padding:9px 12px;font-size:11.5px;color:#444}
+    .sig{display:flex;justify-content:space-between;margin-top:46px;font-size:11px;color:#555}.sig div{width:44%;border-top:1px solid #777;padding-top:5px;text-align:center}
+    .dis{margin-top:16px;font-size:9.5px;color:#888;font-style:italic;text-align:center}
+    .ft{margin-top:10px;padding-top:8px;border-top:1px solid #cfd8e8;font-size:10px;color:#777;display:flex;justify-content:space-between}
+  </style></head><body>
+  <div class="hd"><img src="${INNOGIX_LOGO_DATAURI}" alt="InnoGix"><div class="t"><b>INVESTOR STATEMENT</b><span>বিনিয়োগকারী স্টেটমেন্ট</span></div></div>
+  <div class="sub"><span>স্টেটমেন্ট নং: <b>${stmtNo}</b></span><span>জেনারেট: ${esc(genTime)}</span></div>
+  <div class="card">
+    <div><span>বিনিয়োগকারী</span><div class="nm">${esc(d.name)}</div></div>
+    <div><span>Investor ID</span><b>${esc(d.investorId)}</b></div><div><span>স্ট্যাটাস</span><b>${esc(d.invStatus || '—')}</b></div>
+    <div><span>ফোন</span><b>${esc(d.phone || '—')}</b></div><div><span>যোগদান</span><b>${esc(formatBDDate(d.joinDate) || '—')}</b></div><div><span>বিনিয়োগের ধরন</span><b>${esc(d.investmentType || '—')}</b></div>
+  </div>
+  <div class="kpis">
+    <div class="k"><span>মোট বিনিয়োগ</span><b style="color:#8a6300">${money(d.totalInvested)}</b></div>
+    <div class="k"><span>Equity</span><b style="color:#1b7a3d">${Number(d.equityPct || 0).toFixed(2)}%</b><small>${isEq ? `${money(d.registeredAmt)} ÷ ${money(d.equityPoolTotal)}` : 'Fixed Return — equity pool-এর অংশ নয়'}</small></div>
+    <div class="k"><span>মোট Profit প্রদান</span><b style="color:#0b57d0">${money(d.totalProfitPaid)}</b></div>
+    <div class="k"><span>Buyback</span><b style="color:#b3261e">${money(d.totalBuyback)}</b></div>
+  </div>
+  <h3>লেনদেনের ইতিহাস</h3>
+  <table><thead><tr><th class="c" style="width:28px">#</th><th>তারিখ</th><th>ধরন</th><th class="r">পরিমাণ</th><th>নোট</th><th class="c">Verified</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="two">
+    <div class="nb"><b>Payment Cycle:</b> ${esc(d.paymentCycle || '—')}${d.notes ? `<br><b>নোট:</b> ${esc(d.notes)}` : ''}</div>
+    <div><h3>ধরন অনুযায়ী সারসংক্ষেপ</h3><table class="sum"><tbody>${sumRows || '<tr><td class="mut">—</td><td></td></tr>'}</tbody></table></div>
+  </div>
+  <div class="sig"><div>বিনিয়োগকারীর স্বাক্ষর</div><div>কর্তৃপক্ষের স্বাক্ষর</div></div>
+  <div class="dis">এই স্টেটমেন্টটি InnoGix Business OS থেকে স্বয়ংক্রিয়ভাবে জেনারেট করা হয়েছে এবং তথ্যগত উদ্দেশ্যে প্রদত্ত।</div>
+  <div class="ft"><span>InnoGix · কালিয়াকৈর, গাজীপুর, ঢাকা</span><span>${stmtNo}</span></div>
+  <script>window.onload=function(){setTimeout(function(){window.print();},600);};<\/script></body></html>`);
   win.document.close();
 }
 
@@ -15649,7 +15683,7 @@ window.syncCourierData = async function () {
   async function load(manual) {
     const d = await netGet('purchases');
     if (!d || !Array.isArray(d.data)) {
-      if (!PT.loaded) $('pt-body').innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--red);padding:40px;">❌ Purchase ডেটা লোড হয়নি — API URL ও Apps Script v57 ডিপ্লয় চেক করুন</td></tr>';
+      if (!PT.loaded) $('pt-body').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px;">❌ Purchase ডেটা লোড হয়নি — API URL ও Apps Script v57 ডিপ্লয় চেক করুন</td></tr>';
       if (manual) toast('❌ ডেটা লোড হয়নি', 'error');
       return false;
     }
@@ -15669,38 +15703,59 @@ window.syncCourierData = async function () {
     }).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.id < b.id ? 1 : -1)));
   }
   const isFiltering = () => !!($('pt-f-q').value.trim() || $('pt-f-from').value || $('pt-f-to').value);
+
+  // ── গ্রুপিং: একই সরবরাহকারী + তারিখ + ইনভয়েস = একটি "ক্রয়" (শিটে প্রতিটি পণ্য আলাদা row-ই থাকে) ──
+  const gKey = r => [r.date, String(r.supplier || '').trim().toLowerCase(), String(r.invoice || '').trim().toLowerCase()].join('\u0001');
+  const same = (arr, f) => { const s = new Set(arr.map(f)); return s.size === 1 ? arr[0] && f(arr[0]) : (s.size ? 'মিশ্র' : ''); };
+  function makeGroup(items) {
+    const it = items.slice().sort((a, b) => (a.id < b.id ? -1 : 1)), f = it[0];
+    return { key: gKey(f), date: f.date, supplier: f.supplier, phone: same(it, x => x.phone), invoice: f.invoice, method: same(it, x => x.method), source: same(it, x => x.source), note: same(it, x => x.note),
+      items: it, ids: it.map(x => x.id), total: it.reduce((s, x) => s + Math.round((Number(x.total) || 0) * 100), 0) / 100 };
+  }
+  function groupRows(rows) {
+    const m = new Map(); rows.forEach(r => { const k = gKey(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
+    return Array.from(m.values()).map(makeGroup).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.ids[0] < b.ids[0] ? 1 : -1)));
+  }
+  function filteredGroups() {
+    const q = $('pt-f-q').value.trim().toLowerCase(), from = $('pt-f-from').value, to = $('pt-f-to').value, qd = /^[\d+\-\s()]+$/.test(q) ? q.replace(/\D/g, '') : '';
+    return groupRows(PT.rows).filter(g => {
+      if (from && g.date < from) return false; if (to && g.date > to) return false;
+      if (!q) return true;
+      return [g.supplier, g.invoice].some(x => String(x || '').toLowerCase().includes(q)) || g.items.some(r => String(r.item || '').toLowerCase().includes(q) || String(r.supplier || '').toLowerCase().includes(q) || (qd && String(r.phone || '').replace(/\D/g, '').includes(qd)));
+    });
+  }
+  const itemsLabel = g => { const names = g.items.map(x => x.item); const first = names.slice(0, 2).map(esc).join(', '); return `<span class="pt-badge">${g.items.length}টি পণ্য</span> <span style="color:var(--text2);font-size:12px;">${first}${names.length > 2 ? ` +${names.length - 2}` : ''}</span>`; };
   function render() {
-    const rows = PT.filtered = filtered(), f = isFiltering();
-    // সারাংশ — শুধু Purchase_Tracker-এর (ফিল্টার করা) row থেকে
-    let amt = 0; const sup = new Set(); const mon = todayBD().slice(0, 7); let mc = 0, ma = 0;
-    rows.forEach(r => { const c = Math.round((Number(r.total) || 0) * 100); amt += c; sup.add(String(r.supplier || '').trim().toLowerCase()); if (String(r.date).slice(0, 7) === mon) { mc++; ma += c; } });
-    $('pt-k-count').textContent = rows.length; $('pt-k-count-sub').textContent = f ? `ফিল্টার অনুযায়ী (মোট ${PT.rows.length})` : 'মোট রেকর্ড';
+    const groups = PT.gList = filteredGroups(), f = isFiltering();
+    PT.gMap = {}; groups.forEach(g => PT.gMap[g.key] = g);
+    // সারাংশ — শুধু Purchase_Tracker-এর (ফিল্টার করা) ক্রয় থেকে
+    let amt = 0, items = 0; const sup = new Set(); const mon = todayBD().slice(0, 7); let mc = 0, ma = 0;
+    groups.forEach(g => { const c = Math.round(g.total * 100); amt += c; items += g.items.length; sup.add(String(g.supplier || '').trim().toLowerCase()); if (String(g.date).slice(0, 7) === mon) { mc++; ma += c; } });
+    $('pt-k-count').textContent = groups.length; $('pt-k-count-sub').textContent = (f ? 'ফিল্টার অনুযায়ী · ' : '') + `${items}টি পণ্য-সারি`;
     $('pt-k-amt').textContent = money(amt / 100);
     $('pt-k-sup').textContent = sup.size;
     $('pt-k-month').textContent = mc; $('pt-k-month-sub').textContent = `রেকর্ডকৃত ${money(ma / 100)}`;
-    $('pt-count').textContent = `${rows.length} / ${PT.rows.length}টি রেকর্ড`;
-    const pages = Math.max(1, Math.ceil(rows.length / PT.per)); if (PT.page > pages) PT.page = pages;
-    const slice = rows.slice((PT.page - 1) * PT.per, PT.page * PT.per), body = $('pt-body'), pager = $('pt-pager');
-    if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:40px;">${PT.rows.length ? 'এই ফিল্টারে কোনো রেকর্ড নেই' : 'এখনো কোনো ক্রয় রেকর্ড নেই — উপরের ফর্ম থেকে প্রথমটি যোগ করুন'}</td></tr>`;
+    $('pt-count').textContent = `${groups.length}টি ক্রয় · ${items}টি পণ্য`;
+    const pages = Math.max(1, Math.ceil(groups.length / PT.per)); if (PT.page > pages) PT.page = pages;
+    const slice = groups.slice((PT.page - 1) * PT.per, PT.page * PT.per), body = $('pt-body'), pager = $('pt-pager');
+    if (!groups.length) {
+      body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;">${PT.rows.length ? 'এই ফিল্টারে কোনো ক্রয় নেই' : 'এখনো কোনো ক্রয় রেকর্ড নেই — উপরের ফর্ম থেকে প্রথমটি যোগ করুন'}</td></tr>`;
       pager.style.display = 'none'; return;
     }
-    body.innerHTML = slice.map(r => `<tr>
-      <td style="white-space:nowrap;">${fmtDate(r.date)}</td>
-      <td>${esc(r.supplier) || '—'}</td>
-      <td style="white-space:nowrap;">${esc(r.phone) || '<span style="color:var(--text3)">—</span>'}</td>
-      <td>${esc(r.item)}</td>
-      <td class="pt-amt">${num(r.qty)}</td>
-      <td class="pt-amt">${money(r.price)}</td>
-      <td class="pt-amt pt-total">${money(r.total)}</td>
-      <td>${esc(r.method)}</td><td>${esc(r.source)}</td>
-      <td style="white-space:nowrap;">${esc(r.invoice) || '<span style="color:var(--text3)">—</span>'}</td>
-      <td class="pt-note">${esc(r.note) || '<span style="color:var(--text3)">—</span>'}</td>
-      <td><div class="pt-act"><button class="btn btn-sm" title="Edit" onclick="ptEdit('${esc(r.id)}')">✏️</button><button class="btn btn-sm" title="Delete" onclick="ptDelete('${esc(r.id)}')">🗑️</button></div></td>
+    body.innerHTML = slice.map(g => `<tr class="pt-grow" onclick="ptOpen('${encodeURIComponent(g.key)}')" title="ক্লিক করে বিস্তারিত দেখুন">
+      <td style="white-space:nowrap;">${fmtDate(g.date)}</td>
+      <td style="font-weight:600;">${esc(g.supplier) || '—'}</td>
+      <td style="white-space:nowrap;">${esc(g.phone) || '<span style="color:var(--text3)">—</span>'}</td>
+      <td>${itemsLabel(g)}</td>
+      <td class="pt-amt pt-total">${money(g.total)}</td>
+      <td>${esc(g.method)}</td><td>${esc(g.source)}</td>
+      <td style="white-space:nowrap;">${esc(g.invoice) || '<span style="color:var(--text3)">—</span>'}</td>
+      <td><div class="pt-act"><button class="btn btn-sm" title="বিস্তারিত" onclick="event.stopPropagation();ptOpen('${encodeURIComponent(g.key)}')">👁 বিস্তারিত</button></div></td>
     </tr>`).join('');
     pager.style.display = 'flex';
-    pager.innerHTML = `<span>দেখানো হচ্ছে ${(PT.page - 1) * PT.per + 1}–${Math.min(PT.page * PT.per, rows.length)} / ${rows.length} · ফিল্টারকৃত Recorded Purchase Amount: <strong style="color:#D4A017">${money(amt / 100)}</strong></span>
+    pager.innerHTML = `<span>দেখানো হচ্ছে ${(PT.page - 1) * PT.per + 1}–${Math.min(PT.page * PT.per, groups.length)} / ${groups.length}টি ক্রয় · ফিল্টারকৃত Recorded Purchase Amount: <strong style="color:#D4A017">${money(amt / 100)}</strong></span>
       <span style="display:flex;gap:8px;align-items:center;"><button class="btn btn-sm" ${PT.page <= 1 ? 'disabled' : ''} onclick="ptPage(-1)">◀ আগের</button><span>পৃষ্ঠা ${PT.page} / ${pages}</span><button class="btn btn-sm" ${PT.page >= pages ? 'disabled' : ''} onclick="ptPage(1)">পরের ▶</button></span>`;
+    refreshView();
   }
   const filterChanged = () => { PT.page = 1; render(); };
   const clearFilters = () => { ['pt-f-q', 'pt-f-from', 'pt-f-to'].forEach(i => $(i).value = ''); PT.page = 1; render(); };
@@ -15756,25 +15811,139 @@ window.syncCourierData = async function () {
     window.__igxCsv.downloadCSV(data, `purchase-tracker${pk.slug ? '_' + pk.slug : ''}-${todayBD()}.csv`);
     toast(`📥 ${rows.length}টি রেকর্ড এক্সপোর্ট হয়েছে (${pk.label})`, 'success');
   }
-  function printIt() {
-    const rows = filtered(); if (!rows.length) return toast('প্রিন্ট করার মতো রেকর্ড নেই', 'info');
-    let amt = 0; rows.forEach(r => amt += Math.round((Number(r.total) || 0) * 100));
+  // ── বিস্তারিত পপ-আপ: KPI কার্ড ──
+  const sumBy = (groups, kf) => { const m = {}; groups.forEach(g => { const k = kf(g) || '—'; (m[k] = m[k] || { n: 0, items: 0, c: 0 }); m[k].n++; m[k].items += g.items.length; m[k].c += Math.round(g.total * 100); }); return m; };
+  const barRows = (m, labelFn) => { const ks = Object.keys(m).sort((a, b) => m[b].c - m[a].c), mx = Math.max(1, ...ks.map(k => m[k].c)), tot = ks.reduce((s, k) => s + m[k].c, 0) || 1;
+    return `<table class="pt-dtbl"><thead><tr><th>${labelFn.h}</th><th class="r">ক্রয়</th><th class="r">মোট (৳)</th><th class="r">%</th><th></th></tr></thead><tbody>${ks.map(k => `<tr><td>${esc(labelFn.f ? labelFn.f(k) : k)}</td><td class="r">${m[k].n}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(m[k].c / 100)}</td><td class="r">${(m[k].c * 100 / tot).toFixed(1)}%</td><td style="width:26%;"><div class="pt-bar"><i style="width:${Math.round(m[k].c * 100 / mx)}%"></i></div></td></tr>`).join('')}</tbody></table>`; };
+  const purchaseList = groups => groups.length ? `<table class="pt-dtbl"><thead><tr><th>তারিখ</th><th>Supplier</th><th>Invoice</th><th>পণ্য</th><th class="r">মোট (৳)</th></tr></thead><tbody>${groups.map(g => `<tr class="clk" onclick="closeModal('pt-kpi');ptOpen('${encodeURIComponent(g.key)}')"><td style="white-space:nowrap;">${fmtDate(g.date)}</td><td style="font-weight:600;">${esc(g.supplier)}</td><td>${esc(g.invoice) || '—'}</td><td>${itemsLabel(g)}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(g.total)}</td></tr>`).join('')}</tbody></table>` : '<div style="text-align:center;color:var(--text3);padding:30px;">কোনো ক্রয় নেই</div>';
+  function kpi(kind) {
+    const groups = PT.gList || [], mon = todayBD().slice(0, 7), T = $('pt-kpi-title'), B = $('pt-kpi-body'); let html = '';
+    const note = '<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">ℹ️ Recorded Purchase Amount — ব্যবসায়িক খরচ বা COGS নয়। ' + (isFiltering() ? 'বর্তমান ফিল্টার অনুযায়ী।' : '') + ' সারিতে ক্লিক করলে সেই ক্রয়ের বিস্তারিত খুলবে।</div>';
+    if (kind === 'count') { T.textContent = '📄 সব ক্রয় (' + groups.length + 'টি)'; html = note + purchaseList(groups); }
+    else if (kind === 'month') { const g = groups.filter(x => String(x.date).slice(0, 7) === mon); T.textContent = '📅 এই মাসের ক্রয় (' + g.length + 'টি · ' + money(g.reduce((s, x) => s + x.total, 0)) + ')'; html = note + purchaseList(g); }
+    else if (kind === 'amount') {
+      T.textContent = '🧾 Recorded Purchase Amount — ' + money(groups.reduce((s, g) => s + Math.round(g.total * 100), 0) / 100);
+      const mf = k => { const m = /^(\d{4})-(\d{2})/.exec(k); return m ? `${MONTHS[+m[2] - 1]} ${m[1]}` : k; };
+      html = note + '<div class="pt-sec">🏭 সরবরাহকারী অনুযায়ী</div>' + barRows(sumBy(groups, g => String(g.supplier).trim()), { h: 'Supplier' })
+        + '<div class="pt-sec">📅 মাস অনুযায়ী</div>' + barRows(sumBy(groups, g => String(g.date).slice(0, 7)), { h: 'মাস', f: mf })
+        + '<div class="pt-sec">💳 Payment Method অনুযায়ী</div>' + barRows(sumBy(groups, g => g.method), { h: 'Method' })
+        + '<div class="pt-sec">🏦 Payment Source অনুযায়ী</div>' + barRows(sumBy(groups, g => g.source), { h: 'Source' });
+    } else if (kind === 'suppliers') {
+      const m = {}; groups.forEach(g => { const k = String(g.supplier).trim().toLowerCase(); const s = (m[k] = m[k] || { name: g.supplier, phones: new Set(), n: 0, items: 0, c: 0, last: '' }); if (g.phone && g.phone !== 'মিশ্র') s.phones.add(g.phone); s.n++; s.items += g.items.length; s.c += Math.round(g.total * 100); if (g.date > s.last) s.last = g.date; });
+      const ks = Object.keys(m).sort((a, b) => m[b].c - m[a].c); T.textContent = '🏭 সরবরাহকারী (' + ks.length + 'জন)';
+      html = '<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">সারিতে ক্লিক করলে সেই সরবরাহকারীর সব ক্রয় তালিকায় ফিল্টার হয়ে দেখাবে।</div><table class="pt-dtbl"><thead><tr><th>Supplier</th><th>Phone</th><th class="r">ক্রয়</th><th class="r">পণ্য-সারি</th><th class="r">মোট (৳)</th><th>শেষ ক্রয়</th></tr></thead><tbody>'
+        + ks.map(k => `<tr class="clk" onclick="ptFilterSupplier('${encodeURIComponent(m[k].name)}')"><td style="font-weight:600;">${esc(m[k].name)}</td><td>${esc(Array.from(m[k].phones).join(', ')) || '—'}</td><td class="r">${m[k].n}</td><td class="r">${m[k].items}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(m[k].c / 100)}</td><td style="white-space:nowrap;">${fmtDate(m[k].last)}</td></tr>`).join('') + '</tbody></table>';
+    }
+    B.innerHTML = html; $('modal-pt-kpi').classList.add('open');
+  }
+  function filterSupplier(enc) { $('pt-f-q').value = decodeURIComponent(enc); PT.page = 1; closeModal('pt-kpi'); render(); try { $('pt-f-q').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
+
+  // ── একটি ক্রয়ের বিস্তারিত পপ-আপ (আইটেম-তালিকা, তারিখ/তথ্য একসাথে বদল, প্রিন্ট, মোছা) ──
+  const VIEW = { ids: [], sel: new Set(), editOpen: false };
+  function viewRows() { const s = new Set(VIEW.ids); return PT.rows.filter(r => s.has(r.id)).sort((a, b) => (a.id < b.id ? -1 : 1)); }
+  function open(enc) {
+    const g = PT.gMap[decodeURIComponent(enc)]; if (!g) return toast('ক্রয় পাওয়া যায়নি', 'error');
+    VIEW.ids = g.ids.slice(); VIEW.sel = new Set(g.ids); VIEW.editOpen = false; renderView(); $('modal-pt-view').classList.add('open');
+  }
+  function refreshView() {
+    if (!$('modal-pt-view') || !$('modal-pt-view').classList.contains('open')) return;
+    if (!viewRows().length) { closeModal('pt-view'); return; }
+    VIEW.sel = new Set(Array.from(VIEW.sel).filter(id => viewRows().some(r => r.id === id))); renderView();
+  }
+  function renderView() {
+    const rows = viewRows(); if (!rows.length) return; const g = makeGroup(rows), sel = VIEW.sel, selN = rows.filter(r => sel.has(r.id)).length;
+    $('pt-v-title').textContent = `🧾 ${g.supplier}${g.invoice ? ' · ' + g.invoice : ''} — ${fmtDate(g.date === 'মিশ্র' ? rows[0].date : g.date)}`;
+    const dateVal = same(rows, r => r.date), mix = v => v === 'মিশ্র' ? '<em style="color:var(--text3)">মিশ্র (আলাদা)</em>' : (esc(v) || '—');
+    const opt = (list, v) => list.map(x => `<option${x === v ? ' selected' : ''}>${esc(x)}</option>`).join('');
+    $('pt-v-body').innerHTML = `
+      <div class="pt-vinfo">
+        <div><span>তারিখ</span>${dateVal === 'মিশ্র' ? mix(dateVal) : fmtDate(dateVal)}</div><div><span>Supplier</span>${esc(g.supplier)}</div><div><span>Phone</span>${mix(g.phone)}</div>
+        <div><span>Invoice / Voucher No.</span>${esc(g.invoice) || '—'}</div><div><span>Payment Method</span>${mix(g.method)}</div><div><span>Payment Source</span>${mix(g.source)}</div>
+        <div style="grid-column:1/-1;"><span>Description / Note</span>${mix(g.note)}</div>
+      </div>
+      <div style="overflow:auto;"><table class="pt-dtbl"><thead><tr><th style="width:30px;"><input type="checkbox" ${selN === rows.length ? 'checked' : ''} onchange="ptViewSelAll(this.checked)" title="সব নির্বাচন"></th><th>তারিখ</th><th>Product / Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th><th>ID</th><th style="text-align:center;">Action</th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td><input type="checkbox" ${sel.has(r.id) ? 'checked' : ''} onchange="ptViewSel('${esc(r.id)}',this.checked)"></td><td style="white-space:nowrap;">${fmtDate(r.date)}</td><td style="font-weight:600;">${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">${money(r.price)}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(r.total)}</td><td style="font-size:11px;color:var(--text3);">${esc(r.id)}</td>
+        <td><div class="pt-act"><button class="btn btn-sm" title="এই পণ্য Edit" onclick="ptEdit('${esc(r.id)}')">✏️</button><button class="btn btn-sm" title="এই পণ্য মুছুন" onclick="ptDelete('${esc(r.id)}')">🗑️</button></div></td></tr>`).join('')}
+      </tbody><tfoot><tr><td colspan="5" style="text-align:right;font-weight:700;">মোট (Recorded)</td><td class="r" style="color:#D4A017;font-weight:800;font-size:15px;">${money(g.total)}</td><td colspan="2"></td></tr></tfoot></table></div>
+      <div class="pt-vact">
+        <div><label>নতুন তারিখ</label><input type="date" class="form-input" id="pt-v-date" value="${esc(rows[0].date)}"></div>
+        <button class="btn btn-pt" style="background:#D4A017;border-color:#D4A017;color:#000;font-weight:700;" onclick="ptViewSetDate()">📅 তারিখ পরিবর্তন (${selN}টি নির্বাচিত)</button>
+        <button class="btn" onclick="ptViewToggleEdit()">✏️ ${VIEW.editOpen ? 'তথ্য এডিট বন্ধ' : 'অন্যান্য তথ্যও একসাথে বদলান'}</button>
+        <span style="font-size:11px;color:var(--text3);flex-basis:100%;">টিক দেওয়া পণ্যগুলোতেই বদল হবে — সব টিক দিলে পুরো ক্রয়ের তারিখ একসাথে বদলাবে, একটি টিক দিলে শুধু সেটির।</span>
+        ${VIEW.editOpen ? `<div style="flex-basis:100%;display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:6px;">
+          <div><label>Supplier Name</label><input class="form-input" id="pt-v-supplier" maxlength="120" value="${esc(rows[0].supplier)}"></div>
+          <div><label>Supplier Phone</label><input class="form-input" id="pt-v-phone" maxlength="30" value="${esc(same(rows, r => r.phone) === 'মিশ্র' ? '' : same(rows, r => r.phone))}"></div>
+          <div><label>Invoice / Voucher No.</label><input class="form-input" id="pt-v-invoice" maxlength="60" value="${esc(rows[0].invoice)}"></div>
+          <div><label>Payment Method</label><select class="form-select" id="pt-v-method">${opt(['নগদ', 'বিকাশ', 'ক্যাশ', 'Bank Transfer'], rows[0].method)}</select></div>
+          <div><label>Payment Source</label><select class="form-select" id="pt-v-source">${opt(['Company Main Account', 'Petty Cash', 'Partner Capital'], rows[0].source)}</select></div>
+          <div style="grid-column:1/-1;"><label>Description / Note</label><textarea class="form-textarea" id="pt-v-note" rows="2" maxlength="500">${esc(rows[0].note)}</textarea></div>
+          <div style="grid-column:1/-1;"><button class="btn btn-pt" style="background:#D4A017;border-color:#D4A017;color:#000;font-weight:700;" onclick="ptViewSaveInfo()">✅ নির্বাচিতগুলোতে এই তথ্য প্রয়োগ করুন</button></div></div>` : ''}
+      </div>
+      <div style="font-size:11px;color:var(--text3);">ℹ️ এটি শুধু রেকর্ড — কোনো হিসাব/ব্যালেন্স/স্টক বদলায় না।</div>`;
+  }
+  const viewSel = (id, on) => { on ? VIEW.sel.add(id) : VIEW.sel.delete(id); renderView(); };
+  const viewSelAll = on => { VIEW.sel = on ? new Set(VIEW.ids) : new Set(); renderView(); };
+  async function bulk(fields, okMsg) {
+    const ids = viewRows().filter(r => VIEW.sel.has(r.id)).map(r => r.id);
+    if (!ids.length) return toast('কমপক্ষে একটি পণ্য টিক দিন', 'error');
+    if (PT.saving) return; PT.saving = true;
+    try {
+      const r = await netPost({ action: 'ptBulkUpdate', ids, fields });
+      if (!r) return toast('❌ আপডেট হয়নি — আবার চেষ্টা করুন (Apps Script v59 ডিপ্লয় করা আছে?)', 'error');
+      toast(`✅ ${okMsg} (${ids.length}টি পণ্য)`, 'success'); try { logAction(`Purchase Tracker বাল্ক আপডেট: ${ids.length}টি রেকর্ড`); } catch (e) {}
+      await load(false);
+    } finally { PT.saving = false; }
+  }
+  const viewSetDate = () => { const d = $('pt-v-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return toast('তারিখ বেছে নিন', 'error'); return bulk({ date: d }, 'তারিখ পরিবর্তন হয়েছে'); };
+  function viewSaveInfo() {
+    const f = { supplier: $('pt-v-supplier').value.trim(), phone: $('pt-v-phone').value.trim(), invoice: $('pt-v-invoice').value.trim(), method: $('pt-v-method').value, source: $('pt-v-source').value, note: $('pt-v-note').value.trim() };
+    if (!f.supplier) return toast('সরবরাহকারীর নাম দিন', 'error'); if (f.phone && !PHONE_RE.test(f.phone)) return toast('ফোন নম্বর সঠিক নয়', 'error');
+    return bulk(f, 'তথ্য আপডেট হয়েছে');
+  }
+  async function viewDeleteAll() {
+    const rows = viewRows(); if (!rows.length) return; const g = makeGroup(rows);
+    if (!confirm(`পুরো ক্রয়টি মুছে ফেলবেন?\n\n${g.supplier}${g.invoice ? ' · ' + g.invoice : ''}\n${rows.length}টি পণ্য — মোট ${money(g.total)}\n\n(সবগুলো Recycle Bin-এ যাবে, ৩০ দিন Restore করা যাবে। কোনো হিসাব/ব্যালেন্স বদলাবে না।)`)) return;
+    let ok = 0; for (const r of rows) { const res = await netPost({ action: 'ptDeletePurchase', id: r.id }); if (res) ok++; else break; }
+    toast(ok === rows.length ? `🗑️ ${ok}টি পণ্য Recycle Bin-এ পাঠানো হয়েছে` : `⚠️ ${ok}/${rows.length}টি মোছা হয়েছে — আবার চেষ্টা করুন`, ok === rows.length ? 'success' : 'error');
+    try { logAction(`Purchase Tracker ক্রয় ডিলিট: ${g.supplier} (${ok}টি)`); } catch (e) {}
+    await load(false);
+  }
+
+  // ── প্রিন্ট (লোগো সহ — ইনভয়েসের একই কালো InnoGix লোগো) ──
+  const logoSrc = () => { try { const i = document.getElementById('inv-brand-logo'); return i ? i.src : ''; } catch (e) { return ''; } };
+  const PRINT_CSS = `@page{size:A4;margin:12mm}body{font-family:'Noto Sans Bengali','IBM Plex Sans',Arial,sans-serif;color:#111;font-size:12px;margin:0}
+    .hd{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #0f2a5c;padding-bottom:12px;margin-bottom:14px}.hd img{width:170px;height:auto}
+    .hd .t{text-align:right}.hd .t b{display:block;font-size:20px;letter-spacing:3px;color:#0f2a5c}.hd .t span{font-size:11px;color:#444}
+    table{width:100%;border-collapse:collapse}th{background:#0f2a5c;color:#fff;text-align:left;padding:7px 8px;font-size:11px}td{border-bottom:1px solid #ddd;padding:6px 8px;vertical-align:top}
+    .r{text-align:right;white-space:nowrap}tr.gh td{background:#eef2fa;font-weight:700;border-top:2px solid #0f2a5c}tr.gt td{font-weight:700}
+    .box{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px 14px;border:1px solid #cfd8e8;border-left:4px solid #0f2a5c;border-radius:6px;padding:10px 12px;margin-bottom:14px}.box span{display:block;font-size:10px;color:#666}
+    .tot{margin-top:12px;text-align:right;font-weight:800;font-size:15px;color:#0f2a5c}.note{margin-top:14px;text-align:center;color:#666;font-size:10px;border-top:1px dashed #bbb;padding-top:8px}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}`;
+  function printWin(title, sub, bodyHtml) {
     const w = window.open('', '_blank'); if (!w) return toast('পপ-আপ ব্লক করা আছে — অনুমতি দিন', 'error');
-    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Purchase Records</title><style>
-      @page{size:A4 landscape;margin:12mm}body{font-family:'Noto Sans Bengali','IBM Plex Sans',Arial,sans-serif;color:#111;font-size:11px;margin:0}
-      h1{font-size:18px;margin:0 0 2px;color:#0f2a5c}.sub{color:#555;margin-bottom:10px}
-      table{width:100%;border-collapse:collapse}th{background:#0f2a5c;color:#fff;text-align:left;padding:6px;font-size:10px}
-      td{border-bottom:1px solid #ddd;padding:5px 6px;vertical-align:top}tr:nth-child(even) td{background:#f6f8fc}.r{text-align:right;white-space:nowrap}
-      .tot{margin-top:10px;text-align:right;font-weight:700;font-size:13px}.note{margin-top:8px;color:#666;font-size:10px}
-      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}</style></head><body>
-      <h1>InnoGix — Purchase Records</h1><div class="sub">${rows.length}টি রেকর্ড · প্রিন্ট: ${fmtDate(todayBD())}${isFiltering() ? ' · (ফিল্টার প্রযোজ্য)' : ''}</div>
-      <table><thead><tr><th>তারিখ</th><th>Supplier</th><th>Phone</th><th>Product</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th><th>Method</th><th>Source</th><th>Invoice</th><th>Note</th></tr></thead><tbody>
-      ${rows.map(r => `<tr><td>${fmtDate(r.date)}</td><td>${esc(r.supplier)}</td><td>${esc(r.phone)}</td><td>${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">৳${num(r.price)}</td><td class="r">৳${num(r.total)}</td><td>${esc(r.method)}</td><td>${esc(r.source)}</td><td>${esc(r.invoice)}</td><td>${esc(r.note)}</td></tr>`).join('')}
-      </tbody></table><div class="tot">Recorded Purchase Amount: ৳${num(amt / 100)}</div>
-      <div class="note">এটি শুধু রেকর্ড — ব্যবসায়িক খরচ/COGS নয়।</div>
-      <script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script></body></html>`);
+    const logo = logoSrc();
+    w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet"><style>${PRINT_CSS}</style></head><body>
+      <div class="hd">${logo ? `<img src="${logo}" alt="InnoGix">` : '<b style="font-size:24px">InnoGix</b>'}<div class="t"><b>${esc(title)}</b><span>${sub}</span></div></div>${bodyHtml}
+      <div class="note">এটি শুধু রেকর্ড — ব্যবসায়িক খরচ/COGS নয় · InnoGix · কালিয়াকৈর, গাজীপুর, ঢাকা</div>
+      <script>window.onload=function(){setTimeout(function(){window.print();},500);};<\/script></body></html>`);
     w.document.close();
   }
+  function printOne(g) {
+    const tr = g.items.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">৳${num(r.price)}</td><td class="r">৳${num(r.total)}</td></tr>`).join('');
+    printWin('Purchase Record', `প্রিন্ট: ${fmtDate(todayBD())}`, `<div class="box"><div><span>তারিখ</span>${fmtDate(g.date)}</div><div><span>Supplier</span>${esc(g.supplier)}</div><div><span>Phone</span>${esc(g.phone)}</div>
+      <div><span>Invoice / Voucher No.</span>${esc(g.invoice) || '—'}</div><div><span>Payment Method</span>${esc(g.method)}</div><div><span>Payment Source</span>${esc(g.source)}</div>${g.note ? `<div style="grid-column:1/-1"><span>Note</span>${esc(g.note)}</div>` : ''}</div>
+      <table><thead><tr><th style="width:28px">#</th><th>Product / Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead><tbody>${tr}</tbody></table><div class="tot">Recorded Total: ৳${num(g.total)}</div>`);
+  }
+  const viewPrint = () => { const rows = viewRows(); if (rows.length) printOne(makeGroup(rows)); };
+  function printIt() {
+    const groups = filteredGroups(); if (!groups.length) return toast('প্রিন্ট করার মতো রেকর্ড নেই', 'info');
+    let amt = 0, n = 0; const body = groups.map(g => { amt += Math.round(g.total * 100); n += g.items.length;
+      return `<tr class="gh"><td colspan="4">${fmtDate(g.date)} · ${esc(g.supplier)}${g.phone ? ' · ' + esc(g.phone) : ''}${g.invoice ? ' · ' + esc(g.invoice) : ''} <span style="font-weight:400;color:#555">(${esc(g.method)} / ${esc(g.source)})</span></td><td class="r">৳${num(g.total)}</td></tr>`
+        + g.items.map(r => `<tr><td style="padding-left:22px">${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">৳${num(r.price)}</td><td colspan="2" class="r">৳${num(r.total)}</td></tr>`).join(''); }).join('');
+    printWin('Purchase Records', `${groups.length}টি ক্রয় · ${n}টি পণ্য · প্রিন্ট: ${fmtDate(todayBD())}${isFiltering() ? ' · (ফিল্টার প্রযোজ্য)' : ''}`,
+      `<table><thead><tr><th>Product / Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th colspan="2" class="r">Total</th></tr></thead><tbody>${body}</tbody></table><div class="tot">Recorded Purchase Amount: ৳${num(amt / 100)}</div>`);
+  }
+
 
 
   // ── Import CSV (নিজেদের Export ফাইল নির্ভুলভাবে ফেরত আনে; ডুপ্লিকেট বাদ; আগের Purchase ID ফিরিয়ে দেয়) ──
@@ -15857,7 +16026,8 @@ window.syncCourierData = async function () {
   function impOpen() { IMP.valid = []; ['pt-imp-preview', 'pt-imp-progress', 'pt-imp-result'].forEach(i => $(i).style.display = 'none'); $('pt-imp-drop').style.display = 'block'; $('pt-imp-go').style.display = 'none'; $('pt-imp-file').value = ''; $('modal-pt-import').classList.add('open'); }
   function impClose() { if (IMP.running) return; $('modal-pt-import').classList.remove('open'); }
 
-  Object.assign(window, { ptOpenImport: impOpen, ptCloseImport: impClose, ptImpRead: impRead, ptImpSubmit: impSubmit, ptLoad: load, ptAddItem: () => addItem(true), ptRemoveItem: removeItem, ptCalc: calc, ptSave: save, ptResetForm: () => resetForm(false),
+  Object.assign(window, { ptKpi: kpi, ptOpen: open, ptFilterSupplier: filterSupplier, ptViewSel: viewSel, ptViewSelAll: viewSelAll, ptViewSetDate: viewSetDate, ptViewSaveInfo: viewSaveInfo,
+    ptViewToggleEdit: () => { VIEW.editOpen = !VIEW.editOpen; renderView(); }, ptViewDeleteAll: viewDeleteAll, ptViewPrint: viewPrint, ptOpenImport: impOpen, ptCloseImport: impClose, ptImpRead: impRead, ptImpSubmit: impSubmit, ptLoad: load, ptAddItem: () => addItem(true), ptRemoveItem: removeItem, ptCalc: calc, ptSave: save, ptResetForm: () => resetForm(false),
     ptFilterChanged: filterChanged, ptClearFilters: clearFilters, ptEdit: edit, ptSaveEdit: saveEdit, ptDelete: del, ptExport: exportCSV, ptPrint: printIt,
     ptPage: d => { PT.page += d; render(); } });
   ['pt-e-qty', 'pt-e-price'].forEach(i => { const e = $(i); if (e) e.addEventListener('input', editCalc); });

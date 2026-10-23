@@ -534,6 +534,10 @@ tbody td.muted{color:var(--text3);}
    EXPENSE PAGE
 ═══════════════════════════════════════ */
 .expense-cats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+.exp-cat-card.exp-cat-click{position:relative;cursor:pointer;transition:transform .15s,border-color .15s,box-shadow .15s;}
+.exp-cat-card.exp-cat-click:hover{transform:translateY(-2px);border-color:var(--gold);box-shadow:0 6px 18px rgba(212,160,23,.18);}
+.exp-cat-card.active{border-color:var(--gold);box-shadow:0 0 0 2px rgba(212,160,23,.35);background:rgba(212,160,23,.07);}
+.exp-cat-card .exp-more{position:absolute;right:8px;top:6px;font-size:9px;color:var(--gold);opacity:.8;}
 .exp-cat-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
 .exp-cat-icon{font-size:28px;margin-bottom:8px;}
 .exp-cat-name{font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;}
@@ -2559,6 +2563,7 @@ tbody td.muted{color:var(--text3);}
             <option>Delivery Cost</option>
             <option>Office & Utility</option>
             <option>Staff / Labor</option>
+            <option>COD Charge</option>
             <option>Other</option>
           </select>
           <select class="filter-select" id="exp-month-filter" onchange="filterExpenses()">
@@ -2907,6 +2912,15 @@ tbody td.muted{color:var(--text3);}
       </div>
     </div>
 
+    <!-- EXPENSE CATEGORY DETAIL MODAL -->
+    <div class="modal-overlay" id="modal-exp-catd" onclick="if(event.target===this)closeModal('exp-catd')">
+      <div class="modal-box modal" style="max-width:760px;">
+        <div class="modal-header"><span class="modal-title" id="exp-catd-title">বিস্তারিত</span><button class="modal-close" onclick="closeModal('exp-catd')">✕</button></div>
+        <div class="modal-body" id="exp-catd-body" style="max-height:70vh;overflow:auto;"></div>
+        <div class="modal-footer"><button class="btn btn-gold" id="exp-catd-filter">🔎 ফিল্টার</button><button class="btn" onclick="closeModal('exp-catd')">বন্ধ করুন</button></div>
+      </div>
+    </div>
+
     <!-- INVESTOR REPORT MODAL -->
     <div class="modal-overlay" id="modal-investor-report">
       <div class="modal-box" style="max-width:560px;max-height:85vh;overflow-y:auto;">
@@ -3047,6 +3061,16 @@ tbody td.muted{color:var(--text3);}
       #page-purchases tr.pt-grow{cursor:pointer;}
       #page-purchases tr.pt-grow:hover td{background:rgba(212,160,23,.06);}
       #page-purchases .pt-badge{display:inline-block;padding:2px 8px;border-radius:999px;background:rgba(212,160,23,.15);border:1px solid rgba(212,160,23,.4);color:var(--pt);font-size:11px;font-weight:700;white-space:nowrap;}
+      .pt-chart{display:flex;align-items:flex-end;gap:6px;height:190px;padding:6px 2px 0;overflow-x:auto;}
+      .pt-cc{flex:1 0 38px;min-width:38px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;cursor:pointer;border-radius:6px;}
+      .pt-cc:hover{background:rgba(212,160,23,.08);}
+      .pt-cc .v{font-size:10px;color:var(--text2);margin-bottom:3px;white-space:nowrap;font-family:'IBM Plex Mono',monospace,sans-serif;}
+      .pt-cc .b{width:70%;max-width:34px;min-height:2px;background:linear-gradient(180deg,#E8B52E,#D4A017);border-radius:4px 4px 0 0;}
+      .pt-cc.cur .b{background:linear-gradient(180deg,#58a6ff,#2f81f7);}
+      .pt-cc .m{font-size:10px;color:var(--text3);margin-top:5px;white-space:nowrap;}
+      .pt-due{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap;}
+      .pt-due.bad{background:rgba(248,81,73,.13);color:#f85149;border:1px solid rgba(248,81,73,.4);}
+      .pt-due.ok{background:rgba(52,209,116,.13);color:#34d174;border:1px solid rgba(52,209,116,.4);}
       .pt-dtbl{width:100%;border-collapse:collapse;font-size:13px;}
       .pt-dtbl th{background:var(--bg3,rgba(255,255,255,.04));color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:8px 10px;white-space:nowrap;}
       .pt-dtbl td{padding:8px 10px;border-bottom:1px solid var(--border);vertical-align:top;}
@@ -3099,6 +3123,7 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div class="cf-actions" style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn" onclick="ptLoad(true)">🔄 রিফ্রেশ</button>
+          <button class="btn" style="background:rgba(212,160,23,.15);border-color:rgba(212,160,23,.45);color:#D4A017;" onclick="ptLedger()">🏭 Supplier Ledger</button>
           <button class="btn" style="background:rgba(88,166,255,0.15);border-color:rgba(88,166,255,0.4);color:#58a6ff;" onclick="ptOpenImport()">📥 Import CSV</button>
           <button class="btn export-excel" onclick="ptExport()">📥 Export CSV</button>
           <button class="btn" onclick="ptPrint()">🖨️ প্রিন্ট</button>
@@ -3112,6 +3137,14 @@ tbody td.muted{color:var(--text3);}
         <div class="pt-kpi amt click" role="button" tabindex="0" onclick="ptKpi('amount')" onkeydown="if(event.key==='Enter')ptKpi('amount')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">🧾 Recorded Purchase Amount</div><div class="pt-kpi-value" id="pt-k-amt">—</div><div class="pt-kpi-sub">রেকর্ডকৃত ক্রয়ের মোট (খরচ/COGS নয়)</div></div>
         <div class="pt-kpi click" role="button" tabindex="0" onclick="ptKpi('suppliers')" onkeydown="if(event.key==='Enter')ptKpi('suppliers')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">🏭 Number of Suppliers</div><div class="pt-kpi-value" id="pt-k-sup">—</div><div class="pt-kpi-sub">আলাদা সরবরাহকারী</div></div>
         <div class="pt-kpi click" role="button" tabindex="0" onclick="ptKpi('month')" onkeydown="if(event.key==='Enter')ptKpi('month')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">📅 Recorded This Month</div><div class="pt-kpi-value" id="pt-k-month">—</div><div class="pt-kpi-sub" id="pt-k-month-sub">এই মাসের রেকর্ড</div></div>
+        <div class="pt-kpi click" role="button" tabindex="0" onclick="ptKpi('due')" onkeydown="if(event.key==='Enter')ptKpi('due')" title="ক্লিক করে বিস্তারিত দেখুন"><span class="pt-kpi-more">বিস্তারিত ▸</span><div class="pt-kpi-label">⏳ মোট বাকি (Due)</div><div class="pt-kpi-value" id="pt-k-due" style="color:#f85149;">—</div><div class="pt-kpi-sub" id="pt-k-due-sub">শুধু রেকর্ড</div></div>
+      </div>
+
+      <!-- MONTHLY CHART -->
+      <div class="pt-card">
+        <div class="pt-card-h"><span>📊 মাসওয়ারি ক্রয় (Recorded)</span>
+          <span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;"><select class="form-select" id="pt-c-year" onchange="ptChart()" style="width:auto;padding:6px 10px;"></select><select class="form-select" id="pt-c-sup" onchange="ptChart()" style="width:auto;padding:6px 10px;max-width:200px;"></select></span></div>
+        <div class="pt-card-b"><div id="pt-chart-sum" style="font-size:12px;color:var(--text3);margin-bottom:8px;"></div><div class="pt-chart" id="pt-chart"></div><div style="font-size:11px;color:var(--text3);margin-top:8px;">💡 কোনো মাসের বারে ক্লিক করলে নিচের হিস্ট্রি সেই মাসে ফিল্টার হবে। (নীল = চলতি মাস)</div></div>
       </div>
 
       <!-- ENTRY FORM -->
@@ -3123,6 +3156,7 @@ tbody td.muted{color:var(--text3);}
             <div><label>Supplier Name *</label><input type="text" class="form-input" id="pt-supplier" maxlength="120" placeholder="সরবরাহকারীর নাম"></div>
             <div><label>Supplier Phone</label><input type="tel" class="form-input" id="pt-phone" maxlength="30" inputmode="tel" placeholder="01XXXXXXXXX"></div>
             <div><label>Invoice / Voucher No.</label><input type="text" class="form-input" id="pt-invoice" maxlength="60" placeholder="INV-1021"></div>
+            <div><label>এখন পরিশোধ করেছেন (৳) — ঐচ্ছিক</label><input type="number" class="form-input" id="pt-paid" min="0" step="any" inputmode="decimal" placeholder="খালি = ট্র্যাক করছি না"></div>
             <div><label>Payment Method *</label>
               <select class="form-select" id="pt-method"><option value="">— বেছে নিন —</option><option>নগদ</option><option>বিকাশ</option><option>ক্যাশ</option><option>Bank Transfer</option></select></div>
             <div><label>Payment Source *</label>
@@ -3151,8 +3185,8 @@ tbody td.muted{color:var(--text3);}
         </div>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>তারিখ</th><th>Supplier</th><th>Phone</th><th>কেনা পণ্য</th><th style="text-align:right;">মোট (৳)</th><th>Method</th><th>Source</th><th>Invoice No.</th><th style="text-align:center;">Action</th></tr></thead>
-            <tbody id="pt-body"><tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;">লোড হচ্ছে…</td></tr></tbody>
+            <thead><tr><th>তারিখ</th><th>Supplier</th><th>Phone</th><th>কেনা পণ্য</th><th style="text-align:right;">মোট (৳)</th><th>পরিশোধ</th><th>Method</th><th>Source</th><th>Invoice No.</th><th style="text-align:center;">Action</th></tr></thead>
+            <tbody id="pt-body"><tr><td colspan="10" style="text-align:center;color:var(--text3);padding:40px;">লোড হচ্ছে…</td></tr></tbody>
           </table>
         </div>
         <div class="pt-pager" id="pt-pager" style="display:none;"></div>
@@ -3186,6 +3220,17 @@ tbody td.muted{color:var(--text3);}
         <div class="modal-footer"><button class="btn" onclick="closeModal('pt-kpi')">বন্ধ করুন</button></div>
       </div>
     </div>
+    <!-- SUPPLIER LEDGER MODAL -->
+    <div class="modal-overlay" id="modal-pt-ledger" onclick="if(event.target===this)closeModal('pt-ledger')">
+      <div class="modal-box modal" style="max-width:980px;">
+        <div class="modal-header"><span class="modal-title">🏭 Supplier Ledger (সরবরাহকারীর খতিয়ান)</span><button class="modal-close" onclick="closeModal('pt-ledger')">✕</button></div>
+        <div class="modal-body" id="pt-l-body" style="max-height:76vh;overflow:auto;"></div>
+        <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <button class="btn" onclick="ptLedgerFilter()">🔎 হিস্ট্রিতে ফিল্টার করুন</button>
+          <span style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" onclick="ptLedgerPrint()">🖨️ প্রিন্ট</button><button class="btn" onclick="closeModal('pt-ledger')">বন্ধ করুন</button></span>
+        </div>
+      </div>
+    </div>
     <!-- PURCHASE VIEW MODAL (একটি ক্রয়ের সব আইটেম) -->
     <div class="modal-overlay" id="modal-pt-view" onclick="if(event.target===this)closeModal('pt-view')">
       <div class="modal-box modal" style="max-width:900px;">
@@ -3193,7 +3238,7 @@ tbody td.muted{color:var(--text3);}
         <div class="modal-body" id="pt-v-body" style="max-height:74vh;overflow:auto;"></div>
         <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;">
           <button class="btn" style="color:var(--red);border-color:rgba(248,81,73,.4);" onclick="ptViewDeleteAll()">🗑️ পুরো ক্রয় মুছুন</button>
-          <span style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" onclick="ptViewPrint()">🖨️ প্রিন্ট</button><button class="btn" onclick="closeModal('pt-view')">বন্ধ করুন</button></span>
+          <span style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn" onclick="ptLedgerFromView()">🏭 Supplier খতিয়ান</button><button class="btn" onclick="ptViewPrint()">🖨️ প্রিন্ট</button><button class="btn" onclick="closeModal('pt-view')">বন্ধ করুন</button></span>
         </div>
       </div>
     </div>
@@ -4690,7 +4735,7 @@ tbody td.muted{color:var(--text3);}
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <div class="form-group"><label class="form-label">Category *</label><select class="form-select" id="exp-cat"><option>Marketing / Ad Spend</option><option>Product Sourcing</option><option>Delivery Cost</option><option>Office & Utility</option><option>Staff / Labor</option><option>Other</option></select></div>
+        <div class="form-group"><label class="form-label">Category *</label><select class="form-select" id="exp-cat" onchange="var n=document.getElementById('exp-cod-note');if(n)n.style.display=this.value==='COD Charge'?'block':'none'"><option>Marketing / Ad Spend</option><option>Product Sourcing</option><option>Delivery Cost</option><option>Office & Utility</option><option>Staff / Labor</option><option>COD Charge</option><option>Other</option></select><div id="exp-cod-note" style="display:none;margin-top:6px;padding:8px 10px;border-radius:8px;background:rgba(245,180,0,.1);color:var(--gold);font-size:11.5px;line-height:1.5;">⚠️ অর্ডারে COD charge আগে থেকেই Dashboard-এর লাভ-হিসাবে বাদ যায়। একই COD এখানে আবার দিলে ডাবল কাটা যাবে — শুধু যে COD অর্ডারে লেখা নেই, সেটাই এখানে দিন।</div></div>
         <div class="form-group"><label class="form-label">Amount (৳) *</label><input class="form-input" id="exp-amount" type="number" placeholder="0"></div>
         <div class="form-group"><label class="form-label">Payment Method</label><select class="form-select" id="exp-method"><option>Cash</option><option>bKash</option><option>Nagad</option><option>Bank</option></select></div>
         <div class="form-group"><label class="form-label">Vendor Name</label><input class="form-input" id="exp-vendor" placeholder="Vendor or person name" type="text"></div>
@@ -4924,7 +4969,7 @@ tbody td.muted{color:var(--text3);}
           <select class="form-select" id="eexp-cat">
             <option>Marketing / Ad Spend</option><option>Product Sourcing</option>
             <option>Delivery Cost</option><option>Office &amp; Utility</option>
-            <option>Staff / Labor</option><option>Other</option>
+            <option>Staff / Labor</option><option>COD Charge</option><option>Other</option>
           </select>
         </div>
         <div class="form-group"><label class="form-label">Amount (৳) *</label><input class="form-input" id="eexp-amount" type="number"></div>
@@ -5528,7 +5573,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbxBb_i1ml7S1ftRSp3qKDS34rXbsEhwNO38yq6K1JMUbD5zRnMx48rxZr21Te5NWyII/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbx9WCTHNN2qf2kdHgromT_HE8Q2b3wPrT9kehXbT3nbC5MgAmddRrdyzwMXgdyLokMPCA/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -8141,24 +8186,73 @@ function renderExpenseRows(rows){
   const el=document.getElementById('exp-total'); if(el) el.textContent=total.toLocaleString();
 }
 
+const EXP_CATS = [
+  {icon:'📢',name:'Marketing',key:'Marketing / Ad Spend'},
+  {icon:'📦',name:'Sourcing',key:'Product Sourcing'},
+  {icon:'🚚',name:'Delivery',key:'Delivery Cost'},
+  {icon:'🏢',name:'Office',key:'Office & Utility'},
+  {icon:'👷',name:'Staff',key:'Staff / Labor'},
+  {icon:'💳',name:'COD Charge',key:'COD Charge'},
+  {icon:'🔧',name:'Other',key:'Other'},
+];
 function updateExpenseCats(rows){
-  const cats = [
-    {icon:'📢',name:'Marketing',key:'Marketing / Ad Spend'},
-    {icon:'📦',name:'Sourcing',key:'Product Sourcing'},
-    {icon:'🚚',name:'Delivery',key:'Delivery Cost'},
-    {icon:'🏢',name:'Office',key:'Office & Utility'},
-    {icon:'👷',name:'Staff',key:'Staff / Labor'},
-    {icon:'🔧',name:'Other',key:'Other'},
-  ];
-  const totals = cats.map(c=>rows.filter(r=>r.cat===c.key||r.cat===c.key.replace(' / ',' / ')).reduce((s,r)=>s+Number(r.amount||0),0));
+  const cats = EXP_CATS;
+  const totals = cats.map(c=>rows.filter(r=>r.cat===c.key).reduce((s,r)=>s+Number(r.amount||0),0));
   const grand = totals.reduce((a,b)=>a+b,0);
+  const sel = (document.getElementById('exp-cat-filter')||{}).value || '';
   document.getElementById('exp-cats').innerHTML = cats.map((c,i)=>`
-    <div class="exp-cat-card">
+    <div class="exp-cat-card exp-cat-click${sel===c.key?' active':''}" role="button" tabindex="0" onclick="expCatOpen(${i})" onkeydown="if(event.key==='Enter')expCatOpen(${i})" title="ক্লিক করে বিস্তারিত দেখুন ও ফিল্টার করুন">
+      <span class="exp-more">বিস্তারিত ▸</span>
       <div class="exp-cat-icon">${c.icon}</div>
       <div class="exp-cat-name">${c.name}</div>
       <div class="exp-cat-amount">৳${totals[i].toLocaleString()}</div>
       <div class="exp-cat-pct">${grand>0?Math.round(totals[i]/grand*100):0}% of total</div>
     </div>`).join('');
+}
+
+// ── Expense ক্যাটাগরি কার্ড → বিস্তারিত পপ-আপ + ফিল্টার ──
+let _expCatState = { key:'', list:[] };
+function _expMonthKey(e){
+  const m = /(\d{1,2})-([A-Za-z]{3})-(\d{4})/.exec(String(e.date||''));
+  if(m) return m[3]+'-'+String(['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'].indexOf(m[2].toLowerCase())+1).padStart(2,'0');
+  const iso = /^(\d{4})-(\d{2})/.exec(String(e.rawDate||'')); return iso ? iso[1]+'-'+iso[2] : '—';
+}
+function expCatOpen(i){
+  const c = EXP_CATS[i]; if(!c) return;
+  const esc = s => String(s==null?'':s).replace(/[&<>"']/g,x=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
+  const money = n => '৳'+Math.round(Number(n)||0).toLocaleString();
+  const all = (window.liveExpenseData||[]), list = all.filter(e=>e.cat===c.key);
+  const grandAll = all.reduce((s,e)=>s+Number(e.amount||0),0);
+  _expCatState = { key:c.key, list:list };
+  const total = list.reduce((s,e)=>s+Number(e.amount||0),0), n = list.length;
+  const biggest = list.reduce((m,e)=>Math.max(m,Number(e.amount||0)),0);
+  const groupBy = (fn)=>{ const m={}; list.forEach(e=>{ const k=fn(e)||'—'; m[k]=(m[k]||0)+Number(e.amount||0); }); return Object.entries(m).sort((a,b)=>b[1]-a[1]); };
+  const bars = (arr,fmt)=>{ const mx=Math.max(1,...arr.map(x=>x[1])); return arr.length ? `<table style="width:100%;border-collapse:collapse;font-size:13px;">${arr.map(([k,v])=>`<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border);">${esc(fmt?fmt(k):k)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap;color:var(--red);font-weight:700;">${money(v)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);width:30%;"><div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden;"><i style="display:block;height:100%;width:${Math.round(v*100/mx)}%;background:var(--gold);"></i></div></td></tr>`).join('')}</table>` : '<div style="color:var(--text3);padding:8px;">কোনো ডেটা নেই</div>'; };
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mArr = groupBy(_expMonthKey).sort((a,b)=>a[0]<b[0]?1:-1);
+  const mfmt = k=>{ const m=/^(\d{4})-(\d{2})$/.exec(k); return m? MN[+m[2]-1]+' '+m[1] : k; };
+  const kp = (l,v,col)=>`<div style="background:var(--bg3,rgba(255,255,255,.04));border:1px solid var(--border);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;">${l}</div><div style="font-size:17px;font-weight:800;margin-top:3px;${col?'color:'+col:''}">${v}</div></div>`;
+  const filt = (document.getElementById('exp-cat-filter')||{}).value===c.key;
+  document.getElementById('exp-catd-title').textContent = c.icon+' '+c.key+' — বিস্তারিত';
+  document.getElementById('exp-catd-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px;">
+      ${kp('মোট খরচ',money(total),'var(--red)')}${kp('এন্ট্রি',n+'টি')}${kp('গড় / এন্ট্রি',money(n?total/n:0))}${kp('সর্বোচ্চ এন্ট্রি',money(biggest))}${kp('মোট খরচের অংশ',(grandAll>0?(total*100/grandAll).toFixed(1):0)+'%')}
+    </div>
+    ${n ? `<div style="font-weight:700;margin:12px 0 6px;">📅 মাস অনুযায়ী</div>${bars(mArr,mfmt)}
+    <div style="font-weight:700;margin:14px 0 6px;">🏪 Vendor অনুযায়ী</div>${bars(groupBy(e=>String(e.vendor||'').trim()||'—'))}
+    <div style="font-weight:700;margin:14px 0 6px;">💳 Payment অনুযায়ী</div>${bars(groupBy(e=>String(e.payment||'').trim()||'—'))}
+    <div style="font-weight:700;margin:14px 0 6px;">📄 সব এন্ট্রি</div>
+    <div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;"><thead><tr style="color:var(--text3);font-size:11px;text-transform:uppercase;"><th style="text-align:left;padding:6px 8px;">তারিখ</th><th style="text-align:left;padding:6px 8px;">Description</th><th style="text-align:left;padding:6px 8px;">Vendor</th><th style="text-align:right;padding:6px 8px;">Amount</th><th></th></tr></thead><tbody>
+    ${list.slice().reverse().map((e,k)=>`<tr><td style="padding:6px 8px;border-bottom:1px solid var(--border);white-space:nowrap;">${esc(e.date)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);">${esc(e.desc)||'—'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);">${esc(e.vendor)||'—'}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);text-align:right;font-family:'IBM Plex Mono',monospace;color:var(--red);font-weight:700;">${money(e.amount)}</td><td style="padding:6px 8px;border-bottom:1px solid var(--border);"><button class="btn" style="padding:3px 9px;font-size:11px;" onclick="expCatEdit(${list.length-1-k})">✏️ Edit</button></td></tr>`).join('')}</tbody></table></div>`
+    : `<div style="text-align:center;color:var(--text3);padding:30px;">এই ক্যাটাগরিতে এখনো কোনো খরচ নেই</div>`}`;
+  const fb = document.getElementById('exp-catd-filter'); fb.textContent = filt ? '✕ ফিল্টার সরান' : '🔎 এই ক্যাটাগরিতে ফিল্টার করুন'; fb.onclick = ()=>expCatFilter(filt?'':c.key);
+  openModal('exp-catd');
+}
+function expCatEdit(idx){ const e=_expCatState.list[idx]; if(!e) return; closeModal('exp-catd'); openEditExpense(e); }
+function expCatFilter(key){
+  const s = document.getElementById('exp-cat-filter'); if(s){ s.value = key || 'All Categories'; }
+  closeModal('exp-catd'); filterExpenses();
+  try{ document.getElementById('exp-body').scrollIntoView({behavior:'smooth',block:'center'}); }catch(e){}
 }
 
 function renderPartnerSummary(txns){
@@ -8420,6 +8514,7 @@ function drawChart(liveData) {
     'Delivery Cost':        'var(--purple)',
     'Office & Utility':     'var(--green)',
     'Staff / Labor':        'var(--orange)',
+    'COD Charge':           'var(--red)',
     'Other':                'var(--text3)',
   };
   const fallbackColors = ['var(--blue)','var(--gold)','var(--purple)','var(--green)','var(--orange)','var(--text3)'];
@@ -11034,7 +11129,10 @@ function filterExpenses(){
     return catMatch&&monthMatch;
   });
   renderExpenseRows(filtered);
-  updateExpenseCats(filtered);
+  updateExpenseCats(source.filter(e=>{
+    const mKey=monthMap[month]||'';
+    return !mKey||String(e.date||'').includes(mKey)||String(e.date||'').includes(month);
+  }));   // কার্ডে সব ক্যাটাগরির মোট দেখায় (শুধু মাস-ফিল্টার প্রযোজ্য); নির্বাচিত ক্যাটাগরি হাইলাইট
 }
 
 // ─── PARTNER TRANSACTION EDIT ────────────────────────────────
@@ -15640,7 +15738,7 @@ window.syncCourierData = async function () {
   function resetForm(keepHeader) {
     PT.sid = '';
     if (!keepHeader) { ['pt-supplier', 'pt-phone', 'pt-invoice', 'pt-note'].forEach(i => $(i).value = ''); $('pt-method').value = ''; $('pt-source').value = ''; }
-    $('pt-date').value = todayBD();
+    $('pt-date').value = todayBD(); $('pt-paid').value = '';
     $('pt-items').innerHTML = ''; addItem(false); showErr('pt-err', '');
   }
 
@@ -15666,11 +15764,24 @@ window.syncCourierData = async function () {
       if (pv === '' || !isFinite(p) || p < 0) return showErr('pt-err', tag + 'একক মূল্য সঠিক দিন (ঋণাত্মক নয়)');
       items.push({ item, qty: q, price: p });
     }
+    let paidIn = null; const praw = $('pt-paid').value.trim();
+    if (praw !== '') {
+      paidIn = Number(praw); const gt = items.reduce((s, x) => s + cents(x.qty, x.price), 0) / 100;
+      if (!isFinite(paidIn) || paidIn < 0) return showErr('pt-err', 'পরিশোধের পরিমাণ সঠিক নয়');
+      if (paidIn > gt + 0.005) return showErr('pt-err', `পরিশোধ (${money(paidIn)}) মোট ক্রয়ের (${money(gt)}) চেয়ে বেশি হতে পারে না`);
+    }
+    if (!PT.sid && h.invoice) {                                       // একই Invoice No. আগে থাকলে সতর্কতা
+      const ex = PT.rows.filter(r => String(r.invoice || '').trim().toLowerCase() === h.invoice.toLowerCase());
+      if (ex.length) {
+        const eg = makeGroup(ex), sameShop = ex.every(r => r.date === h.date && String(r.supplier).trim().toLowerCase() === h.supplier.toLowerCase());
+        if (!confirm(`⚠️ Invoice No. "${h.invoice}" আগে থেকেই আছে!\n\n${eg.supplier} · ${fmtDate(eg.date === 'মিশ্র' ? ex[0].date : eg.date)} · ${ex.length}টি পণ্য · ${money(eg.total)}\n\n` + (sameShop ? 'এটি একই ক্রয়ে আরও পণ্য যোগ হবে। চালিয়ে যাবেন?' : 'একই নম্বর দ্বিতীয়বার ব্যবহার হচ্ছে — ভুলে ডাবল এন্ট্রি হচ্ছে না তো? তবুও সেভ করবেন?'))) return;
+      }
+    }
     showErr('pt-err', '');
     if (!PT.sid) PT.sid = rid();                                   // ব্যর্থ হলে আবার চাপলে একই sid → ডাবল সেভ হয় না
     PT.saving = true; const btn = $('pt-save'); btn.disabled = true; btn.textContent = '⏳ সেভ হচ্ছে…';
     try {
-      const r = await netPost(Object.assign({ action: 'ptAddPurchase', sid: PT.sid, items }, h));
+      const r = await netPost(Object.assign({ action: 'ptAddPurchase', sid: PT.sid, items }, h, paidIn != null ? { paid: paidIn } : {}));
       if (!r) { showErr('pt-err', '❌ সেভ হয়নি — ইন্টারনেট/API চেক করে আবার চাপুন (ডাবল সেভ হবে না)'); toast('❌ Purchase সেভ হয়নি', 'error'); return; }
       toast(`✅ ${r.count || items.length}টি আইটেম সেভ হয়েছে`, 'success');
       try { logAction(`Purchase Tracker যোগ: ${h.supplier}${h.invoice ? ' · ' + h.invoice : ''} (${items.length}টি আইটেম)`); } catch (e) {}
@@ -15683,7 +15794,7 @@ window.syncCourierData = async function () {
   async function load(manual) {
     const d = await netGet('purchases');
     if (!d || !Array.isArray(d.data)) {
-      if (!PT.loaded) $('pt-body').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px;">❌ Purchase ডেটা লোড হয়নি — API URL ও Apps Script v57 ডিপ্লয় চেক করুন</td></tr>';
+      if (!PT.loaded) $('pt-body').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px;">❌ Purchase ডেটা লোড হয়নি — API URL ও Apps Script v57 ডিপ্লয় চেক করুন</td></tr>';
       if (manual) toast('❌ ডেটা লোড হয়নি', 'error');
       return false;
     }
@@ -15707,11 +15818,16 @@ window.syncCourierData = async function () {
   // ── গ্রুপিং: একই সরবরাহকারী + তারিখ + ইনভয়েস = একটি "ক্রয়" (শিটে প্রতিটি পণ্য আলাদা row-ই থাকে) ──
   const gKey = r => [r.date, String(r.supplier || '').trim().toLowerCase(), String(r.invoice || '').trim().toLowerCase()].join('\u0001');
   const same = (arr, f) => { const s = new Set(arr.map(f)); return s.size === 1 ? arr[0] && f(arr[0]) : (s.size ? 'মিশ্র' : ''); };
-  function makeGroup(items) {
+  function makeGroup0(items) {
     const it = items.slice().sort((a, b) => (a.id < b.id ? -1 : 1)), f = it[0];
     return { key: gKey(f), date: f.date, supplier: f.supplier, phone: same(it, x => x.phone), invoice: f.invoice, method: same(it, x => x.method), source: same(it, x => x.source), note: same(it, x => x.note),
       items: it, ids: it.map(x => x.id), total: it.reduce((s, x) => s + Math.round((Number(x.total) || 0) * 100), 0) / 100 };
   }
+  function makeGroup(items) {
+    const g = makeGroup0(items), tr = items.some(x => x.paid != null), pc = items.reduce((s, x) => s + Math.round((Number(x.paid) || 0) * 100), 0);
+    g.tracked = tr; g.paid = pc / 100; g.due = tr ? Math.max(0, Math.round(g.total * 100) - pc) / 100 : 0; return g;
+  }
+  const dueCell = g => !g.tracked ? '<span style="color:var(--text3)">—</span>' : (g.due <= 0 ? '<span class="pt-due ok">✅ পরিশোধিত</span>' : `<span class="pt-due bad">বাকি ${money(g.due)}</span><div style="font-size:10px;color:var(--text3);margin-top:2px;">দেওয়া ${money(g.paid)}</div>`);
   function groupRows(rows) {
     const m = new Map(); rows.forEach(r => { const k = gKey(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); });
     return Array.from(m.values()).map(makeGroup).sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.ids[0] < b.ids[0] ? 1 : -1)));
@@ -15735,11 +15851,12 @@ window.syncCourierData = async function () {
     $('pt-k-amt').textContent = money(amt / 100);
     $('pt-k-sup').textContent = sup.size;
     $('pt-k-month').textContent = mc; $('pt-k-month-sub').textContent = `রেকর্ডকৃত ${money(ma / 100)}`;
-    $('pt-count').textContent = `${groups.length}টি ক্রয় · ${items}টি পণ্য`;
+    { const dg = groups.filter(g => g.tracked && g.due > 0); $('pt-k-due').textContent = money(dg.reduce((s, g) => s + Math.round(g.due * 100), 0) / 100); $('pt-k-due-sub').textContent = dg.length ? `${dg.length}টি ক্রয়ে বাকি (শুধু রেকর্ড)` : (groups.some(g => g.tracked) ? 'কোনো বাকি নেই ✅' : 'পরিশোধ ট্র্যাক করা ক্রয় নেই'); }
+    $('pt-count').textContent = `${groups.length}টি ক্রয় · ${items}টি পণ্য`; renderChart();
     const pages = Math.max(1, Math.ceil(groups.length / PT.per)); if (PT.page > pages) PT.page = pages;
     const slice = groups.slice((PT.page - 1) * PT.per, PT.page * PT.per), body = $('pt-body'), pager = $('pt-pager');
     if (!groups.length) {
-      body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text3);padding:40px;">${PT.rows.length ? 'এই ফিল্টারে কোনো ক্রয় নেই' : 'এখনো কোনো ক্রয় রেকর্ড নেই — উপরের ফর্ম থেকে প্রথমটি যোগ করুন'}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text3);padding:40px;">${PT.rows.length ? 'এই ফিল্টারে কোনো ক্রয় নেই' : 'এখনো কোনো ক্রয় রেকর্ড নেই — উপরের ফর্ম থেকে প্রথমটি যোগ করুন'}</td></tr>`;
       pager.style.display = 'none'; return;
     }
     body.innerHTML = slice.map(g => `<tr class="pt-grow" onclick="ptOpen('${encodeURIComponent(g.key)}')" title="ক্লিক করে বিস্তারিত দেখুন">
@@ -15748,6 +15865,7 @@ window.syncCourierData = async function () {
       <td style="white-space:nowrap;">${esc(g.phone) || '<span style="color:var(--text3)">—</span>'}</td>
       <td>${itemsLabel(g)}</td>
       <td class="pt-amt pt-total">${money(g.total)}</td>
+      <td>${dueCell(g)}</td>
       <td>${esc(g.method)}</td><td>${esc(g.source)}</td>
       <td style="white-space:nowrap;">${esc(g.invoice) || '<span style="color:var(--text3)">—</span>'}</td>
       <td><div class="pt-act"><button class="btn btn-sm" title="বিস্তারিত" onclick="event.stopPropagation();ptOpen('${encodeURIComponent(g.key)}')">👁 বিস্তারিত</button></div></td>
@@ -15828,11 +15946,19 @@ window.syncCourierData = async function () {
         + '<div class="pt-sec">📅 মাস অনুযায়ী</div>' + barRows(sumBy(groups, g => String(g.date).slice(0, 7)), { h: 'মাস', f: mf })
         + '<div class="pt-sec">💳 Payment Method অনুযায়ী</div>' + barRows(sumBy(groups, g => g.method), { h: 'Method' })
         + '<div class="pt-sec">🏦 Payment Source অনুযায়ী</div>' + barRows(sumBy(groups, g => g.source), { h: 'Source' });
+    } else if (kind === 'due') {
+      const dg = groups.filter(g => g.tracked && g.due > 0).sort((a, b) => (a.date < b.date ? 1 : -1)), tot = dg.reduce((s, g) => s + Math.round(g.due * 100), 0) / 100;
+      T.textContent = '⏳ মোট বাকি — ' + money(tot);
+      const ms = {}; dg.forEach(g => { const k = String(g.supplier).trim(); (ms[k] = ms[k] || { n: 0, c: 0 }); ms[k].n++; ms[k].c += Math.round(g.due * 100); });
+      html = '<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">ℹ️ শুধু রেকর্ড — কোনো হিসাব/ব্যালেন্সে যুক্ত নয়। যে ক্রয়ে "পরিশোধ" লেখা হয়েছে শুধু সেগুলোই এখানে ধরা হয়েছে।</div>'
+        + (dg.length ? '<div class="pt-sec">🏭 সরবরাহকারী অনুযায়ী বাকি</div>' + barRows(ms, { h: 'Supplier' }) + '<div class="pt-sec">📄 বাকি থাকা ক্রয়</div><table class="pt-dtbl"><thead><tr><th>তারিখ</th><th>Supplier</th><th>Invoice</th><th class="r">মোট</th><th class="r">দেওয়া</th><th class="r">বাকি</th></tr></thead><tbody>'
+        + dg.map(g => `<tr class="clk" onclick="closeModal('pt-kpi');ptOpen('${encodeURIComponent(g.key)}')"><td style="white-space:nowrap;">${fmtDate(g.date)}</td><td style="font-weight:600;">${esc(g.supplier)}</td><td>${esc(g.invoice) || '—'}</td><td class="r">${money(g.total)}</td><td class="r">${money(g.paid)}</td><td class="r" style="color:#f85149;font-weight:700;">${money(g.due)}</td></tr>`).join('') + '</tbody></table>'
+        : '<div style="text-align:center;color:var(--text3);padding:30px;">কোনো বাকি নেই ✅</div>');
     } else if (kind === 'suppliers') {
       const m = {}; groups.forEach(g => { const k = String(g.supplier).trim().toLowerCase(); const s = (m[k] = m[k] || { name: g.supplier, phones: new Set(), n: 0, items: 0, c: 0, last: '' }); if (g.phone && g.phone !== 'মিশ্র') s.phones.add(g.phone); s.n++; s.items += g.items.length; s.c += Math.round(g.total * 100); if (g.date > s.last) s.last = g.date; });
       const ks = Object.keys(m).sort((a, b) => m[b].c - m[a].c); T.textContent = '🏭 সরবরাহকারী (' + ks.length + 'জন)';
-      html = '<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">সারিতে ক্লিক করলে সেই সরবরাহকারীর সব ক্রয় তালিকায় ফিল্টার হয়ে দেখাবে।</div><table class="pt-dtbl"><thead><tr><th>Supplier</th><th>Phone</th><th class="r">ক্রয়</th><th class="r">পণ্য-সারি</th><th class="r">মোট (৳)</th><th>শেষ ক্রয়</th></tr></thead><tbody>'
-        + ks.map(k => `<tr class="clk" onclick="ptFilterSupplier('${encodeURIComponent(m[k].name)}')"><td style="font-weight:600;">${esc(m[k].name)}</td><td>${esc(Array.from(m[k].phones).join(', ')) || '—'}</td><td class="r">${m[k].n}</td><td class="r">${m[k].items}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(m[k].c / 100)}</td><td style="white-space:nowrap;">${fmtDate(m[k].last)}</td></tr>`).join('') + '</tbody></table>';
+      html = '<div style="font-size:12px;color:var(--text3);margin-bottom:10px;">সারিতে ক্লিক করলে সেই সরবরাহকারীর পূর্ণ খতিয়ান (Ledger) খুলবে।</div><table class="pt-dtbl"><thead><tr><th>Supplier</th><th>Phone</th><th class="r">ক্রয়</th><th class="r">পণ্য-সারি</th><th class="r">মোট (৳)</th><th>শেষ ক্রয়</th></tr></thead><tbody>'
+        + ks.map(k => `<tr class="clk" onclick="closeModal('pt-kpi');ptLedger('${encodeURIComponent(m[k].name)}')"><td style="font-weight:600;">${esc(m[k].name)}</td><td>${esc(Array.from(m[k].phones).join(', ')) || '—'}</td><td class="r">${m[k].n}</td><td class="r">${m[k].items}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(m[k].c / 100)}</td><td style="white-space:nowrap;">${fmtDate(m[k].last)}</td></tr>`).join('') + '</tbody></table>';
     }
     B.innerHTML = html; $('modal-pt-kpi').classList.add('open');
   }
@@ -15843,14 +15969,14 @@ window.syncCourierData = async function () {
   function viewRows() { const s = new Set(VIEW.ids); return PT.rows.filter(r => s.has(r.id)).sort((a, b) => (a.id < b.id ? -1 : 1)); }
   function open(enc) {
     const g = PT.gMap[decodeURIComponent(enc)]; if (!g) return toast('ক্রয় পাওয়া যায়নি', 'error');
-    VIEW.ids = g.ids.slice(); VIEW.sel = new Set(g.ids); VIEW.editOpen = false; renderView(); $('modal-pt-view').classList.add('open');
+    VIEW.ids = g.ids.slice(); VIEW.sel = new Set(g.ids); VIEW.editOpen = false; VIEW.keep = false; renderView(); $('modal-pt-view').classList.add('open');
   }
   function refreshView() {
     if (!$('modal-pt-view') || !$('modal-pt-view').classList.contains('open')) return;
     if (!viewRows().length) { closeModal('pt-view'); return; }
     VIEW.sel = new Set(Array.from(VIEW.sel).filter(id => viewRows().some(r => r.id === id))); renderView();
   }
-  function renderView() {
+  function renderView0() {
     const rows = viewRows(); if (!rows.length) return; const g = makeGroup(rows), sel = VIEW.sel, selN = rows.filter(r => sel.has(r.id)).length;
     $('pt-v-title').textContent = `🧾 ${g.supplier}${g.invoice ? ' · ' + g.invoice : ''} — ${fmtDate(g.date === 'মিশ্র' ? rows[0].date : g.date)}`;
     const dateVal = same(rows, r => r.date), mix = v => v === 'মিশ্র' ? '<em style="color:var(--text3)">মিশ্র (আলাদা)</em>' : (esc(v) || '—');
@@ -15865,6 +15991,19 @@ window.syncCourierData = async function () {
       ${rows.map(r => `<tr><td><input type="checkbox" ${sel.has(r.id) ? 'checked' : ''} onchange="ptViewSel('${esc(r.id)}',this.checked)"></td><td style="white-space:nowrap;">${fmtDate(r.date)}</td><td style="font-weight:600;">${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">${money(r.price)}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(r.total)}</td><td style="font-size:11px;color:var(--text3);">${esc(r.id)}</td>
         <td><div class="pt-act"><button class="btn btn-sm" title="এই পণ্য Edit" onclick="ptEdit('${esc(r.id)}')">✏️</button><button class="btn btn-sm" title="এই পণ্য মুছুন" onclick="ptDelete('${esc(r.id)}')">🗑️</button></div></td></tr>`).join('')}
       </tbody><tfoot><tr><td colspan="5" style="text-align:right;font-weight:700;">মোট (Recorded)</td><td class="r" style="color:#D4A017;font-weight:800;font-size:15px;">${money(g.total)}</td><td colspan="2"></td></tr></tfoot></table></div>
+      <div class="pt-vact" style="align-items:center;">
+        <div style="flex:1;min-width:230px;"><div style="font-size:12px;color:var(--text3);">💳 পরিশোধ (শুধু রেকর্ড)</div>
+          <div style="font-size:14px;margin-top:3px;">মোট ${money(g.total)} · দেওয়া <b>${g.tracked ? money(g.paid) : '—'}</b> · ${g.tracked ? (g.due > 0 ? `<b style="color:#f85149">বাকি ${money(g.due)}</b>` : '<b style="color:#34d174">✅ পুরো পরিশোধিত</b>') : '<span style="color:var(--text3)">ট্র্যাক করা হয়নি</span>'}</div></div>
+        <div><label>এ পর্যন্ত মোট পরিশোধ (৳)</label><input type="number" class="form-input" id="pt-v-paid" min="0" step="any" inputmode="decimal" value="${g.tracked ? g.paid : ''}" placeholder="০"></div>
+        <button class="btn" onclick="ptViewSetPaid(false)">💾 পরিশোধ সেভ</button><button class="btn" onclick="ptViewSetPaid(true)">✅ পুরো পরিশোধ</button>
+      </div>
+      <div class="pt-vact">
+        <div style="flex-basis:100%;font-size:12px;color:var(--text3);">➕ এই ক্রয়ে আরও পণ্য যোগ করুন (দোকান, তারিখ, ইনভয়েস নম্বর নিজে থেকে বসবে)</div>
+        <div style="flex:2;min-width:160px;"><label>Product / Item</label><input class="form-input" id="pt-v-ni" maxlength="160" placeholder="পণ্যের নাম"></div>
+        <div style="width:90px;"><label>Qty</label><input type="number" class="form-input" id="pt-v-nq" min="0" step="any" placeholder="Qty"></div>
+        <div style="width:120px;"><label>Unit Price</label><input type="number" class="form-input" id="pt-v-np" min="0" step="any" placeholder="দাম"></div>
+        <button class="btn btn-pt" style="background:#D4A017;border-color:#D4A017;color:#000;font-weight:700;" onclick="ptViewAddItem()">＋ যোগ করুন</button>
+      </div>
       <div class="pt-vact">
         <div><label>নতুন তারিখ</label><input type="date" class="form-input" id="pt-v-date" value="${esc(rows[0].date)}"></div>
         <button class="btn btn-pt" style="background:#D4A017;border-color:#D4A017;color:#000;font-weight:700;" onclick="ptViewSetDate()">📅 তারিখ পরিবর্তন (${selN}টি নির্বাচিত)</button>
@@ -15880,6 +16019,12 @@ window.syncCourierData = async function () {
           <div style="grid-column:1/-1;"><button class="btn btn-pt" style="background:#D4A017;border-color:#D4A017;color:#000;font-weight:700;" onclick="ptViewSaveInfo()">✅ নির্বাচিতগুলোতে এই তথ্য প্রয়োগ করুন</button></div></div>` : ''}
       </div>
       <div style="font-size:11px;color:var(--text3);">ℹ️ এটি শুধু রেকর্ড — কোনো হিসাব/ব্যালেন্স/স্টক বদলায় না।</div>`;
+  }
+  function renderView() {
+    const ids = ['pt-v-date', 'pt-v-paid', 'pt-v-ni', 'pt-v-nq', 'pt-v-np'], keep = {};
+    if (VIEW.keep) ids.forEach(i => { const e = $(i); if (e) keep[i] = e.value; });
+    renderView0();
+    ids.forEach(i => { const e = $(i); if (e && keep[i] != null) e.value = keep[i]; }); VIEW.keep = true;
   }
   const viewSel = (id, on) => { on ? VIEW.sel.add(id) : VIEW.sel.delete(id); renderView(); };
   const viewSelAll = on => { VIEW.sel = on ? new Set(VIEW.ids) : new Set(); renderView(); };
@@ -15899,6 +16044,125 @@ window.syncCourierData = async function () {
     const f = { supplier: $('pt-v-supplier').value.trim(), phone: $('pt-v-phone').value.trim(), invoice: $('pt-v-invoice').value.trim(), method: $('pt-v-method').value, source: $('pt-v-source').value, note: $('pt-v-note').value.trim() };
     if (!f.supplier) return toast('সরবরাহকারীর নাম দিন', 'error'); if (f.phone && !PHONE_RE.test(f.phone)) return toast('ফোন নম্বর সঠিক নয়', 'error');
     return bulk(f, 'তথ্য আপডেট হয়েছে');
+  }
+  async function viewSetPaid(all) {
+    const rows = viewRows(); if (!rows.length || PT.saving) return; const g = makeGroup(rows), raw = $('pt-v-paid').value.trim();
+    const v = all ? g.total : Number(raw);
+    if (!all && (raw === '' || !isFinite(v) || v < 0)) return toast('পরিশোধের সঠিক পরিমাণ দিন', 'error');
+    if (v > g.total + 0.005) return toast(`পরিশোধ মোট ক্রয়ের (${money(g.total)}) চেয়ে বেশি হতে পারে না`, 'error');
+    PT.saving = true;
+    try {
+      const r = await netPost({ action: 'ptSetPaid', ids: rows.map(x => x.id), paid: v });
+      if (!r) return toast('❌ সেভ হয়নি — আবার চেষ্টা করুন (Apps Script v60 ডিপ্লয় করা আছে?)', 'error');
+      toast(v >= g.total ? '✅ পুরো পরিশোধিত হিসেবে রেকর্ড হয়েছে' : `✅ পরিশোধ ${money(v)} রেকর্ড হয়েছে — বাকি ${money(g.total - v)}`, 'success');
+      try { logAction(`Purchase Tracker পরিশোধ রেকর্ড: ${g.supplier} ${money(v)}`); } catch (e) {}
+      VIEW.keep = false; await load(false);
+    } finally { PT.saving = false; }
+  }
+  async function viewAddItem() {
+    const rows = viewRows(); if (!rows.length || PT.saving) return; const f = rows[0];
+    const item = $('pt-v-ni').value.trim(), q = Number($('pt-v-nq').value), pr = Number($('pt-v-np').value), pv = $('pt-v-np').value;
+    if (!item) return toast('পণ্যের নাম দিন', 'error'); if (!isFinite(q) || q <= 0) return toast('পরিমাণ ০ এর বেশি হতে হবে', 'error');
+    if (pv === '' || !isFinite(pr) || pr < 0) return toast('একক মূল্য সঠিক দিন', 'error');
+    PT.saving = true;
+    try {
+      const r = await netPost({ action: 'ptAddPurchase', sid: rid(), items: [{ item, qty: q, price: pr }], date: f.date, supplier: f.supplier, phone: f.phone, method: f.method, source: f.source, invoice: f.invoice, note: f.note });
+      if (!r) return toast('❌ পণ্য যোগ হয়নি — আবার চেষ্টা করুন', 'error');
+      (r.ids || []).forEach(id => { VIEW.ids.push(id); VIEW.sel.add(id); });
+      ['pt-v-ni', 'pt-v-nq', 'pt-v-np'].forEach(i => { $(i).value = ''; });
+      toast(`✅ "${item}" যোগ হয়েছে`, 'success'); try { logAction(`Purchase Tracker পণ্য যোগ: ${f.supplier}${f.invoice ? ' · ' + f.invoice : ''} (+${item})`); } catch (e) {}
+      await load(false);
+    } finally { PT.saving = false; }
+  }
+  // ── 🏭 Supplier Ledger (শুধু Purchase_Tracker-এর ডেটা থেকে; কিছু লেখে না) ──
+  const LED = { key: '', year: '' };
+  const supKey = s => String(s || '').trim().toLowerCase();
+  function ledgerSuppliers() {
+    const m = {}; PT.rows.forEach(r => { const k = supKey(r.supplier); if (!k) return; const s = (m[k] = m[k] || { key: k, name: String(r.supplier).trim(), c: 0 }); s.c += Math.round((Number(r.total) || 0) * 100); });
+    return Object.values(m).sort((a, b) => b.c - a.c);
+  }
+  function ledger(enc) {
+    const list = ledgerSuppliers(); if (!list.length) return toast('এখনো কোনো ক্রয় রেকর্ড নেই', 'info');
+    const n = enc ? supKey(decodeURIComponent(enc)) : ''; LED.key = list.some(s => s.key === n) ? n : list[0].key; LED.year = '';
+    renderLedger(); $('modal-pt-ledger').classList.add('open');
+  }
+  function ledgerFromView() { const rows = viewRows(); if (rows.length) ledger(encodeURIComponent(rows[0].supplier)); }
+  function ledgerSet(k, v) { LED[k] = v; if (k === 'key') LED.year = ''; renderLedger(); }
+  function ledgerData() {
+    const all = PT.rows.filter(r => supKey(r.supplier) === LED.key); if (!all.length) return null;
+    const years = Array.from(new Set(all.map(r => String(r.date).slice(0, 4)))).sort().reverse();
+    const rows = LED.year ? all.filter(r => String(r.date).slice(0, 4) === LED.year) : all;
+    const groups = groupRows(rows), phones = Array.from(new Set(all.map(r => r.phone).filter(Boolean)));
+    const tot = groups.reduce((s, g) => s + Math.round(g.total * 100), 0), tg = groups.filter(g => g.tracked);
+    const paid = tg.reduce((s, g) => s + Math.round(g.paid * 100), 0), due = tg.reduce((s, g) => s + Math.round(g.due * 100), 0);
+    const im = {}; rows.forEach(r => { const k = String(r.item || '').trim().toLowerCase(); const it = (im[k] = im[k] || { name: String(r.item).trim(), q: 0, c: 0, last: '', lastP: 0, min: Infinity, max: 0, n: 0 });
+      it.q += Number(r.qty) || 0; it.c += Math.round((Number(r.total) || 0) * 100); it.n++; const p = Number(r.price) || 0; if (p < it.min) it.min = p; if (p > it.max) it.max = p; if (String(r.date) >= it.last) { it.last = String(r.date); it.lastP = p; } });
+    const dates = rows.map(r => String(r.date)).sort();
+    return { all, rows, years, groups, phones, tot, paid, due, hasTrack: tg.length > 0, items: Object.values(im).sort((a, b) => b.c - a.c), first: dates[0], last: dates[dates.length - 1], name: all[0].supplier };
+  }
+  function renderLedger() {
+    const d = ledgerData(); if (!d) return; const sups = ledgerSuppliers(), nowM = todayBD().slice(0, 7);
+    const months = [];
+    if (LED.year) for (let m = 1; m <= 12; m++) months.push(`${LED.year}-${String(m).padStart(2, '0')}`);
+    else { let [y, m] = nowM.split('-').map(Number); for (let i = 0; i < 12; i++) { months.unshift(`${y}-${String(m).padStart(2, '0')}`); m--; if (m < 1) { m = 12; y--; } } }
+    const sm = {}; months.forEach(m => sm[m] = 0); d.rows.forEach(r => { const m = String(r.date).slice(0, 7); if (m in sm) sm[m] += Math.round((Number(r.total) || 0) * 100); });
+    const vals = months.map(m => sm[m]), mx = Math.max(1, ...vals);
+    const cmp = c => { const n = c / 100; return n >= 100000 ? '৳' + (n / 100000).toFixed(n % 100000 ? 1 : 0) + 'L' : n >= 1000 ? '৳' + (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'k' : n > 0 ? '৳' + Math.round(n) : ''; };
+    const kp = (l, v, c) => `<div class="pt-kpi" style="padding:12px 14px;"><div class="pt-kpi-label" style="font-size:10px;">${l}</div><div class="pt-kpi-value" style="font-size:18px;${c ? 'color:' + c : ''}">${v}</div></div>`;
+    $('pt-l-body').innerHTML = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:flex-end;">
+        <div style="flex:2;min-width:200px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">সরবরাহকারী</label>
+          <select class="form-select" onchange="ptLedgerSet('key',this.value)">${sups.map(s => `<option value="${esc(s.key)}"${s.key === LED.key ? ' selected' : ''}>${esc(s.name)} — ${money(s.c / 100)}</option>`).join('')}</select></div>
+        <div style="min-width:140px;"><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px;">সময়</label>
+          <select class="form-select" onchange="ptLedgerSet('year',this.value)"><option value="">সব সময়</option>${d.years.map(y => `<option${y === LED.year ? ' selected' : ''}>${y}</option>`).join('')}</select></div>
+      </div>
+      <div class="pt-vinfo"><div><span>সরবরাহকারী</span><b>${esc(d.name)}</b></div><div><span>Phone</span>${esc(d.phones.join(', ')) || '—'}</div><div><span>প্রথম ক্রয়</span>${d.first ? fmtDate(d.first) : '—'}</div><div><span>শেষ ক্রয়</span>${d.last ? fmtDate(d.last) : '—'}</div></div>
+      <div class="pt-kpis" style="margin-bottom:14px;">${kp('মোট ক্রয় (Recorded)', money(d.tot / 100), '#D4A017')}${kp('ক্রয়ের সংখ্যা', d.groups.length + 'টি')}${kp('পণ্য-সারি', d.rows.length + 'টি')}${kp('মোট পরিশোধ', d.hasTrack ? money(d.paid / 100) : '—', '#34d174')}${kp('মোট বাকি', d.hasTrack ? money(d.due / 100) : '—', d.due > 0 ? '#f85149' : '')}</div>
+      <div class="pt-sec" style="margin-top:4px;">📊 মাসওয়ারি ক্রয় ${LED.year ? '(' + LED.year + ')' : '(শেষ ১২ মাস)'}</div>
+      <div class="pt-chart" style="height:170px;">${months.map((m, i) => `<div class="pt-cc${m === nowM ? ' cur' : ''}" style="cursor:default" title="${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}: ${money(vals[i] / 100)}"><div class="v">${cmp(vals[i])}</div><div class="b" style="height:${Math.round(vals[i] * 120 / mx)}px"></div><div class="m">${MONTHS[+m.slice(5) - 1]}${LED.year ? '' : ' ' + m.slice(2, 4)}</div></div>`).join('')}</div>
+      <div class="pt-sec">🛒 কী কী কেনা হয়েছে (দাম তুলনা)</div>
+      <div style="overflow:auto;"><table class="pt-dtbl"><thead><tr><th>পণ্য</th><th class="r">মোট Qty</th><th class="r">মোট টাকা</th><th class="r">গড় দাম</th><th class="r">সর্বনিম্ন</th><th class="r">সর্বোচ্চ</th><th class="r">শেষ দাম</th></tr></thead><tbody>
+      ${d.items.map(it => `<tr><td style="font-weight:600;">${esc(it.name)}</td><td class="r">${num(it.q)}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(it.c / 100)}</td><td class="r">${money(it.q ? it.c / 100 / it.q : 0)}</td><td class="r">${money(it.min === Infinity ? 0 : it.min)}</td><td class="r">${money(it.max)}</td><td class="r">${money(it.lastP)}${it.max > it.min && it.lastP === it.max ? ' <span title="সর্বোচ্চ দামে কেনা" style="color:#f85149">▲</span>' : (it.max > it.min && it.lastP === it.min ? ' <span title="সর্বনিম্ন দামে কেনা" style="color:#34d174">▼</span>' : '')}</td></tr>`).join('')}</tbody></table></div>
+      <div class="pt-sec">📄 সব ক্রয় (ক্লিক করলে বিস্তারিত)</div>
+      <div style="overflow:auto;"><table class="pt-dtbl"><thead><tr><th>তারিখ</th><th>Invoice</th><th>পণ্য</th><th class="r">মোট</th><th>পরিশোধ</th></tr></thead><tbody>
+      ${d.groups.map(g => `<tr class="clk" onclick="closeModal('pt-ledger');ptOpen('${encodeURIComponent(g.key)}')"><td style="white-space:nowrap;">${fmtDate(g.date)}</td><td>${esc(g.invoice) || '—'}</td><td>${itemsLabel(g)}</td><td class="r" style="color:#D4A017;font-weight:700;">${money(g.total)}</td><td>${dueCell(g)}</td></tr>`).join('')}</tbody></table></div>
+      <div style="font-size:11px;color:var(--text3);margin-top:10px;">ℹ️ Recorded Purchase Amount — ব্যবসায়িক খরচ/COGS নয়। পরিশোধ/বাকি শুধু যেসব ক্রয়ে পরিশোধ লেখা হয়েছে সেগুলোর।</div>`;
+  }
+  function ledgerFilter() { const d = ledgerData(); if (!d) return; $('pt-f-q').value = d.name; $('pt-f-from').value = LED.year ? LED.year + '-01-01' : ''; $('pt-f-to').value = LED.year ? LED.year + '-12-31' : ''; PT.page = 1; closeModal('pt-ledger'); render(); try { $('pt-f-q').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {} }
+  function ledgerPrint() {
+    const d = ledgerData(); if (!d) return;
+    const items = d.items.map(it => `<tr><td>${esc(it.name)}</td><td class="r">${num(it.q)}</td><td class="r">৳${num(it.c / 100)}</td><td class="r">৳${num(it.q ? it.c / 100 / it.q : 0)}</td><td class="r">৳${num(it.lastP)}</td></tr>`).join('');
+    const gs = d.groups.map(g => `<tr><td>${fmtDate(g.date)}</td><td>${esc(g.invoice) || '—'}</td><td>${g.items.map(x => esc(x.item)).join(', ')}</td><td class="r">৳${num(g.total)}</td><td class="r">${g.tracked ? (g.due > 0 ? `বাকি ৳${num(g.due)}` : 'পরিশোধিত') : '—'}</td></tr>`).join('');
+    printWin('Supplier Ledger', `${esc(d.name)} · ${LED.year || 'সব সময়'} · প্রিন্ট: ${fmtDate(todayBD())}`,
+      `<div class="box"><div><span>সরবরাহকারী</span>${esc(d.name)}</div><div><span>Phone</span>${esc(d.phones.join(', ')) || '—'}</div><div><span>সময়কাল</span>${d.first ? fmtDate(d.first) : '—'} → ${d.last ? fmtDate(d.last) : '—'}</div>
+      <div><span>ক্রয়ের সংখ্যা</span>${d.groups.length}টি (${d.rows.length}টি পণ্য-সারি)</div><div><span>মোট পরিশোধ</span>${d.hasTrack ? '৳' + num(d.paid / 100) : '—'}</div><div><span>মোট বাকি</span>${d.hasTrack ? '৳' + num(d.due / 100) : '—'}</div></div>
+      <h3 style="font-size:12px;color:#0f2a5c;margin:0 0 6px">কী কী কেনা হয়েছে</h3><table><thead><tr><th>পণ্য</th><th class="r">মোট Qty</th><th class="r">মোট টাকা</th><th class="r">গড় দাম</th><th class="r">শেষ দাম</th></tr></thead><tbody>${items}</tbody></table>
+      <h3 style="font-size:12px;color:#0f2a5c;margin:16px 0 6px">সব ক্রয়</h3><table><thead><tr><th>তারিখ</th><th>Invoice</th><th>পণ্য</th><th class="r">মোট</th><th class="r">পরিশোধ</th></tr></thead><tbody>${gs}</tbody></table>
+      <div class="tot">Recorded Total: ৳${num(d.tot / 100)}</div>`);
+  }
+  // ── মাসওয়ারি চার্ট ──
+  function renderChart() {
+    const ys = $('pt-c-year'), ss = $('pt-c-sup'); if (!ys || !ss) return;
+    const years = Array.from(new Set(PT.rows.map(r => String(r.date).slice(0, 4)).filter(y => /^\d{4}$/.test(y)))).sort().reverse();
+    const sups = Array.from(new Set(PT.rows.map(r => String(r.supplier || '').trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+    const cy = ys.value, cs = ss.value;
+    ys.innerHTML = '<option value="">শেষ ১২ মাস</option>' + years.map(y => `<option value="${y}">${y}</option>`).join(''); ys.value = years.includes(cy) || cy === '' ? cy : '';
+    ss.innerHTML = '<option value="">সব সরবরাহকারী</option>' + sups.map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join(''); ss.value = sups.includes(cs) ? cs : '';
+    const months = [], nowM = todayBD().slice(0, 7);
+    if (ys.value) for (let m = 1; m <= 12; m++) months.push(`${ys.value}-${String(m).padStart(2, '0')}`);
+    else { let [y, m] = nowM.split('-').map(Number); for (let i = 0; i < 12; i++) { months.unshift(`${y}-${String(m).padStart(2, '0')}`); m--; if (m < 1) { m = 12; y--; } } }
+    const sums = {}; months.forEach(m => sums[m] = 0);
+    PT.rows.forEach(r => { const m = String(r.date).slice(0, 7); if (m in sums && (!ss.value || String(r.supplier || '').trim() === ss.value)) sums[m] += Math.round((Number(r.total) || 0) * 100); });
+    const vals = months.map(m => sums[m]), mx = Math.max(1, ...vals), tot = vals.reduce((a, b) => a + b, 0), nz = vals.filter(v => v > 0).length;
+    const cmp = c => { const n = c / 100; return n >= 100000 ? '৳' + (n / 100000).toFixed(n % 100000 ? 1 : 0) + 'L' : n >= 1000 ? '৳' + (n / 1000).toFixed(n % 1000 ? 1 : 0) + 'k' : n > 0 ? '৳' + Math.round(n) : ''; };
+    const best = vals.indexOf(Math.max(...vals));
+    $('pt-chart-sum').innerHTML = tot ? `মোট <b style="color:#D4A017">${money(tot / 100)}</b> · গড় ${money(tot / 100 / Math.max(1, nz))}/মাস (${nz}টি সক্রিয় মাস) · সর্বোচ্চ: <b>${MONTHS[+months[best].slice(5) - 1]} ${months[best].slice(0, 4)}</b> (${money(vals[best] / 100)})` : 'এই সময়ে কোনো ক্রয় রেকর্ড নেই';
+    $('pt-chart').innerHTML = months.map((m, i) => `<div class="pt-cc${m === nowM ? ' cur' : ''}" title="${MONTHS[+m.slice(5) - 1]} ${m.slice(0, 4)}: ${money(vals[i] / 100)}" onclick="ptChartPick('${m}')"><div class="v">${cmp(vals[i])}</div><div class="b" style="height:${Math.round(vals[i] * 140 / mx)}px"></div><div class="m">${MONTHS[+m.slice(5) - 1]}${ys.value ? '' : ' ' + m.slice(2, 4)}</div></div>`).join('');
+  }
+  function chartPick(m) {
+    const [y, mo] = m.split('-').map(Number), last = new Date(y, mo, 0).getDate();
+    $('pt-f-from').value = `${m}-01`; $('pt-f-to').value = `${m}-${String(last).padStart(2, '0')}`; if ($('pt-c-sup').value) $('pt-f-q').value = $('pt-c-sup').value;
+    PT.page = 1; render(); try { $('pt-f-q').scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
   }
   async function viewDeleteAll() {
     const rows = viewRows(); if (!rows.length) return; const g = makeGroup(rows);
@@ -15932,13 +16196,13 @@ window.syncCourierData = async function () {
     const tr = g.items.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">৳${num(r.price)}</td><td class="r">৳${num(r.total)}</td></tr>`).join('');
     printWin('Purchase Record', `প্রিন্ট: ${fmtDate(todayBD())}`, `<div class="box"><div><span>তারিখ</span>${fmtDate(g.date)}</div><div><span>Supplier</span>${esc(g.supplier)}</div><div><span>Phone</span>${esc(g.phone)}</div>
       <div><span>Invoice / Voucher No.</span>${esc(g.invoice) || '—'}</div><div><span>Payment Method</span>${esc(g.method)}</div><div><span>Payment Source</span>${esc(g.source)}</div>${g.note ? `<div style="grid-column:1/-1"><span>Note</span>${esc(g.note)}</div>` : ''}</div>
-      <table><thead><tr><th style="width:28px">#</th><th>Product / Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead><tbody>${tr}</tbody></table><div class="tot">Recorded Total: ৳${num(g.total)}</div>`);
+      <table><thead><tr><th style="width:28px">#</th><th>Product / Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Total</th></tr></thead><tbody>${tr}</tbody></table><div class="tot">Recorded Total: ৳${num(g.total)}</div>${g.tracked ? `<div class="tot" style="font-size:12.5px;font-weight:600;color:#333;margin-top:4px;">পরিশোধ: ৳${num(g.paid)} &nbsp;|&nbsp; <span style="color:${g.due > 0 ? '#b3261e' : '#1b7a3d'}">${g.due > 0 ? 'বাকি: ৳' + num(g.due) : 'পুরো পরিশোধিত'}</span></div>` : ''}`);
   }
   const viewPrint = () => { const rows = viewRows(); if (rows.length) printOne(makeGroup(rows)); };
   function printIt() {
     const groups = filteredGroups(); if (!groups.length) return toast('প্রিন্ট করার মতো রেকর্ড নেই', 'info');
     let amt = 0, n = 0; const body = groups.map(g => { amt += Math.round(g.total * 100); n += g.items.length;
-      return `<tr class="gh"><td colspan="4">${fmtDate(g.date)} · ${esc(g.supplier)}${g.phone ? ' · ' + esc(g.phone) : ''}${g.invoice ? ' · ' + esc(g.invoice) : ''} <span style="font-weight:400;color:#555">(${esc(g.method)} / ${esc(g.source)})</span></td><td class="r">৳${num(g.total)}</td></tr>`
+      return `<tr class="gh"><td colspan="4">${fmtDate(g.date)} · ${esc(g.supplier)}${g.phone ? ' · ' + esc(g.phone) : ''}${g.invoice ? ' · ' + esc(g.invoice) : ''} <span style="font-weight:400;color:#555">(${esc(g.method)} / ${esc(g.source)})</span>${g.tracked && g.due > 0 ? ` <span style="color:#b3261e;font-weight:600">· বাকি ৳${num(g.due)}</span>` : ''}</td><td class="r">৳${num(g.total)}</td></tr>`
         + g.items.map(r => `<tr><td style="padding-left:22px">${esc(r.item)}</td><td class="r">${num(r.qty)}</td><td class="r">৳${num(r.price)}</td><td colspan="2" class="r">৳${num(r.total)}</td></tr>`).join(''); }).join('');
     printWin('Purchase Records', `${groups.length}টি ক্রয় · ${n}টি পণ্য · প্রিন্ট: ${fmtDate(todayBD())}${isFiltering() ? ' · (ফিল্টার প্রযোজ্য)' : ''}`,
       `<table><thead><tr><th>Product / Item</th><th class="r">Qty</th><th class="r">Unit Price</th><th colspan="2" class="r">Total</th></tr></thead><tbody>${body}</tbody></table><div class="tot">Recorded Purchase Amount: ৳${num(amt / 100)}</div>`);
@@ -16027,7 +16291,7 @@ window.syncCourierData = async function () {
   function impClose() { if (IMP.running) return; $('modal-pt-import').classList.remove('open'); }
 
   Object.assign(window, { ptKpi: kpi, ptOpen: open, ptFilterSupplier: filterSupplier, ptViewSel: viewSel, ptViewSelAll: viewSelAll, ptViewSetDate: viewSetDate, ptViewSaveInfo: viewSaveInfo,
-    ptViewToggleEdit: () => { VIEW.editOpen = !VIEW.editOpen; renderView(); }, ptViewDeleteAll: viewDeleteAll, ptViewPrint: viewPrint, ptOpenImport: impOpen, ptCloseImport: impClose, ptImpRead: impRead, ptImpSubmit: impSubmit, ptLoad: load, ptAddItem: () => addItem(true), ptRemoveItem: removeItem, ptCalc: calc, ptSave: save, ptResetForm: () => resetForm(false),
+    ptViewToggleEdit: () => { VIEW.editOpen = !VIEW.editOpen; renderView(); }, ptViewDeleteAll: viewDeleteAll, ptLedger: ledger, ptLedgerFromView: ledgerFromView, ptLedgerSet: ledgerSet, ptLedgerFilter: ledgerFilter, ptLedgerPrint: ledgerPrint, ptViewSetPaid: viewSetPaid, ptViewAddItem: viewAddItem, ptChart: renderChart, ptChartPick: chartPick, ptViewPrint: viewPrint, ptOpenImport: impOpen, ptCloseImport: impClose, ptImpRead: impRead, ptImpSubmit: impSubmit, ptLoad: load, ptAddItem: () => addItem(true), ptRemoveItem: removeItem, ptCalc: calc, ptSave: save, ptResetForm: () => resetForm(false),
     ptFilterChanged: filterChanged, ptClearFilters: clearFilters, ptEdit: edit, ptSaveEdit: saveEdit, ptDelete: del, ptExport: exportCSV, ptPrint: printIt,
     ptPage: d => { PT.page += d; render(); } });
   ['pt-e-qty', 'pt-e-price'].forEach(i => { const e = $(i); if (e) e.addEventListener('input', editCalc); });

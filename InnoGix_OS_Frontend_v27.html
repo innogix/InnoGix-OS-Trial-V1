@@ -2941,6 +2941,15 @@ tbody td.muted{color:var(--text3);}
       </div>
     </div>
 
+    <!-- PARTNER TXN DESCRIPTION READER -->
+    <div class="modal-overlay" id="modal-ptx-read" onclick="if(event.target===this)closeModal('ptx-read')">
+      <div class="modal-box modal" style="max-width:640px;">
+        <div class="modal-header"><span class="modal-title">📖 লেনদেনের বিবরণ</span><button class="modal-close" onclick="closeModal('ptx-read')">✕</button></div>
+        <div class="modal-body" id="ptx-read-body" style="max-height:72vh;overflow:auto;"></div>
+        <div class="modal-footer" style="justify-content:space-between;flex-wrap:wrap;gap:8px;"><button class="btn" onclick="partnerReadCopy()">📋 কপি</button><span style="display:flex;gap:8px;"><button class="btn" onclick="partnerReadEdit()">✏️ Edit</button><button class="btn" onclick="closeModal('ptx-read')">বন্ধ করুন</button></span></div>
+      </div>
+    </div>
+
     <!-- INVESTOR REPORT MODAL -->
     <div class="modal-overlay" id="modal-investor-report">
       <div class="modal-box" style="max-width:560px;max-height:85vh;overflow-y:auto;">
@@ -5594,7 +5603,7 @@ tbody td.muted{color:var(--text3);}
 // ═══════════════════════════════════════════════════════════════
 
 // ⚠️ এখানে আপনার Google Apps Script Web App URL বসান (Deploy > New Deployment > Web App)
-      const API_URL = "https://script.google.com/macros/s/AKfycbzndhiAWtLflNb1x20R47cokledyfvLEgxfiS9DI4iONI_9PoxZmRYPoiOJZp1Eqrju/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
+      const API_URL = "https://script.google.com/macros/s/AKfycbyMAY0891qsgV3JMMBJzMLi_wcZn877fLfJeF2u0hkyOkof2evhGVr4391dR2bBJjdqjw/exec"; // ← এই URL পরিবর্তন করুন // ← এখানে আপনার Google Apps Script URL বসান
 
 // ─── CONNECTION STATE ────────────────────────────────────────
 let apiConnected = false;
@@ -8321,7 +8330,7 @@ function renderPartnerSummary(txns){
     const inv = txns.filter(t=>t.partner===p.name&&t.type==='Investment').reduce((s,t)=>s+Number(t.amount||0),0);
     const drw = txns.filter(t=>t.partner===p.name&&t.type==='Drawings').reduce((s,t)=>s+Number(t.amount||0),0);
     const prf = txns.filter(t=>t.partner===p.name&&t.type==='Profit Share').reduce((s,t)=>s+Number(t.amount||0),0);
-    const bal = inv - drw + prf;
+    const bal = inv - drw;   // Profit Share মূলধনে যোগ হয় না — আলাদা দেখানো হয় (Dashboard-এর Capital-এর সাথে মিল)
     return `<div class="partner-bal-card ${p.cls}">
       <div class="p-initial">${p.initial}</div>
       <div class="p-name" style="color:${p.color};">${p.name}</div>
@@ -8329,14 +8338,32 @@ function renderPartnerSummary(txns){
       <div class="p-stats">
         <div class="p-stat"><label>Invested</label><span style="color:var(--blue);">৳${inv.toLocaleString()}</span></div>
         <div class="p-stat"><label>Drawings</label><span style="color:var(--red);">৳${drw.toLocaleString()}</span></div>
-        ${prf > 0 ? `<div class="p-stat"><label>Profit Share</label><span style="color:var(--orange);">৳${prf.toLocaleString()}</span></div>` : ''}
-        <div class="p-stat"><label>Net Balance</label><span style="color:${bal>=0?'var(--green)':'var(--red)'};">৳${Math.abs(bal).toLocaleString()}${bal<0?' ↓':''}</span></div>
+        ${prf > 0 ? `<div class="p-stat" title="লাভের অংশ — মূলধনে যোগ হয়নি; চাইলে তুলে নিতে বা Investment হিসেবে যোগ করতে পারবেন"><label>Profit Share (আলাদা)</label><span style="color:var(--orange);">৳${prf.toLocaleString()}</span></div>` : ''}
+        <div class="p-stat" title="Net Balance = Invested − Drawings (Profit Share ছাড়া)"><label>Net Balance (মূলধন)</label><span style="color:${bal>=0?'var(--green)':'var(--red)'};">৳${Math.abs(bal).toLocaleString()}${bal<0?' ↓':''}</span></div>
       </div>
     </div>`;
   }).join('');
   // Also update sidebar partner chips balance if needed
 }
 
+function ptxClamp(t){
+  const s = String(t.desc||'').trim(); if(!s) return '—';
+  const long = s.length > 70 || /\n/.test(s);
+  return long ? `<div class="exp-clamp" title="পড়তে ক্লিক করুন" onclick="partnerRead('${_expEsc(t.id)}')">${_expEsc(s)}</div><a class="exp-readmore" onclick="partnerRead('${_expEsc(t.id)}')">📖 পুরোটা পড়ুন</a>` : _expEsc(s);
+}
+let _ptxReadId = null;
+function partnerRead(id){
+  const t = (window.livePartnerData||livePartnerData||[]).find(x=>String(x.id)===String(id)); if(!t) return;
+  _ptxReadId = t.id;
+  const info = (l,v)=>`<div><span>${l}</span>${v||'—'}</div>`;
+  const col = t.type==='Investment'?'var(--green)':'var(--red)';
+  document.getElementById('ptx-read-body').innerHTML = `
+    <div class="exp-rinfo">${info('তারিখ',_expEsc(t.date))}${info('Partner',_expEsc(t.partner))}${info('ধরন',_expEsc(t.type))}${info('Amount',`<b style="color:${col}">৳${Number(t.amount||0).toLocaleString()}</b>`)}${info('Payment',_expEsc(t.method))}</div>
+    <div class="exp-rh">📝 বিবরণ (Description)</div>${_expFormat(t.desc)}`;
+  openModal('ptx-read');
+}
+function partnerReadCopy(){ const t=(window.livePartnerData||livePartnerData||[]).find(x=>String(x.id)===String(_ptxReadId)); if(!t) return; try{ navigator.clipboard.writeText(t.desc||'').then(()=>showToast('✅ কপি হয়েছে','success')); }catch(e){ showToast('কপি করা যায়নি','error'); } }
+function partnerReadEdit(){ const t=(window.livePartnerData||livePartnerData||[]).find(x=>String(x.id)===String(_ptxReadId)); if(!t) return; closeModal('ptx-read'); openEditPartnerTxn(t); }
 function renderPartnerTxns(rows){
   // FIX 6: Calculate running total per partner (Investment adds, Drawings subtracts)
   const runningTotals = {};
@@ -8346,7 +8373,7 @@ function renderPartnerTxns(rows){
   chronoRows.forEach(t=>{
     const k = t.partner;
     if(!runMap[k]) runMap[k] = 0;
-    if(t.type==='Investment'||t.type==='Profit Share') runMap[k] += Number(t.amount||0);
+    if(t.type==='Investment') runMap[k] += Number(t.amount||0);   // Profit Share ব্যালেন্সে যোগ হয় না
     else if(t.type==='Drawings') runMap[k] -= Number(t.amount||0);
     runningTotals[t.id] = runMap[k];
   });
@@ -8360,8 +8387,8 @@ function renderPartnerTxns(rows){
       <td><span class="status ${t.type==='Investment'?'delivered':t.type==='Drawings'?'cancelled':'pending'}">${t.type}</span></td>
       <td class="mono" style="font-weight:700;color:${t.type==='Investment'?'var(--green)':'var(--red)'};">৳${Number(t.amount||0).toLocaleString()}</td>
       <td><span class="pay-badge ${(t.method||'').toLowerCase().replace(/ /g,'')}">${t.method||'—'}</span></td>
-      <td class="muted">${t.desc||'—'}</td>
-      <td class="mono" style="color:${runColor};font-weight:700;">৳${Math.abs(runTotal).toLocaleString()}${runTotal<0?' ↓':''}</td>
+      <td class="muted exp-dcell">${ptxClamp(t)}</td>
+      <td class="mono" style="color:${runColor};font-weight:700;">৳${Math.abs(runTotal).toLocaleString()}${runTotal<0?' ↓':''}${t.type==='Profit Share'?'<div style="font-size:9.5px;font-weight:400;color:var(--text3);margin-top:2px;">লাভ — ব্যালেন্সে যোগ হয়নি</div>':''}</td>
       <td>
         <button class="btn" style="padding:4px 10px;font-size:11px;" onclick='openEditPartnerTxn(${JSON.stringify(t)})'>✏️ Edit</button>
         <button class="btn" style="padding:4px 8px;font-size:11px;background:var(--red);color:#fff;border-color:var(--red);" onclick='deletePartnerTxn(${JSON.stringify({id:t.id,partner:t.partner})})'>🗑️</button>
@@ -11904,7 +11931,7 @@ async function exportPartnerDataToCSV(){
   chronoRows.forEach(t=>{
     const k = t.partner;
     if(!runMap[k]) runMap[k] = 0;
-    if(t.type==='Investment'||t.type==='Profit Share') runMap[k] += Number(t.amount||0);
+    if(t.type==='Investment') runMap[k] += Number(t.amount||0);   // Profit Share ব্যালেন্সে যোগ হয় না
     else if(t.type==='Drawings') runMap[k] -= Number(t.amount||0);
     runningTotals[t.id] = runMap[k];
   });

@@ -100,6 +100,13 @@ body{
   box-shadow:0 0 16px rgba(212,160,23,.3);
 }
 .sidebar-logo{justify-content:center;padding:18px 16px 14px;}
+/* সাইডবার স্ক্রল: মেনু বেশি হলে পুরো সাইডবার স্ক্রল হয় (কুরিয়ার Settings / লক ওএস নাগালে থাকে) */
+.sidebar{height:100vh;height:100dvh;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--border) transparent;}
+.sidebar > *{flex-shrink:0;}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:6px;}
+.sidebar::-webkit-scrollbar-thumb:hover{background:var(--text3);}
+.sidebar .sidebar-logo{position:sticky;top:0;z-index:3;background:var(--bg2);}
 .innogix-logo-img{display:block;width:190px;max-width:100%;height:auto;}
 .light .innogix-logo-img{filter:brightness(.38) contrast(1.1);}
 .logo-text h2{font-size:14px;font-weight:700;color:var(--text);letter-spacing:.5px;}
